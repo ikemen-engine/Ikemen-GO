@@ -104,10 +104,12 @@ type Storyboard struct {
 		Font       map[string]*FontProperties `ini:"map:^(?i)font[0-9]+$" lua:"font"`
 		Model      string                     `ini:"model" lookup:"def,,data/"`
 		StartScene int                        `ini:"startscene"`
-		Key        struct {
-			Skip   []string `ini:"skip"`
-			Cancel []string `ini:"cancel"`
-		} `ini:"key"`
+		Done       struct {
+			Action []string `ini:"action"`
+		} `ini:"done"`
+		Cancel struct {
+			Action []string `ini:"action"`
+		} `ini:"cancel"`
 		StopMusic      bool `ini:"stopmusic"`
 		DisableCancel  bool `ini:"disablecancel"`
 		WaitForLoading bool `ini:"waitforloading"`
@@ -173,9 +175,6 @@ func (p *storyboardPlacement) transform() *bgDrawTransform {
 		shake := sys.envShake.getOffset()
 		pos[0] = sys.gameWidth/2 + sys.cam.Offset[0] - shake[0] + (pos[0]-x)*scl
 		pos[1] = sys.cam.GroundLevel() + sys.cam.Offset[1] - shake[1] - y + pos[1]*scl
-	} else if viewport, ok := sys.fightDrawClip(); ok {
-		pos[0] += float32(viewport[0]-sys.scrrect[0]) / sys.widthScale
-		pos[1] += float32(viewport[1]-sys.scrrect[1]) / sys.heightScale
 	}
 	return &bgDrawTransform{
 		space:  p.space,
@@ -639,6 +638,7 @@ func (s *Storyboard) loadFiles() {
 			fnt.Size = s.Fnt[i].Size
 			fnt.Spacing = s.Fnt[i].Spacing
 			fnt.Offset = s.Fnt[i].offset
+			fnt.applyGlyphs(s.Fnt[i])
 
 			return nil
 		})
@@ -855,14 +855,14 @@ func (s *Storyboard) step() {
 
 	// Cancel handling
 	if !s.SceneDef.DisableCancel && (sys.esc ||
-		(!sys.motif.AttractMode.Enabled && sys.uiRawInput(s.SceneDef.Key.Cancel, -1)) ||
+		(!sys.motif.AttractMode.Enabled && sys.menuAction(s.SceneDef.Cancel.Action, -1)) ||
 		(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)) {
 		sys.esc = false
 		s.canceled = true
 	}
 
 	// Skip handling
-	skipPressed := sys.uiRawInput(s.SceneDef.Key.Skip, -1)
+	skipPressed := sys.menuAction(s.SceneDef.Done.Action, -1)
 	if s.SceneDef.WaitForLoading {
 		skipPressed = false
 	}
@@ -1134,6 +1134,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 			a.vel[0] *= xs
 			a.vel[1] *= ys
 			a.window = transform.window(lp.Window, [2]float32{localScl, localScl})
+			a.windowDefault = false // The storyboard supplies a transformed clip.
 			a.windowInit = [4]float32{}
 		}
 		a.Draw(layerno)
@@ -1161,6 +1162,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 			ts.vel[1] *= ys
 			ts.localScale *= xs
 			ts.window = transform.window(lp.TextWindow, [2]float32{localScl, localScl})
+			ts.windowDefault = false // The storyboard supplies a transformed clip.
 			ts.windowInit = [4]float32{}
 		}
 		ts.Draw(layerno)

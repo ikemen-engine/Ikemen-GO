@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"maps"
 	"unsafe"
 
 	//"log"
@@ -126,6 +127,7 @@ type SystemStateVars struct {
 	credits                 int32
 
 	consecutiveWins  [2]int32
+	versusStats      VersusStats
 	firstAttack      [3]int
 	home             int
 	stageLoop        bool
@@ -134,13 +136,16 @@ type SystemStateVars struct {
 	playBgmFlg       bool
 
 	keyInput            Key
-	keyString           string
 	lastInputController int
-	uiLastInputToken    string
+	menuPlayer          int // 1-based player whose pause menu is open; 0 reads every player
+	menuFocus           int // device that alone drives menus, e.g. while side select edits its setup
+	uiGlyphDevice       int // last accepted menu input
 	uiConsumeInputFrame int32
 	uiRepeatToken       string
 	uiRepeatController  int
 	uiRepeatFrame       int32
+	menuChannels        [MaxPlayerNo]MenuChannel
+	sessionSetups       map[int]SessionSetup // Controller Setup of each netplay or replay channel
 
 	endMatch       bool
 	noCharSoundFlg bool
@@ -171,6 +176,7 @@ var sys = System{
 	//ffxRegexp:         "^(f)|^(s)|^(go)", // https://github.com/ikemen-engine/Ikemen-GO/issues/1620
 	sel:              *newSelect(),
 	keyState:         make(map[Key]bool),
+	keyHeld:          make(map[Key]int32),
 	loader:           *newLoader(),
 	ignoreMostErrors: true,
 	stageList:        make(map[int32]*Stage),
@@ -232,8 +238,12 @@ func (tm TeamMode) TriggerValue() string {
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	SystemStateVars
-
 	window              *Window
+	appliedVideo        VideoState
+	renderTargetRect    [4]int32   // Actual framebuffer size; scrrect stays the game resolution.
+	renderTargetView    [2]float64 // Window-shaped area inside the framebuffer, not rounded.
+	drawViewport        [4]int32   // Where the current pass is drawn; zero means the default.
+	drawMotif           bool       // Menu overlays cover the whole screen.
 	redrawWait          struct{ nextTime, lastDraw time.Time }
 	debugFont           *TextSprite
 	debugDisplay        bool
@@ -260,10 +270,19 @@ type System struct {
 	ffx                 map[string]*FightFx
 	sel                 Select
 	keyState            map[Key]bool
+	keyHeld             map[Key]int32 // frames each key is held, for KEY: motif actions
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
-	keyConfig           []KeyConfig
-	joystickConfig      []KeyConfig
+	inputCfg            InputConfig
+	inputs              InputAssignment
+	textInput           TextInput
+	mouse               MouseInput
+	mousePacket         VirtualFrame
+	mousePacketFrame    int32
+	netMenuEscape       bool
+	netMenuEscapeHeld   bool
+	netMenuCapture      bool
+	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
@@ -397,6 +416,8 @@ type System struct {
 type drawAspectState struct {
 	gameWidth, gameHeight   float32
 	widthScale, heightScale float32
+	viewport               [4]int32
+	motif                  bool
 }
 
 // Check if the application is running inside a macOS app bundle
@@ -412,6 +433,11 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.setGameSize(w, h)
 	for i := range sys.cgi {
 		sys.cgi[i].palInfo = make(map[int]PalInfo)
+	}
+	// One command list per player slot. Menus read their input buffers, and
+	// commands added with commandAdd are checked with commandGetState.
+	for i := 0; i < MaxSimul*2; i++ {
+		s.commandLists = append(s.commandLists, NewCommandList(NewInputBuffer()))
 	}
 
 	// Select the renderer first so we can fall back to default before doing anything
@@ -453,56 +479,21 @@ func (s *System) init(w, h int32) *lua.LState {
 		input.UpdateGamepadMappings(sys.cfg.Config.GamepadMappings)
 	}
 
-	// Loading of external shader data.
-	// We need to do this before the render initialization at "gfx.Init()"
-	if len(s.cfg.Video.ExternalShaders) > 0 {
-		// First we initialize arrays.
-		s.externalShaders = make([][][]byte, 2)
-		s.externalShaders[0] = make([][]byte, len(s.cfg.Video.ExternalShaders))
-		s.externalShaders[1] = make([][]byte, len(s.cfg.Video.ExternalShaders))
-
-		// Then we load.
-		for i, shaderLocation := range s.cfg.Video.ExternalShaders {
-			// Create names.
-			shaderLocation = strings.Replace(shaderLocation, "\\", "/", -1)
-
-			if strings.HasPrefix(renderName, "OpenGL") {
-				// Load vert shaders.
-				s.externalShaders[0][i], err = os.ReadFile(shaderLocation + ".vert")
-				if err != nil {
-					chk(err)
-				}
-
-				// Load frag shaders.
-				s.externalShaders[1][i], err = os.ReadFile(shaderLocation + ".frag")
-				if err != nil {
-					chk(err)
-				}
-			} else if strings.HasPrefix(renderName, "Vulkan") {
-				// Load spv shaders
-				s.externalShaders[0][i], err = os.ReadFile(shaderLocation + ".vert.spv")
-				if err != nil {
-					chk(err)
-				}
-
-				s.externalShaders[1][i], err = os.ReadFile(shaderLocation + ".frag.spv")
-				if err != nil {
-					chk(err)
-				}
-			}
-		}
-	}
-	// PS: The "\x00" is what is know as Null Terminator.
+	// Post-processing shaders must be loaded before gfx.Init().
+	s.externalShaders, err = readPostShaders(s.cfg.Video.ExternalShaders, renderName)
+	chk(err)
 
 	// Init renderer
 	Logcat("Check B: Initializing GFX")
+	s.renderTargetRect, s.renderTargetView = s.renderTargetSize(w, h)
 	gfx.Init()
 	s.window.SetSwapInterval(s.cfg.Video.VSync) // VSync must be set after Init(), or our config.ini will be ignored
+	s.appliedVideo = s.currentVideoState()
 
 	Logcat("Check C: Initializing GFX Font")
 	gfxFont.Init(gfx)
 	Logcat("Check D: We are GOOD")
-	gfx.BeginFrame(false)
+	s.beginFrame(true)
 
 	// And the audio.
 	speaker = &SDLSpeaker{}
@@ -644,11 +635,48 @@ func (s *System) getMotifAspect() float32 {
 }
 
 func (s *System) getCurrentAspect() float32 {
-	if (s.postMatchFlg && s.skipMotifScaling()) ||
+	// Use the aspect ratio of whatever is being drawn right now (fight or menus).
+	if s.drawViewport != [4]int32{} {
+		return s.gameWidth / s.gameHeight
+	}
+	if (s.postMatchFlg && !s.shouldComposeFullResolution() && s.skipMotifScaling()) ||
 		(s.middleOfMatch() && !s.shouldComposeFullResolution()) {
 		return s.getFightAspect()
 	}
 	return s.getMotifAspect()
+}
+
+// Grow the render target to the window's shape, never below the game resolution.
+// Menus keep their exact pixels and the fight can use the extra space.
+func (s *System) renderTargetSize(w, h int32) ([4]int32, [2]float64) {
+	rect := [4]int32{0, 0, w, h}
+	view := [2]float64{float64(w), float64(h)}
+	if s.window == nil || !s.cfg.Video.KeepAspect {
+		return rect, view
+	}
+	dw, dh := s.window.GetDrawablePixelSize()
+	if dw > 0 && dh > 0 {
+		view[0] = math.Max(view[0], float64(h)*float64(dw)/float64(dh))
+		view[1] = math.Max(view[1], float64(w)*float64(dh)/float64(dw))
+		// Pad by whole pixels on both sides so centered menus stay pixel-aligned.
+		rect[2] += 2 * int32(math.Ceil((view[0]-float64(w))/2))
+		rect[3] += 2 * int32(math.Ceil((view[1]-float64(h))/2))
+	}
+	return rect, view
+}
+
+// Start a frame, first resizing the render target if the window shape changed.
+func (s *System) beginFrame(clearColor bool) {
+	if !s.window.renderingPaused {
+		rect, view := s.renderTargetSize(s.scrrect[2], s.scrrect[3])
+		if rect != s.renderTargetRect {
+			chk(gfx.ResizeRenderTargets(rect[2], rect[3], s.msaa))
+			s.renderTargetRect = rect
+			clearColor = true
+		}
+		s.renderTargetView = view
+	}
+	gfx.BeginFrame(clearColor)
 }
 
 func aspectStateForSize(w, h int32) drawAspectState {
@@ -678,6 +706,139 @@ func aspectStateForSize(w, h int32) drawAspectState {
 func (s *System) setGameSize(w, h int32) {
 	s.scrrect[2], s.scrrect[3] = w, h
 	s.restoreAspectState(aspectStateForSize(w, h))
+}
+
+// Video settings currently applied to the renderer and window.
+type VideoState struct {
+	renderer                    string
+	gameWidth, gameHeight       int32
+	windowWidth, windowHeight   int
+	fullscreen, borderless      bool
+	vsync                       int
+	msaa                        int32
+	modelEnabled, shadowEnabled bool
+	shaders                     []string
+}
+
+// Returns the windowed SDL size. A zero window dimension means
+// follow the corresponding internal game dimension (the config default).
+func videoWindowSize(gameWidth, gameHeight int32, windowWidth, windowHeight int) (int, int) {
+	if windowWidth == 0 {
+		windowWidth = int(gameWidth)
+	}
+	if windowHeight == 0 {
+		windowHeight = int(gameHeight)
+	}
+	return windowWidth, windowHeight
+}
+
+// Video settings as the renderer and window run them now.
+func (s *System) currentVideoState() VideoState {
+	v := s.cfg.Video
+	return VideoState{
+		renderer:  gfx.GetName(),
+		gameWidth: v.GameWidth, gameHeight: v.GameHeight,
+		windowWidth: v.WindowWidth, windowHeight: v.WindowHeight,
+		fullscreen: s.window.fullscreen, borderless: v.Borderless,
+		vsync: v.VSync, msaa: s.msaa,
+		modelEnabled: gfx.IsModelEnabled(), shadowEnabled: gfx.IsShadowEnabled(),
+		shaders: append([]string(nil), v.ExternalShaders...),
+	}
+}
+
+// Reads the vertex and fragment files of each post-processing shader.
+// Vulkan uses the compiled .spv files.
+func readPostShaders(names []string, renderer string) ([][][]byte, error) {
+	ext := ""
+	if strings.HasPrefix(renderer, "Vulkan") {
+		ext = ".spv"
+	}
+	sources := make([][][]byte, 2)
+	for _, name := range names {
+		path := strings.ReplaceAll(name, "\\", "/")
+		for i, kind := range []string{".vert", ".frag"} {
+			data, err := os.ReadFile(path + kind + ext)
+			if err != nil {
+				return nil, fmt.Errorf("read post shader %q: %w", path+kind+ext, err)
+			}
+			sources[i] = append(sources[i], data)
+		}
+	}
+	return sources, nil
+}
+
+// Applies changed video settings without restarting. Only screen-sized targets,
+// shaders, model pipelines and the window are rebuilt. Call between frames.
+// Leaves restart-only changes pending while applying live settings.
+func (s *System) applyVideoSettings(deferRestart bool) error {
+	v := s.cfg.Video
+	a := s.appliedVideo
+	if !deferRestart && !strings.HasPrefix(a.renderer, v.RenderMode) {
+		return fmt.Errorf("changing the renderer requires a restart")
+	}
+	if v.GameWidth <= 0 || v.GameHeight <= 0 {
+		return fmt.Errorf("internal resolution must be positive")
+	}
+	if v.WindowWidth < 0 || v.WindowHeight < 0 {
+		return fmt.Errorf("window dimensions cannot be negative")
+	}
+	if v.MSAA != a.msaa && strings.HasPrefix(a.renderer, "Vulkan") {
+		if !deferRestart {
+			return fmt.Errorf("changing MSAA requires a restart with Vulkan")
+		}
+		// Keep the running sample count when resizing Vulkan render targets.
+		// The requested value stays in the config for the next launch.
+		v.MSAA = a.msaa
+	}
+	if v.EnableModel != a.modelEnabled || v.EnableModelShadow != a.shadowEnabled {
+		if err := gfx.SetModelOptions(v.EnableModel, v.EnableModelShadow); err != nil {
+			return fmt.Errorf("update 3D rendering: %w", err)
+		}
+		// Record each applied step, so a later failure only restores what changed.
+		s.appliedVideo.modelEnabled = v.EnableModel
+		s.appliedVideo.shadowEnabled = v.EnableModelShadow
+	}
+	if v.GameWidth != a.gameWidth || v.GameHeight != a.gameHeight || v.MSAA != a.msaa {
+		rect, view := s.renderTargetSize(v.GameWidth, v.GameHeight)
+		if err := gfx.ResizeRenderTargets(rect[2], rect[3], v.MSAA); err != nil {
+			return fmt.Errorf("resize render targets: %w", err)
+		}
+		s.renderTargetRect = rect
+		s.renderTargetView = view
+		s.setGameSize(v.GameWidth, v.GameHeight)
+		s.msaa = v.MSAA
+		s.appliedVideo.gameWidth, s.appliedVideo.gameHeight = v.GameWidth, v.GameHeight
+		s.appliedVideo.msaa = v.MSAA
+	}
+	if !slices.Equal(v.ExternalShaders, a.shaders) {
+		sources, err := readPostShaders(v.ExternalShaders, gfx.GetName())
+		if err != nil {
+			return err
+		}
+		if err := gfx.ReloadPostShaders(sources); err != nil {
+			return err
+		}
+		s.externalShaders = sources
+		s.appliedVideo.shaders = append([]string(nil), v.ExternalShaders...)
+	}
+	w, h := videoWindowSize(v.GameWidth, v.GameHeight, v.WindowWidth, v.WindowHeight)
+	oldW, oldH := videoWindowSize(a.gameWidth, a.gameHeight, a.windowWidth, a.windowHeight)
+	if w != oldW || h != oldH {
+		s.window.ResizeWindowed(w, h)
+	}
+	if v.Borderless != a.borderless && !s.window.fullscreen {
+		s.window.Window.SetBordered(!v.Borderless)
+	}
+	if v.Fullscreen != s.window.fullscreen {
+		if _, forceWindowed := s.cmdFlags["-windowed"]; !forceWindowed {
+			s.window.toggleFullscreen()
+		}
+	}
+	if v.VSync != a.vsync {
+		s.window.SetSwapInterval(v.VSync)
+	}
+	s.appliedVideo = s.currentVideoState()
+	return nil
 }
 
 // Change aspect ratio at match start
@@ -727,6 +888,8 @@ func (s *System) captureAspectState() drawAspectState {
 		gameHeight:  s.gameHeight,
 		widthScale:  s.widthScale,
 		heightScale: s.heightScale,
+		viewport:    s.drawViewport,
+		motif:       s.drawMotif,
 	}
 }
 
@@ -735,6 +898,45 @@ func (s *System) restoreAspectState(st drawAspectState) {
 	s.gameHeight = st.gameHeight
 	s.widthScale = st.widthScale
 	s.heightScale = st.heightScale
+	s.drawMotif = st.motif
+	if s.drawViewport != st.viewport {
+		s.drawViewport = st.viewport
+		if gfx != nil {
+			viewport := s.currentDrawViewport()
+			gfx.SetViewport(viewport[0], viewport[1], viewport[2], viewport[3])
+		}
+	}
+}
+
+// Area of the framebuffer the current pass draws to.
+func (s *System) currentDrawViewport() [4]int32 {
+	if s.drawViewport != [4]int32{} {
+		return s.drawViewport
+	}
+	if s.middleOfMatch() || (s.postMatchFlg && !s.shouldComposeFullResolution() && s.skipMotifScaling()) {
+		return s.fightViewport()
+	}
+	return s.aspectViewport(s.getMotifAspect())
+}
+
+// Convert a clipping rectangle from game pixels to framebuffer pixels.
+func (s *System) viewportScissor(rect [4]int32) [4]int32 {
+	vp := s.currentDrawViewport()
+	if vp == s.scrrect {
+		return intersectRect(rect, s.scrrect)
+	}
+	rect = intersectRect(rect, s.scrrect)
+	if rect[2] <= 0 || rect[3] <= 0 {
+		return [4]int32{vp[0], vp[1], 0, 0}
+	}
+	sx := float64(vp[2]) / float64(s.scrrect[2])
+	sy := float64(vp[3]) / float64(s.scrrect[3])
+	x := float64(vp[0]) + float64(rect[0]-s.scrrect[0])*sx
+	y := float64(vp[1]) + float64(rect[1]-s.scrrect[1])*sy
+	x1, y1 := int32(math.Floor(x)), int32(math.Floor(y))
+	return intersectRect([4]int32{x1, y1,
+		int32(math.Ceil(x+float64(rect[2])*sx)) - x1,
+		int32(math.Ceil(y+float64(rect[3])*sy)) - y1}, vp)
 }
 
 func (s *System) withAspectState(st drawAspectState, fn func()) {
@@ -742,6 +944,24 @@ func (s *System) withAspectState(st drawAspectState, fn func()) {
 	s.restoreAspectState(st)
 	defer s.restoreAspectState(prev)
 	fn()
+}
+
+// Run fn drawing over the whole visible area instead of only the fight or menus.
+// bezel also covers any bezel art.
+func (s *System) withFullViewport(bezel bool, fn func()) {
+	st := s.captureAspectState()
+	st.viewport = s.compositionViewport(bezel)
+	s.withAspectState(st, fn)
+}
+
+// Draw state for menus and other motif screens.
+func (s *System) motifAspectState() drawAspectState {
+	st := aspectStateForSize(s.scrrect[2], s.scrrect[3])
+	st.motif = true
+	if s.shouldComposeFullResolution() {
+		st.viewport = s.aspectViewport(s.getMotifAspect())
+	}
+	return st
 }
 
 func (s *System) wrapDrawWithAspectState(fn func()) func() {
@@ -753,18 +973,21 @@ func (s *System) wrapDrawWithAspectState(fn func()) func() {
 		drawState := st
 		// Resolve late activation before executing a queued draw.
 		if s.shouldComposeFullResolution() {
-			drawState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+			drawState = s.motifAspectState()
 		}
 		s.withAspectState(drawState, fn)
 	}
 }
 
 func (s *System) canUseFullResolutionAspect() bool {
-	return s.cfg.Video.KeepAspect && !s.skipMotifScaling()
+	// Both pillarboxed and letterboxed fights can have full-canvas UI.
+	return s.cfg.Video.KeepAspect
 }
 
 func (s *System) motifOverlayActive() bool {
-	return s.motif.di.active ||
+	return s.motif.ch.active || s.motif.di.active ||
+		s.motif.vi.active || s.motif.wi.active || s.motif.hi.active || s.motif.co.active ||
+		s.storyboard.active || s.textInput.active ||
 		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn
 }
 
@@ -773,26 +996,45 @@ func (s *System) shouldComposeFullResolution() bool {
 		(!s.middleOfMatch() || s.motifOverlayActive() || s.debugDisplay)
 }
 
-func (s *System) fightViewport() [4]int32 {
-	viewport := s.scrrect
-	fightAspect := s.getFightAspect()
-	motifAspect := s.getMotifAspect()
-	if fightAspect <= 0 || motifAspect <= 0 || fightAspect == motifAspect {
+// Fit content with the given aspect ratio into the middle of the render target.
+func (s *System) aspectViewport(aspect float32) [4]int32 {
+	viewport := s.renderTargetRect
+	if !s.cfg.Video.KeepAspect || aspect <= 0 {
 		return viewport
 	}
-
-	if fightAspect < motifAspect {
-		contentWidth := int32(float32(s.scrrect[3]) * fightAspect)
-		contentWidth = Clamp(contentWidth, int32(0), s.scrrect[2])
-		viewport[0] += (s.scrrect[2] - contentWidth) / 2
-		viewport[2] = contentWidth
+	width, height := s.renderTargetView[0], s.renderTargetView[1]
+	if width > height*float64(aspect) {
+		width = height * float64(aspect)
 	} else {
-		contentHeight := int32(float32(s.scrrect[2]) / fightAspect)
-		contentHeight = Clamp(contentHeight, int32(0), s.scrrect[3])
-		viewport[1] += (s.scrrect[3] - contentHeight) / 2
-		viewport[3] = contentHeight
+		height = width / float64(aspect)
 	}
+	viewport[2] = Clamp(int32(math.Round(width)), int32(1), viewport[2])
+	viewport[3] = Clamp(int32(math.Round(height)), int32(1), viewport[3])
+	viewport[0] = (s.renderTargetRect[2] - viewport[2]) / 2
+	viewport[1] = (s.renderTargetRect[3] - viewport[3]) / 2
 	return viewport
+}
+
+func (s *System) fightViewport() [4]int32 {
+	return s.aspectViewport(s.getFightAspect())
+}
+
+// Fades and the final output cover the fight, menus and any bezel art.
+func (s *System) compositionViewport(bezel bool) [4]int32 {
+	if bezel && s.motif.bezelActive() {
+		return s.renderTargetRect
+	}
+	motif := s.aspectViewport(s.getMotifAspect())
+	if !s.middleOfMatch() && !s.postMatchFlg {
+		return motif
+	}
+	fight := s.fightViewport()
+	if !s.shouldComposeFullResolution() {
+		return fight
+	}
+	x, y := Min(fight[0], motif[0]), Min(fight[1], motif[1])
+	return [4]int32{x, y, Max(fight[0]+fight[2], motif[0]+motif[2]) - x,
+		Max(fight[1]+fight[3], motif[1]+motif[3]) - y}
 }
 
 func intersectRect(a, b [4]int32) [4]int32 {
@@ -804,14 +1046,6 @@ func intersectRect(a, b [4]int32) [4]int32 {
 		return [4]int32{x1, y1, 0, 0}
 	}
 	return [4]int32{x1, y1, x2 - x1, y2 - y1}
-}
-
-func (s *System) fightDrawClip() ([4]int32, bool) {
-	if !s.shouldComposeFullResolution() {
-		return s.scrrect, false
-	}
-	viewport := s.fightViewport()
-	return viewport, viewport != s.scrrect
 }
 
 func (s *System) setGameAspect() {
@@ -882,8 +1116,9 @@ func (s *System) keepAlive() {
 	s.window.pollEvents()
 }
 
-func (s *System) await(fps int) bool {
-	if !s.frameSkip && !s.window.renderingPaused {
+func (s *System) await(fps int, present bool) bool {
+	// Network waits still need pacing and events, but have no newly drawn frame to present.
+	if present && !s.frameSkip && !s.window.renderingPaused {
 		// Render the finished frame
 		gfx.EndFrame()
 		if gfx.GetName()[:6] == "OpenGL" {
@@ -913,7 +1148,21 @@ func (s *System) await(fps int) bool {
 
 		// Begin the next frame after events have been processed. Do not clear
 		// the screen if network input is present.
-		defer gfx.BeginFrame(sys.netConnection == nil)
+		defer func() {
+			s.beginFrame(sys.netConnection == nil)
+			// Menu bezels go under everything drawn in the frame, so they stay on screen when a match starts or ends.
+			if s.motif.Bezel.Menus && s.motif.bezelActive() {
+				s.withFullViewport(true, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+				s.motif.drawBezel()
+				// Keep the fight or menu area black, so transparent art there doesn't show the bezel.
+				st := s.captureAspectState()
+				st.viewport = s.aspectViewport(s.getMotifAspect())
+				if s.middleOfMatch() || s.postMatchFlg {
+					st.viewport = s.fightViewport()
+				}
+				s.withAspectState(st, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+			}
+		}()
 	}
 
 	s.runMainThreadTask()
@@ -977,8 +1226,12 @@ func (s *System) soundPanView() (view soundPanView) {
 func (s *System) renderFrame() {
 	// Full-resolution scaling is render-only; gameplay remains in fight space.
 	logicState := s.captureAspectState()
-	if s.shouldComposeFullResolution() {
-		s.restoreAspectState(aspectStateForSize(s.scrrect[2], s.scrrect[3]))
+	// Draw the fight in the same place whether or not a menu is open.
+	if s.cfg.Video.KeepAspect {
+		fightState := logicState
+		fightState.viewport = s.fightViewport()
+		fightState.motif = false
+		s.restoreAspectState(fightState)
 	}
 	defer s.restoreAspectState(logicState)
 
@@ -986,7 +1239,11 @@ func (s *System) renderFrame() {
 		// Keep pause-menu logic responsive even when this render frame is skipped.
 		// Any queued draw ops are discarded below because this frame is not being rendered.
 		if s.motif.me.active {
-			s.motif.me.runLua(&s.motif)
+			menuState := s.captureAspectState()
+			if s.motif.shouldScopeMotifAspect() {
+				menuState = s.motifAspectState()
+			}
+			s.withAspectState(menuState, func() { s.motif.me.runLua(&s.motif) })
 		}
 		// On skipped frames, discard queued draws to avoid buildup.
 		s.luaDiscardDrawQueue()
@@ -995,12 +1252,24 @@ func (s *System) renderFrame() {
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
+	// Menu bezels are already drawn when the frame begins.
+	if !s.motif.Bezel.Menus || !s.motif.bezelActive() {
+		if s.shouldComposeFullResolution() || s.motif.bezelActive() {
+			// Clear unused areas to black first (netplay can keep the previous frame).
+			s.withFullViewport(true, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+		}
+		s.motif.drawBezel()
+	}
 	s.draw(dx, dy, dscl)
 
 	// Lua
 	s.luaFlushDrawQueue()
 	// Fullscreen fades are the final scene pass, after all deferred Lua UI.
-	s.fightScreen.drawFade()
+	if s.shouldComposeFullResolution() {
+		s.withAspectState(s.motifAspectState(), s.fightScreen.drawFade)
+	} else {
+		s.fightScreen.drawFade()
+	}
 	s.motif.drawFade()
 
 	// Render top elements
@@ -1008,12 +1277,9 @@ func (s *System) renderFrame() {
 
 	// Render debug elements
 	if s.debugDisplay {
-		// Re-mask fight-only frames before drawing full-resolution debug panels.
-		if s.middleOfMatch() && !s.motifOverlayActive() {
-			s.motif.drawAspectBars()
-		}
 		s.drawDebugText(logicState)
 	}
+	s.textInput.draw()
 }
 
 func (s *System) update() bool {
@@ -1026,56 +1292,21 @@ func (s *System) update() bool {
 		s.preMatchTime = s.frameCounter
 	}
 
-	// Correct the joystick mappings (macOS)
-	for i := 0; i < len(sys.joystickConfig); i++ {
-		if runtime.GOOS == "darwin" && !sys.joystickConfig[i].isInitialized {
-			joyS := i
-			if joyS < len(sys.joystickConfig) {
-				if input.IsJoystickPresent(joyS) {
-					guid := input.GetJoystickGUID(joyS)
-
-					// Correct the inner config
-					if sys.joystickConfig[joyS].GUID != guid && !sys.joystickConfig[joyS].isInitialized {
-						// Swap those that don't match
-						for i := 0; i < len(sys.joystickConfig); i++ {
-							if i != joyS && sys.joystickConfig[i].GUID == guid {
-								sys.joystickConfig[joyS].swap(&sys.joystickConfig[i])
-								logicalPlayerA := sys.joystickConfig[joyS].Joy
-								logicalPlayerB := sys.joystickConfig[i].Joy
-								sys.inputRemap[logicalPlayerA] = joyS
-								sys.inputRemap[logicalPlayerB] = i
-								// cs := *input.controllerstate[joyS]
-								// *input.controllerstate[joyS] = *input.controllerstate[i]
-								// *input.controllerstate[i] = cs
-								// c := input.controllers[joyS]
-								// input.controllers[joyS] = input.controllers[i]
-								// input.controllers[i] = c
-								// fmt.Printf("system.go: inputremap[%v] = %v, inputRemap[%v] = %v\n", joyS, sys.inputRemap[joyS], i, sys.inputRemap[i])
-								// fmt.Printf("system.go: %v, Joy = %v, RealJoy = %v, GUID = %v\n", input.GetJoystickGUID(joyS), joyS, sys.joystickConfig[joyS].Joy, guid)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	if s.replayFile != nil {
 		if s.anyHardButton() {
-			s.await(s.gameRenderSpeed() * 4)
+			s.await(s.gameRenderSpeed() * 4, true)
 		} else {
-			s.await(s.gameRenderSpeed())
+			s.await(s.gameRenderSpeed(), true)
 		}
 		return s.replayFile.Update()
 	}
 
 	if s.netConnection != nil {
-		s.await(s.gameRenderSpeed())
+		s.await(s.gameRenderSpeed(), true)
 		return s.netConnection.Update()
 	}
 
-	return s.await(s.gameRenderSpeed())
+	return s.await(s.gameRenderSpeed(), true)
 }
 
 func (s *System) tickSound() {
@@ -1147,6 +1378,20 @@ func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
 		s.inputRemap[i] = i
 	}
+}
+
+// 0-based index of the side running the mode.
+func (s *System) runSideIndex() int { return int(s.runSide) }
+
+// Player slot of the run side's team leader. Falls back to the run side if the leader isn't human.
+func (s *System) runLeaderSlot() int {
+	side := s.runSideIndex()
+	if pn := s.teamLeader[side]; pn >= 0 && pn < len(s.chars) && len(s.chars[pn]) > 0 && s.chars[pn][0] != nil {
+		if c := s.chars[pn][0]; c.controller >= 0 {
+			return c.controller
+		}
+	}
+	return side
 }
 
 func (s *System) loaderReset() {
@@ -1278,47 +1523,600 @@ func (s *System) synchronize() error {
 	return nil
 }
 
-/*
-func (s *System) anyHardButton() bool {
-	for _, kc := range s.keyConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
-			return true
+// Rebuilds the runtime input configuration and keeps keyboard devices in sync
+// with the keyboard controllers in config.ini.
+func (s *System) loadInputConfig(c *Config) {
+	ic := InputConfig{mappings: make(map[string]ButtonMapping), setups: make(map[string]ControllerSetup)}
+	for _, sec := range c.IniFile.Sections() {
+		name := iniSectionID(sec)
+		if p := c.ButtonMapping[name]; p != nil {
+			id := strings.TrimPrefix(name, "buttonmapping_")
+			ic.mappings[id] = p.mapping()
+			if !strings.HasPrefix(id, "controller_") {
+				ic.keyboards = append(ic.keyboards, id)
+			}
+		} else if p := c.ControllerSetup[name]; p != nil {
+			id := strings.TrimPrefix(name, "controllersetup_")
+			ic.setups[id] = p.setup()
+			ic.setupOrder = append(ic.setupOrder, id)
 		}
 	}
-	for _, kc := range s.joystickConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
-			return true
+	s.inputCfg = ic
+	for _, id := range ic.keyboards {
+		var device *InputDevice
+		for _, candidate := range s.inputs.Devices {
+			if candidate.Joy < 0 && candidate.Keyboard == id {
+				device = candidate
+				break
+			}
+		}
+		if device == nil {
+			device = s.inputs.addDevice(&InputDevice{Joy: -1, Keyboard: id})
+			device.Setup = c.Input.ControllerSetup[id]
+		}
+		device.Name = c.ButtonMapping["buttonmapping_"+id].Name
+	}
+	// A setup that no longer exists falls back to the first one.
+	for _, device := range s.inputs.Devices {
+		device.Setup, _ = s.inputCfg.setup(device.Setup)
+	}
+	if s.inputs.Participants == nil {
+		s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	}
+}
+
+// Virtual controller state of a device. A blocked device reads as idle until released.
+func (s *System) deviceFrame(device *InputDevice) VirtualFrame {
+	m := s.inputCfg.mapping(device)
+	f := device.sample(&m)
+	if device != nil && device.blocked {
+		for vc := VirtualControl(0); vc < VC_Count; vc++ {
+			if f.held(vc) {
+				return VirtualFrame{}
+			}
+		}
+		device.blocked = false
+	}
+	return f
+}
+
+// Combined virtual state of every device driving participant n.
+func (s *System) participantFrame(n int) VirtualFrame {
+	s.pollDevices()
+	var f VirtualFrame
+	for _, id := range s.inputs.participantDevices(n) {
+		f = f.merge(s.deviceFrame(s.inputs.device(id)))
+	}
+	nc := s.inputConnection()
+	if n != 0 || nc == nil {
+		return f
+	}
+	if s.gameRunning && (s.netMenuEscape || s.netMenuEscapeHeld || s.netMenuCapture) {
+		m := menuFrame{escape: s.netMenuEscape || s.netMenuEscapeHeld, capture: s.netMenuCapture}
+		s.netMenuEscape, s.netMenuCapture = false, false
+		return m.encode()
+	}
+	if !s.mouse.enabled() || !s.mouse.active {
+		return f
+	}
+	menu := !s.gameRunning || s.motif.me.active
+	if !menu && !s.motifOverlayActive() && !s.postMatchFlg {
+		return f
+	}
+	if menu && s.frameCounter >= s.mousePacketFrame && s.frameCounter-s.mousePacketFrame <= 1 && s.mousePacket.isMenu() {
+		return s.mousePacket
+	}
+	return s.mouse.packet(s.menuChannels[nc.locIn].mouse.generation, 0)
+}
+
+// Whether inputs come from a netplay connection or a replay, the same on every peer.
+func (s *System) synchronizedInput() bool {
+	nc := s.inputConnection()
+	return s.replayFile != nil || nc != nil && nc.IsConnected()
+}
+
+func (s *System) menuEscape(slot int) int32 {
+	channel := s.uiControllerKey(slot)
+	if channel >= 0 && channel < len(s.menuChannels) {
+		return s.menuChannels[channel].escape
+	}
+	return 0
+}
+
+func (s *System) mouseForSlot(slot int) *MouseInput {
+	if s.synchronizedInput() {
+		channel := s.uiControllerKey(slot)
+		if channel >= 0 && channel < len(s.menuChannels) && s.menuChannels[channel].mouse.available() {
+			return &s.menuChannels[channel].mouse.input
+		}
+		return nil
+	}
+	if s.mouseSlot(slot) {
+		return &s.mouse
+	}
+	return nil
+}
+
+// Hit testing stays local. Only its logical target and mouse buttons cross the network.
+func (s *System) syncMouse(context string, target uint32, slots []int) (uint32, bool, int) {
+	s.pollDevices()
+	if !s.synchronizedInput() {
+		if !s.mouse.enabled() || !s.mouse.active {
+			return 0, false, 0
+		}
+		return target, s.mouse.moved, -1
+	}
+	chosen := -1
+	priority := -1
+	seen := [MaxPlayerNo]bool{}
+	for _, slot := range slots {
+		channel := s.uiControllerKey(slot)
+		if channel < 0 || channel >= len(s.menuChannels) || seen[channel] {
+			continue
+		}
+		seen[channel] = true
+		m := &s.menuChannels[channel].mouse
+		m.setContext(context)
+		if s.replayFile == nil && s.localSlot(slot) {
+			s.mousePacket = s.mouse.packet(m.generation, target)
+			s.mousePacketFrame = s.frameCounter
+		}
+		if !m.available() {
+			continue
+		}
+		current := 0
+		if m.input.moved {
+			current = 1
+		}
+		for _, held := range m.input.held {
+			if held == 1 {
+				current = 2
+			}
+		}
+		if current > priority {
+			chosen, priority = slot, current
+		}
+	}
+	if chosen < 0 {
+		return 0, false, 0
+	}
+	// A shared menu accepts one pointer per frame, with clicks before hover.
+	for channel, used := range seen {
+		if used && channel != s.uiControllerKey(chosen) {
+			for i := range s.menuChannels[channel].mouse.input.taken {
+				s.menuChannels[channel].mouse.input.taken[i] = true
+			}
+		}
+	}
+	m := &s.menuChannels[s.uiControllerKey(chosen)].mouse
+	return m.target, m.input.moved, chosen + 1
+}
+
+func (s *System) mouseSlots(player int) []int {
+	if player > 0 {
+		return []int{player - 1}
+	}
+	if s.menuPlayer > 0 {
+		return []int{s.menuPlayer - 1}
+	}
+	slots := make([]int, len(s.commandLists))
+	for i := range slots {
+		slots[i] = i
+	}
+	return slots
+}
+
+// Controller Setup ID of participant n. Shared devices use the primary device's setup.
+func (s *System) participantSetupID(n int) string {
+	var id string
+	if n >= 0 && n < len(s.inputs.Participants) {
+		if device := s.inputs.device(s.inputs.Participants[n].Device); device != nil {
+			id = device.Setup
+		}
+	}
+	id, _ = s.inputCfg.setup(id)
+	return id
+}
+
+// Controller Setup of participant n.
+func (s *System) participantSetup(n int) *ControllerSetup {
+	_, setup := s.inputCfg.setup(s.participantSetupID(n))
+	return setup
+}
+
+// Setup that reads a network or replay channel.
+func (s *System) channelSetup(channel int) *ControllerSetup {
+	if setup, ok := s.sessionSetups[channel]; ok {
+		return &setup.controls
+	}
+	return s.participantSetup(0)
+}
+
+func (s *System) saveSessionSetup(player int, definition *ControllerSetupProperties) bool {
+	if !s.netplay() || !s.motif.me.active || s.motif.me.state != ME_Open ||
+		s.inRollback() || player != s.menuPlayer || player < 1 || player > len(s.inputRemap) {
+		return false
+	}
+	channel := s.inputRemap[player-1]
+	setup, ok := s.sessionSetups[channel]
+	if !ok {
+		return false
+	}
+	definition.Name = setup.definition.Name
+	setup.definition, setup.controls = definition, definition.setup()
+	s.sessionSetups = maps.Clone(s.sessionSetups)
+	s.sessionSetups[channel] = setup
+	for slot, cl := range s.commandLists {
+		if cl != nil && s.uiControllerKey(slot) == channel {
+			cl.BufReset()
+		}
+	}
+	for _, chars := range s.chars {
+		for _, c := range chars {
+			if c == nil || c.scf(SCF_disabled) || c.controller < 0 || s.uiControllerKey(c.controller) != channel {
+				continue
+			}
+			for i := range c.cmd {
+				c.cmd[i].BufReset()
+			}
+		}
+	}
+	s.uiResetTokenGuard()
+	return true
+}
+
+// Keep a closing press out of the next screen and gameplay.
+func (s *System) blockDevice(device *InputDevice) {
+	if device != nil {
+		device.blocked = true
+		device.held = [VC_Count]int32{}
+		device.pressed = [VC_Count]bool{}
+	}
+}
+
+// Switches a device to another Controller Setup and remembers the choice.
+func (s *System) setDeviceSetup(deviceID int, setup string) bool {
+	device := s.inputs.device(deviceID)
+	// Both peers read a player's inputs with the session's setup, not a local one.
+	if device == nil || s.netConnection != nil || s.rollback.session != nil {
+		return false
+	}
+	if _, ok := s.inputCfg.setups[setup]; !ok {
+		return false
+	}
+	if device.Setup != setup {
+		device.Setup = setup
+		s.clearCommandBuffers()
+	}
+	if err := s.cfg.rememberDeviceSetup(device.preferenceKey(), setup); err != nil {
+		LogMessage("Unable to remember controller setup: %v", err)
+	}
+	return true
+}
+
+// Adds a newly connected gamepad as a device.
+func (s *System) attachGamepad(joy int) {
+	if _, disabled := s.cmdFlags["-nojoy"]; disabled {
+		return
+	}
+	for _, device := range s.inputs.Devices {
+		if device.Joy == joy && device.Connected {
+			return
+		}
+	}
+	guid := input.GetJoystickGUID(joy)
+	// A reconnected controller gets its old device back, keeping its player.
+	// SDL can reuse another controller's slot. Prefer the same model, using
+	// the slot to distinguish identical models or as a replacement fallback.
+	var revive *InputDevice
+	for _, device := range s.inputs.Devices {
+		if device.Connected || device.Joy < 0 {
+			continue
+		}
+		if device.Joy == joy && device.GUID == guid {
+			revive = device
+			break
+		}
+		if device.GUID == guid {
+			if revive == nil || revive.GUID != guid {
+				revive = device
+			}
+		} else if revive == nil && device.Joy == joy {
+			revive = device
+		}
+	}
+	if revive != nil {
+		revive.Joy, revive.GUID, revive.Connected = joy, guid, true
+		revive.Name = input.GetJoystickName(joy)
+		revive.held, revive.pressed = [VC_Count]int32{}, [VC_Count]bool{}
+		// Reconnection is local. Netplay and replay buffers must only change
+		// when their synchronized inputs are consumed.
+		if !s.synchronizedInput() {
+			s.clearCommandBuffers()
+		}
+		return
+	}
+	device := s.inputs.addDevice(&InputDevice{Joy: joy, Name: input.GetJoystickName(joy), GUID: guid})
+	device.Setup, _ = s.inputCfg.setup(s.cfg.Input.ControllerSetup[device.preferenceKey()])
+}
+
+// Marks a gamepad as disconnected. Its participant waits for a reconnect.
+func (s *System) detachGamepad(joy int) {
+	for _, device := range s.inputs.Devices {
+		if device.Joy == joy && device.Connected {
+			device.Connected = false
+			device.held, device.pressed = [VC_Count]int32{}, [VC_Count]bool{}
+		}
+	}
+}
+
+// Updates press/hold state of every device for menus. This is local only,
+// it is not part of rollback state or netplay packets.
+func (s *System) pollDevices() {
+	if s.inRollback() || s.inputs.frame == s.frameCounter {
+		return
+	}
+	s.inputs.frame = s.frameCounter
+	s.mouse.step()
+	for key, down := range s.keyState {
+		if down {
+			s.keyHeld[key]++
+			// A key or button takes the hints back from the mouse.
+			s.mouse.active = s.mouse.active && s.keyHeld[key] > 1
+		} else {
+			delete(s.keyHeld, key)
+		}
+	}
+	for _, device := range s.inputs.Devices {
+		f := s.deviceFrame(device)
+		active := false
+		for vc := VirtualControl(0); vc < VC_Count; vc++ {
+			held := f.held(vc)
+			device.pressed[vc] = held && device.held[vc] == 0
+			if held {
+				device.held[vc]++
+			} else {
+				device.held[vc] = 0
+			}
+			active = active || device.pressed[vc]
+		}
+		s.mouse.active = s.mouse.active && !active
+		// In menus the first press of an unused device joins it as the next player.
+		if active && !s.inputs.ClaimLocked && !s.netplay() && !s.textInput.active && !s.textInput.release &&
+			s.inputs.owner(device.ID) < 0 && !s.keyboardConflict(device.ID) {
+			_, _ = s.inputs.claim(device.ID, TS_None)
+		}
+	}
+}
+
+// Frames a motif action has been held on one device. KEY: tokens only count for keyboards.
+func (s *System) deviceActionTime(device *InputDevice, action []string) int32 {
+	s.pollDevices()
+	if device == nil || !device.Connected {
+		return 0
+	}
+	for _, token := range action {
+		if key, ok := actionKey(token); ok {
+			if device.Joy < 0 && s.keyHeld[key] > 0 {
+				return s.keyHeld[key]
+			}
+		} else if button, ok := actionMouse(token); ok {
+			if t := s.mouse.time(button); t > 0 {
+				return t
+			}
+		} else if vc := parseVirtualControl(token); vc != VC_None && device.held[vc] > 0 {
+			return device.held[vc]
+		}
+	}
+	return 0
+}
+
+// Clears command buffers so inputs from before an assignment change don't carry over.
+func (s *System) clearCommandBuffers() {
+	for _, cl := range s.commandLists {
+		if cl != nil {
+			cl.BufReset()
+		}
+	}
+	if !s.netplay() {
+		for _, chars := range s.chars {
+			if len(chars) == 0 || chars[0] == nil {
+				continue
+			}
+			for i := range chars[0].cmd {
+				chars[0].cmd[i].BufReset()
+			}
+		}
+	}
+	s.uiResetTokenGuard()
+}
+
+// Routes player slots (P1-P8) to the participants on each side.
+func (s *System) applyParticipantsToSlots() {
+	for i, p := range s.inputs.participantsBySlot(len(s.inputRemap)) {
+		s.inputRemap[i] = p
+	}
+	s.clearCommandBuffers()
+}
+
+// Back to menu mode: releases all sides, keeps only the menu device and drops disconnected ones.
+func (s *System) resetInputForMenus() {
+	s.inputs.sharedDevices = nil
+	s.inputs.ClaimLocked = false
+	s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	if device := s.inputs.device(s.inputs.MenuDevice); device != nil && device.Connected {
+		_, _ = s.inputs.claim(device.ID, TS_None)
+	}
+	live := s.inputs.Devices[:0]
+	for _, device := range s.inputs.Devices {
+		if device.Connected {
+			live = append(live, device)
+		}
+	}
+	s.inputs.Devices = live
+	s.resetRemapInput()
+	s.clearCommandBuffers()
+}
+
+// Pairs keyboard controller N with gamepad N, so each player gets both. Not saved.
+func (s *System) assignAutomaticInputs(initiator, minimum, maximum int, versus bool) bool {
+	var keyboards, gamepads []int
+	for _, device := range s.inputs.Devices {
+		if !device.Connected {
+			continue
+		}
+		if device.Joy < 0 {
+			keyboards = append(keyboards, device.ID)
+		} else {
+			gamepads = append(gamepads, device.ID)
+		}
+	}
+	var groups [][]int
+	for i := 0; i < Max(len(keyboards), len(gamepads)); i++ {
+		var ids []int
+		if i < len(keyboards) {
+			ids = append(ids, keyboards[i])
+		}
+		if i < len(gamepads) {
+			ids = append(ids, gamepads[i])
+		}
+		groups = append(groups, ids)
+	}
+	// If pairing leaves too few co-op players, use the devices independently.
+	if len(groups) < minimum {
+		groups = nil
+		for _, device := range s.inputs.Devices {
+			if device.Connected {
+				groups = append(groups, []int{device.ID})
+			}
+		}
+	}
+	// The device that opened the mode leads the first human team, and its setup counts.
+	for i, ids := range groups {
+		for j, id := range ids {
+			if id == initiator {
+				ids[0], ids[j] = ids[j], ids[0]
+				copy(groups[1:i+1], groups[:i])
+				groups[0] = ids
+				break
+			}
+		}
+		if groups[0][0] == initiator {
+			break
+		}
+	}
+	s.inputs.sharedDevices = make(map[int][]int)
+	counts := [2]int{}
+	for _, ids := range groups {
+		if counts[0]+counts[1] >= s.cfg.Config.Players {
+			break
+		}
+		side := TS_Left
+		if versus && counts[1] < counts[0] {
+			side = TS_Right
+		}
+		if counts[side-TS_Left] >= maximum {
+			break
+		}
+		// Overlapping keyboard controllers cannot drive different humans.
+		usable := make([]int, 0, len(ids))
+		for _, id := range ids {
+			if !s.keyboardConflict(id) {
+				usable = append(usable, id)
+			}
+		}
+		if len(usable) == 0 {
+			continue
+		}
+		participant, err := s.inputs.claim(usable[0], side)
+		if err != nil {
+			continue
+		}
+		s.inputs.sharedDevices[participant] = usable
+		s.inputs.setReady(usable[0], true)
+		counts[side-TS_Left]++
+	}
+	return counts[0]+counts[1] >= minimum
+}
+
+// The device a shared participant last used in a menu, so the pause menu edits
+// the setup of the keyboard or gamepad actually being used.
+func (s *System) participantMenuDevice(participant int) int {
+	participant = s.localInputParticipant(participant)
+	ids := s.inputs.participantDevices(participant)
+	if len(ids) == 0 {
+		return 0
+	}
+	id := ids[0]
+	if s.inputs.owner(s.inputs.MenuDevice) == participant {
+		id = s.inputs.MenuDevice
+	}
+	s.pollDevices()
+	for _, candidate := range ids {
+		device := s.inputs.device(candidate)
+		if device == nil || !device.Connected {
+			continue
+		}
+		if current := s.inputs.device(id); current == nil || !current.Connected {
+			id = candidate
+		}
+		for _, pressed := range device.pressed {
+			if pressed {
+				return candidate
+			}
+		}
+	}
+	return id
+}
+
+// True if this keyboard controller shares a physical key with a keyboard controller
+// another participant uses, even when no setup uses that key.
+func (s *System) keyboardConflict(deviceID int) bool {
+	device := s.inputs.device(deviceID)
+	if device == nil || device.Joy >= 0 {
+		return false
+	}
+	m := s.inputCfg.mapping(device)
+	return s.keyboardMappingConflict(deviceID, &m)
+}
+
+// Same as keyboardConflict, but checks the given mapping instead of the device's current one.
+func (s *System) keyboardMappingConflict(device int, m *ButtonMapping) bool {
+	keys := m.keys()
+	owner := s.inputs.owner(device)
+	for _, other := range s.inputs.Devices {
+		otherOwner := s.inputs.owner(other.ID)
+		if other.ID == device || other.Joy >= 0 || otherOwner < 0 || otherOwner == owner {
+			continue
+		}
+		om := s.inputCfg.mapping(other)
+		for _, k := range keys {
+			for _, q := range om.keys() {
+				if k == q {
+					return true
+				}
+			}
 		}
 	}
 	return false
 }
-*/
 
-// Joysticks were already refactored to be polled less times, but having these functions still makes them be polled twice as often during intros/outros
-// We're already polling them about 10 times less so that should be enough anyway
-// In Mugen, intro/outro skipping only happens on button press, not button hold
+// True if any face, shoulder or trigger control is held on a local device.
 func (s *System) anyHardButton() bool {
-	// Button indices for a, b, c, x, y, z
-	hardButtonIdx := []int{4, 5, 6, 7, 8, 9}
-
-	for _, kc := range s.keyConfig {
-		buttons := GetKeyboardState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
+	for _, device := range s.inputs.Devices {
+		if s.inputs.ClaimLocked && s.replayFile == nil && s.inputs.owner(device.ID) < 0 {
+			continue
+		}
+		f := s.deviceFrame(device)
+		for _, vc := range []VirtualControl{VC_A, VC_B, VC_X, VC_Y, VC_LB, VC_RB, VC_LT, VC_RT} {
+			if f.held(vc) {
 				return true
 			}
 		}
 	}
-
-	for _, kc := range s.joystickConfig {
-		buttons := GetJoystickState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
-				return true
-			}
-		}
-	}
-
 	return false
 }
 
@@ -1335,18 +2133,8 @@ func (s *System) anyButton() bool {
 	return s.anyHardButton()
 }
 
-func (s *System) buttonController(btns []string) int {
-	for _, btn := range btns {
-		for i, cl := range s.commandLists {
-			if cl != nil && cl.GetState(btn) {
-				return i
-			}
-		}
-	}
-	return -1
-}
-
 func (s *System) stepCommandLists() {
+	s.pollDevices()
 	for i, cl := range s.commandLists {
 		if cl == nil || cl.Buffer == nil {
 			continue
@@ -1361,7 +2149,6 @@ func (s *System) stepCommandLists() {
 // Avoid immediate UI token reuse right after defaults/config/player changes.
 func (s *System) uiResetTokenGuard() {
 	s.uiConsumeInputFrame = s.frameCounter + 1
-	s.uiLastInputToken = ""
 	s.lastInputController = -1
 }
 
@@ -1397,215 +2184,333 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 	return false
 }
 
-// Checks the per-controller raw input buffer (InputBuffer) instead of command states.
-// Returns true if any of the provided keys were pressed this frame (buffer time == 1).
-// Supported keys: B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m
-// D/U/B/F also recognize LS axis tokens: D -> LS_Y+, U -> LS_Y-, B -> LS_X-, F -> LS_X+.
-func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
-	checkOne := func(i int, cl *CommandList) bool {
-		if cl == nil || cl.Buffer == nil {
-			return false
-		}
-		controllerKey := s.uiControllerKey(i)
+// True if a player slot can use the local keyboard. Replays, remote players
+// and slots without a player, such as the CPU's, can't.
+func (s *System) localSlot(controllerIdx int) bool {
+	if s.replayFile != nil {
+		return false
+	}
+	if controllerIdx < 0 || controllerIdx >= len(s.inputRemap) {
+		return true
+	}
+	if nc := s.inputConnection(); nc != nil {
+		return s.inputRemap[controllerIdx] == nc.locIn
+	}
+	return s.inputRemap[controllerIdx] >= 0
+}
 
-		// True for raw controller axis tokens (LS_*, RS_*, LT/RT).
-		// Used when a screenpack uses e.g. getInput(pn, "LS_Y+") directly.
-		isAxisToken := func(tok string) bool {
-			idx, ok := StringToButtonLUT[tok]
-			return ok && idx != 25 && idx >= 15 && idx <= 24
-		}
-
-		// Repeat only for navigation-style inputs (directions).
-		repeatable := func(tok string) bool {
-			switch tok {
-			case "U", "D", "L", "R", "B", "F":
-				return true
-			default:
-				return false
+// Frames a motif action has been held on a player slot, or 0.
+func (s *System) actionTime(action []string, controllerIdx int) int32 {
+	s.pollDevices()
+	if controllerIdx < 0 || controllerIdx >= len(s.commandLists) {
+		return 0
+	}
+	cl := s.commandLists[controllerIdx]
+	if cl == nil || cl.Buffer == nil {
+		return 0
+	}
+	for _, token := range action {
+		if key, ok := actionKey(token); ok {
+			if key == KeyEscape && s.synchronizedInput() && s.gameRunning {
+				if held := s.menuEscape(controllerIdx); held > 0 {
+					return held
+				}
+			} else if s.localSlot(controllerIdx) && s.keyHeld[key] > 0 {
+				return s.keyHeld[key]
 			}
+		} else if button, ok := actionMouse(token); ok {
+			if mouse := s.mouseForSlot(controllerIdx); mouse != nil {
+				if t := mouse.time(button); t > 0 {
+					return t
+				}
+			}
+		} else if button, ok := actionButton(token); ok {
+			if t := cl.Buffer.buttonTime(button); t > 0 {
+				return t
+			}
+		} else if vc := parseVirtualControl(token); vc != VC_None && cl.Buffer.vb[vc] > 0 {
+			return cl.Buffer.vb[vc]
 		}
+	}
+	return 0
+}
 
-		ib := cl.Buffer
-		for _, raw := range btns {
-			raw = strings.TrimSpace(raw)
-			if raw == "" {
+// True on the frame a motif action is pressed on a player slot (-1: any slot).
+// Directions repeat while held. Each token fires at most once per frame.
+func (s *System) menuAction(action []string, controllerIdx int) bool {
+	// Text entry owns the keyboard and the gamepad driving it.
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
+	if !s.synchronizedInput() && s.mouse.pressed(action, controllerIdx) {
+		return true
+	}
+	// time reads how long a token is held; device returns the device that pressed it.
+	// controllerKey keeps a token from firing twice per frame (negative for menuFocus).
+	check := func(controllerKey int, deviceID func() int, time func(token string) int32) bool {
+		for _, token := range action {
+			token = strings.TrimSpace(token)
+			held := time(token)
+			vc := parseVirtualControl(token)
+			button, isButton := actionButton(token)
+			repeat := vc >= VC_DP_U && vc <= VC_DP_R || vc >= VC_LS_YN && vc <= VC_RS_XP || isButton && button < 4
+			if held != 1 && !(repeat && s.uiRepeatShouldFire(held)) {
 				continue
 			}
-			// Canonicalize UI stick-direction tokens to the digital directions.
-			tok := raw
-			switch tok {
-			case "LS_Y+":
-				tok = "D"
-			case "LS_Y-":
-				tok = "U"
-			case "LS_X-":
-				tok = "B"
-			case "LS_X+":
-				tok = "F"
+			if s.uiConsumeInputFrame != 0 && s.frameCounter == s.uiConsumeInputFrame {
+				continue
 			}
-			// Digital/raw-buffer check (pressed this frame == 1) + UI repeat while held
-			trigger := false
-			switch tok {
-			case "B":
-				trigger = ib.Bb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Bb)))
-			case "D":
-				trigger = ib.Db == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Db)))
-			case "F":
-				trigger = ib.Fb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Fb)))
-			case "U":
-				trigger = ib.Ub == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Ub)))
-			case "L":
-				trigger = ib.Lb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Lb)))
-			case "R":
-				trigger = ib.Rb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Rb)))
-			case "a":
-				trigger = ib.ab == 1
-			case "b":
-				trigger = ib.bb == 1
-			case "c":
-				trigger = ib.cb == 1
-			case "x":
-				trigger = ib.xb == 1
-			case "y":
-				trigger = ib.yb == 1
-			case "z":
-				trigger = ib.zb == 1
-			case "s":
-				trigger = ib.sb == 1
-			case "d":
-				trigger = ib.db == 1
-			case "w":
-				trigger = ib.wb == 1
-			case "m":
-				trigger = ib.mb == 1
+			// Keys and mouse buttons are shared by all local slots, so they fire once.
+			guardKey := controllerKey
+			_, isKey := actionKey(token)
+			_, isMouse := actionMouse(token)
+			if isKey && !(s.synchronizedInput() && s.gameRunning) || isMouse && !s.synchronizedInput() {
+				guardKey = -1
 			}
-			// Raw axis tokens (LS_*/RS_*/LT/RT) when used directly in Lua.
-			// LS axis directions are handled above as D/U/B/F aliases.
-			// Other axis tokens are treated as "held" here.
-			if !trigger && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
-				trigger = true
+			if s.uiConsumeTokenThisFrame(guardKey, token) {
+				continue
 			}
-			if trigger {
-				if s.uiConsumeInputFrame != 0 && s.frameCounter == s.uiConsumeInputFrame {
-					continue
-				}
-				// Guard: don't fire same token more than once per frame (repeat-safe).
-				if s.uiConsumeTokenThisFrame(controllerKey, tok) {
-					continue
-				}
+			if controllerKey >= 0 {
 				s.lastInputController = controllerKey
-				s.uiLastInputToken = tok
+			}
+			// The mouse acts as the device in use, so that device drives the menus.
+			if isMouse {
+				if device := s.glyphDevice(0); device != nil && !s.netplay() {
+					s.inputs.MenuDevice = device.ID
+				}
 				return true
 			}
+			deviceID := deviceID()
+			if !s.netplay() && deviceID != 0 {
+				s.inputs.MenuDevice = deviceID
+			}
+			if key, ok := actionKey(token); ok {
+				s.noteKeyboardGlyphInput(KeyToString(key))
+			} else if deviceID != 0 {
+				s.noteGlyphInput(deviceID)
+			}
+			return true
 		}
 		return false
+	}
+	slot := func(i int) bool {
+		if mouse := s.mouseForSlot(i); mouse != nil && mouse.pressed(action, i) {
+			return true
+		}
+		controllerKey := s.uiControllerKey(i)
+		s.noteSlotInput(controllerKey)
+		return check(controllerKey, func() int { return s.participantMenuDevice(controllerKey) }, func(token string) int32 {
+			return s.actionTime([]string{token}, i)
+		})
 	}
 	if controllerIdx >= 0 {
-		if controllerIdx < len(s.commandLists) {
-			return checkOne(controllerIdx, s.commandLists[controllerIdx])
-		}
-		return false
+		return slot(controllerIdx)
 	}
-	//found := false
-	for i := 0; i < len(s.commandLists); i++ {
-		if checkOne(i, s.commandLists[i]) {
-			//found = true
+	// The menuFocus device is read directly, even without a player slot.
+	if device := s.inputs.device(s.menuFocus); device != nil {
+		return check(-2-device.ID, func() int { return device.ID }, func(token string) int32 {
+			return s.deviceActionTime(device, []string{token})
+		})
+	}
+	// An open pause menu only reads the player who opened it.
+	if s.menuPlayer > 0 && s.menuPlayer <= len(s.commandLists) {
+		return slot(s.menuPlayer - 1)
+	}
+	for i := range s.commandLists {
+		if slot(i) {
 			return true
 		}
 	}
-	//return found
 	return false
 }
 
-func (s *System) uiIsKeyAction(name string) bool {
-	switch name {
-	case "up", "down", "left", "right",
-		"a", "b", "c", "x", "y", "z",
-		"start", "d", "w", "menu":
-		return true
-	default:
+// The mouse acts as the device that shows the hints, so on screens that read
+// several devices in turn it acts for the one in use.
+func (s *System) mouseDevice(device *InputDevice) bool {
+	owner := s.glyphDevice(0)
+	return owner == nil || device != nil && owner.ID == device.ID
+}
+
+// Same for player slots. An open pause menu reads only its player, so the
+// mouse acts as them.
+func (s *System) mouseSlot(controllerIdx int) bool {
+	if !s.localSlot(controllerIdx) {
 		return false
 	}
+	if s.menuPlayer > 0 {
+		return controllerIdx == s.menuPlayer-1
+	}
+	owner := s.glyphDevice(0)
+	if owner == nil {
+		return true
+	}
+	participant := s.inputs.owner(owner.ID)
+	return participant < 0 || participant == s.uiControllerKey(controllerIdx)
 }
 
-func (s *System) uiDefaultTokens(pn int, joystick bool) []string {
-	defaultNoKey := s.cfg.DefaultOnlyIni.Section("Keys_P3").Key("menu").String()
-	sectionName := "Keys_P3"
-	if pn == 1 || pn == 2 {
-		sectionName = "Keys_P" + Itoa(pn)
-	}
-	if joystick {
-		sectionName = "Joystick_P1"
-	}
-	get := func(k string) string {
-		v := s.cfg.DefaultOnlyIni.Section(sectionName).Key(k).String()
-		if v == defaultNoKey {
-			return s.motif.OptionInfo.Menu.Valuename["nokey"]
+// Glyph pack for hints: the mouse while it is in use, else the device's own pack.
+func (s *System) hintGlyphPack(device *InputDevice) string {
+	if s.synchronizedInput() && s.menuPlayer > 0 {
+		if mouse := s.mouseForSlot(s.menuPlayer - 1); mouse != nil {
+			return "mouse"
 		}
-		return v
 	}
-	return []string{
-		get("up"), get("down"), get("left"), get("right"),
-		get("a"), get("b"), get("c"),
-		get("x"), get("y"), get("z"),
-		get("start"), get("d"), get("w"), get("menu"),
+	if s.mouse.active && s.mouse.enabled() && s.mouseDevice(device) && (s.menuPlayer == 0 || s.localSlot(s.menuPlayer-1)) {
+		return "mouse"
+	}
+	if device == nil {
+		return ""
+	}
+	return input.GlyphPack(device, &s.motif.ControllerGlyphs)
+}
+
+// Remembers the device last used in a menu, so hints show its buttons. Only accepted
+// input counts, so a resting stick can't take hints away from the keyboard.
+func (s *System) noteGlyphInput(deviceID int) {
+	if device := s.inputs.device(deviceID); device != nil && device.Connected {
+		s.uiGlyphDevice = deviceID
 	}
 }
 
-func (s *System) uiSetConfigDefaults(pn int, joystick bool, enabled map[string]bool) {
-	if pn < 1 {
+// Notes a new press from the participant a menu check reads. A controller not
+// assigned to that slot must not steal pause menu hints.
+func (s *System) noteSlotInput(participant int) {
+	if deviceID := s.participantMenuDevice(participant); deviceID != 0 {
+		if device := s.inputs.device(deviceID); device != nil {
+			for _, pressed := range device.pressed {
+				if pressed {
+					s.noteGlyphInput(deviceID)
+					break
+				}
+			}
+		}
+	}
+}
+
+// Same for keyboard keys, which are read without going through a device.
+// Prefers the keyboard controller that maps the key.
+func (s *System) noteKeyboardGlyphInput(key string) {
+	// Esc is a global shortcut, even when the player is using a gamepad.
+	if key == "" || key == "ESCAPE" {
 		return
 	}
-	var (
-		kc     *KeyConfig
-		base   string
-		joyVal int
-		toInt  func(string) int
-	)
-	if joystick {
-		if pn > len(s.joystickConfig) {
-			return
+	if device := s.inputs.device(s.uiGlyphDevice); device != nil && device.Connected && device.Joy < 0 {
+		return
+	}
+	var keyboard *InputDevice
+	for _, device := range s.inputs.Devices {
+		if !device.Connected || device.Joy >= 0 {
+			continue
 		}
-		joyVal = pn - 1
-		kc = &s.joystickConfig[pn-1]
-		base = fmt.Sprintf("Joystick_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToButtonLUT[tok]) }
-	} else {
-		if pn > len(s.keyConfig) {
-			return
+		if keyboard == nil {
+			keyboard = device
 		}
-		joyVal = -1
-		kc = &s.keyConfig[pn-1]
-		base = fmt.Sprintf("Keys_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToKey(tok)) }
-	}
-	kc.Joy = joyVal
-	kc.GUID = ""
-	kc.rumbleOn = false
-	// Build & apply tokens (respect enabled set).
-	def := s.uiDefaultTokens(pn, joystick)
-	var uiPlayerFields = [...]string{
-		"up", "down", "left", "right",
-		"a", "b", "c",
-		"x", "y", "z",
-		"start", "d", "w", "menu",
-	}
-	var v [len(uiPlayerFields)]int
-	for i, f := range uiPlayerFields {
-		tok := def[i]
-		if enabled != nil && !enabled[f] {
-			tok = s.motif.OptionInfo.Menu.Valuename["nokey"]
+		for _, token := range s.inputCfg.mapping(device) {
+			if token == key {
+				s.uiGlyphDevice = device.ID
+				return
+			}
 		}
-		v[i] = toInt(tok)
-		_ = s.cfg.SetValueUpdate(base+f, tok)
 	}
-	kc.set(v)
-	_ = s.cfg.SetValueUpdate(base+"Joystick", joyVal)
-	_ = s.cfg.SetValueUpdate(base+"GUID", "")
-	if joystick {
-		_ = s.cfg.SetValueUpdate(base+"RumbleOn", false)
+	if keyboard != nil {
+		s.uiGlyphDevice = keyboard.ID
 	}
-	s.uiResetTokenGuard()
+}
+
+// The local connection always reads participant zero, even when it plays on the
+// right. Remote commands must not choose a local controller's hint artwork.
+func (s *System) hintPlayerDevice(slot int) *InputDevice {
+	if slot < 0 || slot >= len(s.inputRemap) {
+		return nil
+	}
+	participant := s.localInputParticipant(s.inputRemap[slot])
+	if participant >= 0 && s.inputs.owner(s.uiGlyphDevice) == participant {
+		if device := s.inputs.device(s.uiGlyphDevice); device != nil && device.Connected {
+			return device
+		}
+	}
+	for _, id := range s.inputs.participantDevices(participant) {
+		if device := s.inputs.device(id); device != nil && device.Connected {
+			return device
+		}
+	}
+	return nil
+}
+
+// Device whose buttons a player slot's hints show, or 0 for remote or unavailable players.
+func (s *System) playerGlyphDevice(slot int) int {
+	if device := s.hintPlayerDevice(slot); device != nil {
+		return device.ID
+	}
+	return 0
+}
+
+// True if a player slot has assigned devices but none are connected.
+func (s *System) hintPlayerDisconnected(slot int) bool {
+	if slot < 0 || slot >= len(s.inputRemap) {
+		return false
+	}
+	participant := s.localInputParticipant(s.inputRemap[slot])
+	if participant < 0 || participant >= len(s.inputs.Participants) {
+		return false
+	}
+	id := s.inputs.Participants[participant].Device
+	if id == 0 {
+		return false
+	}
+	return !s.inputs.participantConnected(participant)
+}
+
+// Returns the device whose buttons hints should show.
+func (s *System) glyphDevice(deviceID int) *InputDevice {
+	// A caller can ask for one specific device, for example the device being
+	// mapped. Never fall back to another device in that case.
+	if deviceID != 0 {
+		return s.inputs.device(deviceID)
+	}
+	if s.textInput.active {
+		if !s.textInput.keyboard {
+			if device := s.inputs.device(s.textInput.device); device != nil && device.Connected {
+				return device
+			}
+		}
+		for _, device := range s.inputs.Devices {
+			if device.Connected && device.Joy < 0 {
+				return device
+			}
+		}
+	}
+	// A focused device drives the menu, so it gets the hints.
+	if device := s.inputs.device(s.menuFocus); device != nil && device.Connected {
+		return device
+	}
+	if s.inputConnection() != nil && len(s.inputs.Participants) > 0 {
+		return s.inputs.device(s.inputs.Participants[0].Device)
+	}
+	// An open pause or rematch menu shows the buttons of the player who controls it.
+	if s.menuPlayer > 0 {
+		participant := s.uiControllerKey(s.menuPlayer - 1)
+		ids := s.inputs.participantDevices(participant)
+		if s.inputs.owner(s.uiGlyphDevice) == participant {
+			ids = append([]int{s.uiGlyphDevice}, ids...)
+		}
+		for _, id := range ids {
+			if device := s.inputs.device(id); device != nil && device.Connected {
+				return device
+			}
+		}
+	}
+	for _, id := range []int{s.uiGlyphDevice, s.inputs.MenuDevice} {
+		if device := s.inputs.device(id); device != nil && device.Connected {
+			return device
+		}
+	}
+	for _, device := range s.inputs.Devices {
+		if device.Connected {
+			return device
+		}
+	}
+	return nil
 }
 
 func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
@@ -1637,62 +2542,26 @@ func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
 	return nil
 }
 
-func (s *System) uiApplyCommandRegistry(cl *CommandList) error {
-	if cl == nil || len(s.uiCommandRegistry) == 0 {
-		return nil
+// Lua menus keep the connection in System; rollback moves it during a match.
+func (s *System) inputConnection() *NetConnection {
+	if s.netConnection != nil {
+		return s.netConnection
 	}
-	for name, spec := range s.uiCommandRegistry {
-		if _, exists := cl.Names[name]; exists {
-			continue
-		}
-		if err := cl.AddCommand(name, spec); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.rollback.netConnection
 }
 
-func (s *System) uiEnsureCommandLists(total int) error {
-	// Ensure UI commands exist.
-	def := []string{"D", "U", "L", "R", "a", "b", "c", "x", "y", "z", "s", "d", "w", "m", "/s"}
-	dcl := NewCommandList(nil)
-	defSpec := CommandSpec{
-		Time:           dcl.DefaultTime,
-		BufTime:        dcl.DefaultBufferTime,
-		BufferHitpause: dcl.DefaultBufferHitpause,
-		BufferPauseend: dcl.DefaultBufferPauseEnd,
-		StepTime:       dcl.DefaultStepTime,
+// Only our network channel owns a local device, always at participant zero.
+func (s *System) localInputParticipant(channel int) int {
+	if s.replayFile != nil {
+		return -1
 	}
-	for _, k := range def {
-		spec := defSpec
-		spec.Cmd = k
-		if err := s.uiRegisterCommand(k, spec); err != nil {
-			LogMessage("uiSeedDefaultCommands: %q: %v", k, err)
+	if nc := s.inputConnection(); nc != nil {
+		if channel == nc.locIn {
+			return 0
 		}
+		return -1
 	}
-	// Trim if needed.
-	if total < len(s.commandLists) {
-		s.commandLists = s.commandLists[:total]
-	}
-	// Grow.
-	for len(s.commandLists) < total {
-		cl := NewCommandList(NewInputBuffer())
-		if err := s.uiApplyCommandRegistry(cl); err != nil {
-			return fmt.Errorf("command registry apply failed: %w", err)
-		}
-		s.commandLists = append(s.commandLists, cl)
-	}
-	// Repair nil/bufferless entries.
-	for i := 0; i < total; i++ {
-		if s.commandLists[i] == nil || s.commandLists[i].Buffer == nil {
-			cl := NewCommandList(NewInputBuffer())
-			if err := s.uiApplyCommandRegistry(cl); err != nil {
-				return fmt.Errorf("command registry apply failed: %w", err)
-			}
-			s.commandLists[i] = cl
-		}
-	}
-	return nil
+	return channel
 }
 
 func (s *System) netplay() bool {
@@ -1708,7 +2577,22 @@ func (s *System) usesRollbackMatch() bool {
 }
 
 func (s *System) escExit() bool {
-	return s.esc && (!s.sel.gameParams.PauseMenu || !s.cfg.Config.EscOpensMenu ||
+	// Esc ends a replay. Pause menus recorded in it still open from the replay's own inputs
+	if s.esc && s.replayFile != nil {
+		return true
+	}
+	escape := s.esc
+	// Netplay Esc travels in the input stream instead of setting the local
+	// escape flag. Apply the same exit policy to either player's press.
+	if !escape && s.synchronizedInput() {
+		for i := range s.commandLists {
+			if s.menuEscape(i) == 1 {
+				escape = true
+				break
+			}
+		}
+	}
+	return escape && (!s.sel.gameParams.PauseMenu || !s.cfg.Config.EscOpensMenu ||
 		(s.motif.AttractMode.Enabled && s.credits == 0))
 }
 
@@ -2625,7 +3509,7 @@ func (s *System) motifPauseGame() bool {
 }
 
 func (s *System) matchPaused() bool {
-	return s.debugPaused() || s.motifPauseGame()
+	return s.debugPaused() || s.motifPauseGame() || s.textInput.active && !s.netplay()
 }
 
 func (s *System) motifPauseMusic() bool {
@@ -3853,13 +4737,9 @@ func (s *System) draw(x, y, scl float32) {
 }
 
 func (s *System) drawCharTexts(layerno int16) {
-	var clip *[4]int32
-	if viewport, ok := s.fightDrawClip(); ok {
-		clip = &viewport
-	}
 	for _, playerTexts := range s.chartexts {
 		for _, ts := range playerTexts {
-			ts.draw(layerno, clip)
+			ts.draw(layerno, nil)
 		}
 	}
 }
@@ -3927,7 +4807,7 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 
 	panelState := sceneState
 	if !s.cfg.Video.KeepAspect || s.canUseFullResolutionAspect() {
-		panelState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+		panelState = s.motifAspectState()
 	}
 
 	debugScaleX, debugScaleY := s.debugTextScale(panelState)
@@ -4054,6 +4934,7 @@ func (s *System) keepMatchRunning() bool {
 // and at the start of any round where a new character tags in for turns mode
 func (s *System) runMatch() (reload bool) {
 	// Reset variables
+	s.netMenuEscape, s.netMenuEscapeHeld, s.netMenuCapture = false, false, false
 	s.matchTime = 0
 	s.fightLoopEnd = false
 	s.aiInput = [len(s.aiInput)]AiInput{}
@@ -4505,6 +5386,7 @@ func (s *System) runNextRound() bool {
 			}
 
 			// Otherwise match is over
+			s.recordVersusResult()
 			s.postMatchFlg = true
 			s.fightLoopEnd = true
 			s.resetMatchData(false)
@@ -6017,7 +6899,7 @@ func (s *System) finishTurnsPreloadForRollback() bool {
 				return false
 			}
 		}
-		if !s.await(s.gameRenderSpeed()) {
+		if !s.await(s.gameRenderSpeed(), true) {
 			return false
 		}
 	}
@@ -6113,6 +6995,16 @@ func (s *System) clearPreloadedChars() {
 	s.preloadedCgi = [2]CharGlobalInfo{}
 }
 
+// Input slot of a team member. In co-op Turns it's the slot of the player who picked the member.
+func (s *System) memberController(pn, memberNo int) int {
+	if pn >= 0 && pn < 2 && memberNo > 0 && s.sel.gameParams != nil && s.sel.gameParams.CoopTurns[pn] {
+		if slot := pn + memberNo*2; slot < MaxSimul*2 {
+			return slot
+		}
+	}
+	return pn
+}
+
 func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 	team := slot & 1
 	for _, ch := range chars {
@@ -6123,7 +7015,7 @@ func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 		ch.setSCF(SCF_disabled, false)
 		ch.setSCF(SCF_standby, false)
 		if ch.helperIndex == 0 {
-			ch.controller = slot
+			ch.controller = s.memberController(slot, ch.memberNo)
 			if s.aiLevel[slot] != 0 {
 				ch.controller ^= -1
 			}
@@ -6471,6 +7363,11 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		p.controller = pn
 	} else {
 		p.memberNo = memberNo
+		// A kept char may have been another member before, so always reset its input slot
+		p.controller = sys.memberController(pn, memberNo)
+		if sys.aiLevel[pn] != 0 {
+			p.controller ^= -1
+		}
 		if nextMatch {
 			p.selectNo = sys.nextMatchChar
 		} else {

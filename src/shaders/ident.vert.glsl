@@ -11,12 +11,18 @@
 	#endif
 
 	uniform vec2 TextureSize; // Not used
+	uniform vec4 OutputTransform; // xy: scale, zw: offset in clip space
 	COMPAT_ATTRIBUTE vec2 VertCoord;
 	COMPAT_VARYING vec2 texcoord; // TODO: Casing doesn't match Go
 #endif
 
 void main() {
 	gl_Position = vec4(VertCoord, 0.0, 1.0);
+	#if __VERSION__ < 450
+		// OpenGL viewports only take whole pixels, so place the image exactly here.
+		// Vulkan does this with its viewport instead.
+		gl_Position.xy = gl_Position.xy * OutputTransform.xy + OutputTransform.zw;
+	#endif
 	// Standard quad-to-UV mapping
 	texcoord = (VertCoord + 1.0) / 2.0;
 }

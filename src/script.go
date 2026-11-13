@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -887,6 +888,173 @@ func luaKeyToString(k lua.LValue) string {
 	}
 }
 
+// Lua table of a Controller Setup: name plus one virtual control per binding.
+func setupTable(l *lua.LState, id string, p *ControllerSetupProperties) *lua.LTable {
+	t := l.NewTable()
+	t.RawSetString("id", lua.LString(id))
+	t.RawSetString("name", lua.LString(p.Name))
+	for _, name := range p.buttonNames() {
+		vc := parseVirtualControl(p.Buttons[name])
+		t.RawSetString(name, lua.LString(vc.String()))
+	}
+	return t
+}
+
+// Reads a Controller Setup table. Unknown controls become unbound.
+func setupFromTable(t *lua.LTable) *ControllerSetupProperties {
+	p := &ControllerSetupProperties{
+		Name:    strings.TrimSpace(lua.LVAsString(t.RawGetString("name"))),
+		Buttons: make(map[string]string),
+	}
+	t.ForEach(func(key, value lua.LValue) {
+		name := strings.ToLower(lua.LVAsString(key))
+		if setupButtonMask(name) != 0 {
+			p.Buttons[name] = parseVirtualControl(lua.LVAsString(value)).String()
+		}
+	})
+	return p
+}
+
+// Lua table of a Button Mapping: one physical input per virtual control.
+func mappingTable(l *lua.LState, m ButtonMapping) *lua.LTable {
+	t := l.NewTable()
+	for i, token := range m {
+		if token == "" {
+			token = "-"
+		}
+		t.RawSetString(virtualControlNames[i], lua.LString(token))
+	}
+	return t
+}
+
+// Reads a Button Mapping table. Keyboards keep known key names, gamepads known controls.
+func mappingFromTable(t *lua.LTable, keyboard bool) ButtonMapping {
+	var m ButtonMapping
+	for i := range m {
+		token := strings.TrimSpace(lua.LVAsString(t.RawGetString(virtualControlNames[i])))
+		if keyboard && StringToKey(token) == KeyUnknown {
+			token = "-"
+		} else if !keyboard {
+			token = parseVirtualControl(token).String()
+		}
+		m[i] = token
+	}
+	return m
+}
+
+// Reads the player argument of getAction/getActionTime: a 1-based slot, a table of slots, or -1 for all.
+func actionPlayers(l *lua.LState) []int {
+	var players []int
+	switch v := l.Get(1).(type) {
+	case *lua.LTable:
+		v.ForEach(func(_ lua.LValue, val lua.LValue) {
+			if n, ok := val.(lua.LNumber); ok && int(n) >= 1 {
+				players = append(players, int(n)-1)
+			}
+		})
+	case lua.LNumber:
+		if int(v) == -1 {
+			players = []int{-1}
+		} else if int(v) >= 1 {
+			players = []int{int(v) - 1}
+		}
+	}
+	return players
+}
+
+// Collects action tokens from string or table arguments.
+func actionTokens(l *lua.LState) []string {
+	var tokens []string
+	for i := 2; i <= l.GetTop(); i++ {
+		switch t := l.Get(i).(type) {
+		case *lua.LTable:
+			t.ForEach(func(_ lua.LValue, v lua.LValue) {
+				if s, ok := v.(lua.LString); ok {
+					tokens = append(tokens, string(s))
+				}
+			})
+		case lua.LString:
+			tokens = append(tokens, string(t))
+		}
+	}
+	return tokens
+}
+
+// Reads a batchDraw item, for drawing and for mouse hits.
+func luaDrawAnim(item *lua.LTable) *Anim {
+	luaAnim := item.RawGetString("anim")
+	ud, ok := luaAnim.(*lua.LUserData)
+	if !ok {
+		return nil
+	}
+
+	anim, ok := ud.Value.(*Anim)
+	if !ok {
+		return nil
+	}
+
+	x := float32(lua.LVAsNumber(item.RawGetString("x")))
+	y := float32(lua.LVAsNumber(item.RawGetString("y")))
+	facing := float32(lua.LVAsNumber(item.RawGetString("facing")))
+
+	aSnap := *anim
+	aSnap.SetPos(anim.offsetInit[0], anim.offsetInit[1])
+	aSnap.AddPos(x, y)
+	aSnap.facing = facing
+
+	if v := item.RawGetString("scale"); v.Type() == lua.LTTable {
+		sTbl := v.(*lua.LTable)
+		sclX := float32(lua.LVAsNumber(sTbl.RawGetInt(1)))
+		sclY := float32(lua.LVAsNumber(sTbl.RawGetInt(2)))
+		if sclX != 0 || sclY != 0 {
+			(&aSnap).SetScale(sclX, sclY)
+		}
+	}
+
+	if v := item.RawGetString("xshear"); v != lua.LNil {
+		aSnap.xshear = float32(lua.LVAsNumber(v))
+	}
+
+	if v := item.RawGetString("angle"); v != lua.LNil {
+		aSnap.rot.angle = float32(lua.LVAsNumber(v))
+	}
+	if v := item.RawGetString("xangle"); v != lua.LNil {
+		aSnap.rot.xangle = float32(lua.LVAsNumber(v))
+	}
+	if v := item.RawGetString("yangle"); v != lua.LNil {
+		aSnap.rot.yangle = float32(lua.LVAsNumber(v))
+	}
+
+	if v := item.RawGetString("projection"); v != lua.LNil {
+		switch v.Type() {
+		case lua.LTNumber:
+			aSnap.projection = int32(lua.LVAsNumber(v))
+		case lua.LTString:
+			switch strings.ToLower(strings.TrimSpace(v.String())) {
+			case "orthographic":
+				aSnap.projection = int32(Projection_Orthographic)
+			case "perspective":
+				aSnap.projection = int32(Projection_Perspective)
+			case "perspective2":
+				aSnap.projection = int32(Projection_Perspective2)
+			}
+		}
+	}
+
+	if v := item.RawGetString("focallength"); v != lua.LNil {
+		aSnap.fLength = float32(lua.LVAsNumber(v))
+	}
+
+	layerVal := item.RawGetString("layerno")
+	layer := aSnap.layerno
+	if layerVal != lua.LNil {
+		layer = int16(lua.LVAsNumber(layerVal))
+	}
+
+	aSnap.layerno = layer
+	return &aSnap
+}
+
 func luaRandom(l *lua.LState, next func() int32) int {
 	r := float64(next())
 	if nilArg(l, 1) {
@@ -1159,7 +1327,9 @@ func systemScriptInit(l *lua.LState) {
 		/*Queue drawing of an animation on a render layer.
 		@function animDraw
 		@tparam Anim anim Animation userdata.
-		@tparam[opt] int16 layer Render layer index; if omitted, the animation's own `layerno` is used.*/
+		@tparam[opt] int16 layer Render layer index; if omitted, the animation's own `layerno` is used.
+		@tparam[opt=false] boolean capture Return the drawn state, for `mouseOver`.
+		@treturn Anim|nil drawn The animation as drawn, when capture is `true`.*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
 			userDataError(l, 1, a)
@@ -1180,6 +1350,10 @@ func systemScriptInit(l *lua.LState) {
 			aSnap.anim.transType, aSnap.anim.srcAlpha, aSnap.anim.dstAlpha = transType, srcAlpha, dstAlpha
 			(&aSnap).Draw(layerLocal)
 		})
+		if !nilArg(l, 3) && boolArg(l, 3) {
+			l.Push(newUserData(l, &aSnap))
+			return 1
+		}
 		return 0
 	})
 	luaRegister(l, "animGetLength", func(*lua.LState) int {
@@ -2051,6 +2225,22 @@ func systemScriptInit(l *lua.LState) {
 		a.Update(force)
 		return 0
 	})
+	luaRegister(l, "applyVideoSettings", func(l *lua.LState) int {
+		/*Apply the current Video options without restarting.
+		@function applyVideoSettings
+		@tparam[opt=false] boolean deferRestart Leave renderer and Vulkan MSAA changes pending
+		  for the next launch while applying settings supported by the running renderer.
+		@treturn boolean success `true` if every non-deferred change was applied.
+		@treturn string|nil error Reason the settings could not be applied.*/
+		if err := sys.applyVideoSettings(!nilArg(l, 1) && boolArg(l, 1)); err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		l.Push(lua.LTrue)
+		l.Push(lua.LNil)
+		return 2
+	})
 	luaRegister(l, "batchDraw", func(*lua.LState) int {
 		/*Queue drawing of many animations in one call.
 		@function batchDraw
@@ -2080,79 +2270,14 @@ func systemScriptInit(l *lua.LState) {
 				return
 			}
 
-			luaAnim := item.RawGetString("anim")
-			ud, ok := luaAnim.(*lua.LUserData)
-			if !ok {
+			aSnap := luaDrawAnim(item)
+			if aSnap == nil {
 				return
 			}
-
-			anim, ok := ud.Value.(*Anim)
-			if !ok {
-				return
-			}
-
-			x := float32(lua.LVAsNumber(item.RawGetString("x")))
-			y := float32(lua.LVAsNumber(item.RawGetString("y")))
-			facing := float32(lua.LVAsNumber(item.RawGetString("facing")))
-
-			anim.SetPos(anim.offsetInit[0], anim.offsetInit[1])
-			anim.AddPos(x, y)
-			anim.facing = facing
-
-			aSnap := *anim
-
-			if v := item.RawGetString("scale"); v.Type() == lua.LTTable {
-				sTbl := v.(*lua.LTable)
-				sclX := float32(lua.LVAsNumber(sTbl.RawGetInt(1)))
-				sclY := float32(lua.LVAsNumber(sTbl.RawGetInt(2)))
-				if sclX != 0 || sclY != 0 {
-					(&aSnap).SetScale(sclX, sclY)
-				}
-			}
-
-			if v := item.RawGetString("xshear"); v != lua.LNil {
-				aSnap.xshear = float32(lua.LVAsNumber(v))
-			}
-
-			if v := item.RawGetString("angle"); v != lua.LNil {
-				aSnap.rot.angle = float32(lua.LVAsNumber(v))
-			}
-			if v := item.RawGetString("xangle"); v != lua.LNil {
-				aSnap.rot.xangle = float32(lua.LVAsNumber(v))
-			}
-			if v := item.RawGetString("yangle"); v != lua.LNil {
-				aSnap.rot.yangle = float32(lua.LVAsNumber(v))
-			}
-
-			if v := item.RawGetString("projection"); v != lua.LNil {
-				switch v.Type() {
-				case lua.LTNumber:
-					aSnap.projection = int32(lua.LVAsNumber(v))
-				case lua.LTString:
-					switch strings.ToLower(strings.TrimSpace(v.String())) {
-					case "orthographic":
-						aSnap.projection = int32(Projection_Orthographic)
-					case "perspective":
-						aSnap.projection = int32(Projection_Perspective)
-					case "perspective2":
-						aSnap.projection = int32(Projection_Perspective2)
-					}
-				}
-			}
-
-			if v := item.RawGetString("focallength"); v != lua.LNil {
-				aSnap.fLength = float32(lua.LVAsNumber(v))
-			}
-
-			layerVal := item.RawGetString("layerno")
 			layer := aSnap.layerno
-			if layerVal != lua.LNil {
-				layer = int16(lua.LVAsNumber(layerVal))
-			}
-
 			layerLocal := layer
 			sys.luaQueueLayerDraw(int(layerLocal), func() {
-				(&aSnap).Draw(layerLocal)
+				aSnap.Draw(layerLocal)
 			})
 		})
 		return 0
@@ -2594,39 +2719,83 @@ func systemScriptInit(l *lua.LState) {
 		@treturn boolean esc Current value of the escape flag.*/
 		if !nilArg(l, 1) {
 			sys.esc = boolArg(l, 1)
+			if !sys.esc && sys.synchronizedInput() && sys.motif.me.active {
+				channel := sys.uiControllerKey(sys.menuPlayer - 1)
+				if channel >= 0 && channel < len(sys.menuChannels) {
+					sys.menuChannels[channel].escapeTaken = true
+				}
+			}
 		}
-		l.Push(lua.LBool(sys.esc))
+		if sys.esc && nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput("ESCAPE")
+		}
+		pressed := sys.esc
+		if sys.synchronizedInput() && sys.motif.me.active {
+			channel := sys.uiControllerKey(sys.menuPlayer - 1)
+			if channel >= 0 && channel < len(sys.menuChannels) {
+				menu := &sys.menuChannels[channel]
+				pressed = pressed || menu.escape == 1 && !menu.escapeTaken
+			}
+		}
+		l.Push(lua.LBool(pressed))
 		return 1
 	})
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		/*Exit netplay mode and close any active netplay connection.
 		@function exitNetPlay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
+		waiting := sys.netConnection != nil && sys.netConnection.st == NS_Stop
+		err := sys.endSyncSessionOverride()
+		if sys.rollback.session != nil {
+			sys.rollback.session.Close()
+			sys.rollback.session = nil
 		}
-		if sys.cfg.Netplay.RollbackNetcode {
-			if sys.rollback.session != nil {
-				sys.rollback.session.Close()
-				sys.rollback.session = nil
-			}
+		if sys.rollback.netConnection != nil {
+			sys.rollback.netConnection.end()
+			sys.rollback.netConnection = nil
 		}
 		if sys.netConnection != nil {
 			sys.netConnection.end()
 			sys.netConnection = nil
+		}
+		if waiting {
+			// Block only devices still pressing a menu control, so the cancel press
+			// isn't read again by the menu. Idle devices (resting sticks) keep working.
+			for _, device := range sys.inputs.Devices {
+				f := sys.deviceFrame(device)
+				for vc := VirtualControl(0); vc < VC_Count; vc++ {
+					if f.held(vc) {
+						sys.blockDevice(device)
+						break
+					}
+				}
+			}
+			sys.keyInput = KeyUnknown
+			sys.esc, sys.escPending = false, false
+		}
+		// Return to local menu input after closing the session.
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
 		}
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
 		/*Exit replay mode and restore normal video settings.
 		@function exitReplay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
-		}
+		err := sys.endSyncSessionOverride()
+		sys.sessionSetups = nil
 		if sys.replayFile != nil {
 			sys.replayFile.Close()
 			sys.replayFile = nil
 		}
-		sys.uiResetTokenGuard()
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
 		return 0
 	})
 	luaRegister(l, "fadeNew", func(*lua.LState) int {
@@ -3004,11 +3173,11 @@ func systemScriptInit(l *lua.LState) {
 		@treturn int32 winSide Winning side index (`1` or `2`), `0` for draw, `-1` if the game was ended externally.
 		@treturn[opt] int controllerNo 1-based controller index of the challenger player interrupting `arcade` mode.*/
 		defer func() {
+			sys.textInput.finish(false)
 			if sys.loader.state == LS_Loading {
 				sys.loader.reset()
 			}
 		}()
-		sys.keyString = ""
 		sys.keyInput = KeyUnknown
 		sys.luaDiscardDrawQueue()
 		sys.gameRunning = true
@@ -3036,7 +3205,7 @@ func systemScriptInit(l *lua.LState) {
 				} else if sys.loader.state == LS_Cancel {
 					return nil
 				}
-				sys.await(sys.gameRenderSpeed())
+				sys.await(sys.gameRenderSpeed(), true)
 			}
 			runtime.GC()
 			return nil
@@ -3319,6 +3488,11 @@ func systemScriptInit(l *lua.LState) {
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				sys.paused = false
+				// A match can end before its pause menu finishes closing.
+				sys.menuPlayer = 0
+				if sys.motif.me.active {
+					sys.motif.me.reset(&sys.motif)
+				}
 				sys.uiFrameCounter++
 				sys.gameRunning = false
 				sys.clearSpriteData()
@@ -3334,11 +3508,82 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 	})
+	luaRegister(l, "gameOptionDefault", func(l *lua.LState) int {
+		/*Get the shipped default value of a setting, without reading config.ini.
+		@function gameOptionDefault
+		@tparam string path Setting path, for example `"Video.VSync"`.
+		@treturn string|nil value Default value as a string, or `nil` if the setting has no shipped default.*/
+		path := strings.SplitN(strArg(l, 1), ".", 2)
+		if len(path) != 2 {
+			return 0
+		}
+		section, err := sys.cfg.DefaultOnlyIni.GetSection(path[0])
+		if err != nil {
+			return 0
+		}
+		key, err := section.GetKey(path[1])
+		if err != nil {
+			return 0
+		}
+		l.Push(lua.LString(key.Value()))
+		return 1
+	})
 	luaRegister(l, "gameRunning", func(l *lua.LState) int {
 		/*Check whether a match is currently running.
 		@function gameRunning
 		@treturn boolean running `true` if gameplay is currently active.*/
 		l.Push(lua.LBool(sys.gameRunning))
+		return 1
+	})
+	luaRegister(l, "getAction", func(l *lua.LState) int {
+		/*Check whether a motif action was pressed this frame. Directions repeat while held.
+		@function getAction
+		@tparam number|table players 1-based player slot, a table of slots, or `-1` for any slot.
+		@tparam string|table ... Action tokens: virtual controls (`A`, `DP_U`, `LS_Y-`...), local
+		  keyboard keys (`KEY:DELETE`) or engine buttons (`BTN:a`). Usually a motif `.action` value.
+		@treturn boolean pressed `true` if any token was pressed for any selected slot.*/
+		tokens := actionTokens(l)
+		for _, pn := range actionPlayers(l) {
+			if sys.menuAction(tokens, pn) {
+				l.Push(lua.LTrue)
+				return 1
+			}
+		}
+		l.Push(lua.LFalse)
+		return 1
+	})
+	luaRegister(l, "getActionTime", func(l *lua.LState) int {
+		/*Get how long a motif action has been held.
+		@function getActionTime
+		@tparam number|table players 1-based player slot, a table of slots, or `-1` for the slot used last.
+		@tparam string|table ... Action tokens, as for `getAction`.
+		@treturn int32 time Frames held, or `0` if not held.*/
+		tokens := actionTokens(l)
+		players := actionPlayers(l)
+		if device := sys.inputs.device(sys.menuFocus); device != nil && len(players) == 1 && players[0] == -1 {
+			l.Push(lua.LNumber(sys.deviceActionTime(device, tokens)))
+			return 1
+		}
+		for _, pn := range players {
+			slots := []int{pn}
+			if pn == -1 && sys.menuPlayer > 0 {
+				slots = []int{sys.menuPlayer - 1}
+			} else if pn == -1 {
+				slots = nil
+				for i := range sys.commandLists {
+					if sys.lastInputController < 0 || sys.uiControllerKey(i) == sys.lastInputController {
+						slots = append(slots, i)
+					}
+				}
+			}
+			for _, slot := range slots {
+				if t := sys.actionTime(tokens, slot); t > 0 {
+					l.Push(lua.LNumber(t))
+					return 1
+				}
+			}
+		}
+		l.Push(lua.LNumber(0))
 		return 1
 	})
 	luaRegister(l, "getAnimElemCount", func(*lua.LState) int {
@@ -3667,229 +3912,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(data))
 		return 1
 	})
-	luaRegister(l, "getInput", func(l *lua.LState) int {
-		/*Check raw UI input for one or more players.
-		@function getInput
-		@tparam number|table players 1-based player/controller index, or an array-like table of indexes.
-		  Passing `-1` checks all players.
-		@tparam string|table ... One or more key/button tokens, or array-like tables of tokens.
-		@treturn boolean pressed `true` if any provided token set is active for any selected player.*/
-		var players []int
-		// Collect player numbers (1-based) from arg #1
-		switch v := l.Get(1).(type) {
-		case *lua.LTable:
-			v.ForEach(func(_ lua.LValue, val lua.LValue) {
-				n, ok := val.(lua.LNumber)
-				if !ok {
-					return
-				}
-				pn := int(n)
-				if pn < 1 || pn > len(sys.commandLists) {
-					return
-				}
-				players = append(players, pn)
-			})
-		case lua.LNumber:
-			pn := int(v)
-			if pn == -1 {
-				players = make([]int, 0, len(sys.commandLists))
-				for i := 1; i <= len(sys.commandLists); i++ {
-					players = append(players, i)
-				}
-			} else {
-				players = append(players, pn)
-			}
-		default:
-			l.Push(lua.LBool(false))
-			return 1
-		}
-		top := l.GetTop()
-		for _, pn := range players {
-			if pn <= 0 {
-				continue
-			}
-			controllerIdx := pn - 1 // 0-based for sys.commandLists
-			// Loop over all key tables passed
-			for ai := 2; ai <= top; ai++ {
-				arg := l.Get(ai)
-				var btns []string
-				switch t := arg.(type) {
-				case *lua.LTable:
-					t.ForEach(func(_ lua.LValue, v lua.LValue) {
-						if s, ok := v.(lua.LString); ok {
-							btns = append(btns, string(s))
-						}
-					})
-				case lua.LString:
-					btns = []string{string(t)}
-				default:
-					continue
-				}
-				if len(btns) > 0 && sys.uiRawInput(btns, controllerIdx) {
-					l.Push(lua.LBool(true))
-					return 1
-				}
-			}
-		}
-		l.Push(lua.LBool(false))
-		return 1
-	})
-	luaRegister(l, "getInputTime", func(l *lua.LState) int {
-		/*Get the hold time of a raw input token for one or more players.
-		@function getInputTime
-		@tparam number|table players 1-based player/controller index, or an array-like table of indexes.
-		  Passing `-1` checks all players.
-		@tparam string|table ... One or more key/button tokens, or array-like tables of tokens.
-		@treturn int32 time Hold time in ticks for the first active token found, or `0` if none are active.*/
-		var players []int
-		switch v := l.Get(1).(type) {
-		case *lua.LTable:
-			v.ForEach(func(_ lua.LValue, val lua.LValue) {
-				n, ok := val.(lua.LNumber)
-				if !ok {
-					return
-				}
-				pn := int(n)
-				if pn < 1 || pn > len(sys.commandLists) {
-					return
-				}
-				players = append(players, pn)
-			})
-		case lua.LNumber:
-			pn := int(v)
-			if pn == -1 {
-				players = make([]int, 0, len(sys.commandLists))
-				for i := 1; i <= len(sys.commandLists); i++ {
-					players = append(players, i)
-				}
-			} else {
-				players = append(players, pn)
-			}
-		default:
-			l.Push(lua.LNumber(0))
-			return 1
-		}
-		// Helper to compute the hold time for a key token on a given controller index.
-		keyTime := func(controllerIdx int, key string) int32 {
-			if controllerIdx == -2 && sys.lastInputController >= 0 {
-				want := sys.lastInputController
-				controllerIdx = -1
-				for i := 0; i < len(sys.commandLists); i++ {
-					if sys.uiControllerKey(i) == want {
-						controllerIdx = i
-						break
-					}
-				}
-				if controllerIdx < 0 {
-					return 0
-				}
-			}
-			if controllerIdx < 0 || controllerIdx >= len(sys.commandLists) ||
-				sys.commandLists[controllerIdx] == nil || sys.commandLists[controllerIdx].Buffer == nil {
-				return 0
-			}
-			cl := sys.commandLists[controllerIdx]
-			ib := sys.commandLists[controllerIdx].Buffer
-			var v int32
-			// Treat LS direction tokens as aliases for D/U/B/F.
-			switch key {
-			case "LS_Y+":
-				key = "D"
-			case "LS_Y-":
-				key = "U"
-			case "LS_X-":
-				key = "B"
-			case "LS_X+":
-				key = "F"
-			}
-			switch key {
-			case "B":
-				v = ib.Bb
-			case "D":
-				v = ib.Db
-			case "F":
-				v = ib.Fb
-			case "U":
-				v = ib.Ub
-			case "L":
-				v = ib.Lb
-			case "R":
-				v = ib.Rb
-			case "a":
-				v = ib.ab
-			case "b":
-				v = ib.bb
-			case "c":
-				v = ib.cb
-			case "x":
-				v = ib.xb
-			case "y":
-				v = ib.yb
-			case "z":
-				v = ib.zb
-			case "s":
-				v = ib.sb
-			case "d":
-				v = ib.db
-			case "w":
-				v = ib.wb
-			case "m":
-				v = ib.mb
-			default:
-				// Other raw controller tokens (RS_*, LT/RT, etc): just report held (1) or not (0).
-				if idx, ok := StringToButtonLUT[key]; ok && idx != 25 {
-					if cl.IsControllerButtonPressed(key, controllerIdx) {
-						return 1
-					}
-					return 0
-				}
-				l.RaiseError("\nInvalid argument: %v\n", key)
-				return 0
-			}
-			// 0 if < 0, otherwise 1+
-			if v < 0 {
-				return 0
-			} else if v == 0 {
-				return 1
-			}
-			return v
-		}
-		top := l.GetTop()
-		for _, pn := range players {
-			if pn == 0 {
-				continue
-			}
-			controllerIdx := pn - 1
-			if pn == -1 {
-				controllerIdx = -2
-			}
-			// Loop over all key tables/strings passed
-			for ai := 2; ai <= top; ai++ {
-				arg := l.Get(ai)
-				var keys []string
-				switch t := arg.(type) {
-				case *lua.LTable:
-					t.ForEach(func(_ lua.LValue, v lua.LValue) {
-						if s, ok := v.(lua.LString); ok {
-							keys = append(keys, string(s))
-						}
-					})
-				case lua.LString:
-					keys = []string{string(t)}
-				default:
-					continue
-				}
-				for _, key := range keys {
-					if out := keyTime(controllerIdx, key); out > 0 {
-						l.Push(lua.LNumber(out))
-						return 1
-					}
-				}
-			}
-		}
-		l.Push(lua.LNumber(0))
-		return 1
-	})
 	luaRegister(l, "getJoystickGUID", func(*lua.LState) int {
 		/*Get a joystick's GUID string.
 		@function getJoystickGUID
@@ -3897,28 +3919,6 @@ func systemScriptInit(l *lua.LState) {
 		@treturn string guid GUID string for the joystick, or an empty string if invalid.*/
 		l.Push(lua.LString(input.GetJoystickGUID(int(numArg(l, 1)))))
 		return 1
-	})
-	luaRegister(l, "getJoystickKey", func(*lua.LState) int {
-		/*Poll joystick input and return the corresponding key string.
-		@function getJoystickKey
-		@tparam[opt] int controllerIdx Joystick index (0-based). If omitted, listens on any joystick.
-		@treturn string keyName Engine key string for the pressed control (empty string if none).
-		@treturn int joystickIndex 1-based joystick index that generated the input; `-1` if no input.*/
-		controllerIdx := -1
-		if !nilArg(l, 1) {
-			max := input.GetMaxJoystickCount()
-			controllerIdx = int(Clamp(int32(numArg(l, 1)), 0, int32(max-1)))
-		}
-
-		s, joy := getJoystickKey(controllerIdx)
-
-		l.Push(lua.LString(s))
-		if s != "" {
-			l.Push(lua.LNumber(joy + 1))
-		} else {
-			l.Push(lua.LNumber(-1))
-		}
-		return 2
 	})
 	luaRegister(l, "getJoystickName", func(*lua.LState) int {
 		/*Get a joystick's display name.
@@ -3948,6 +3948,7 @@ func systemScriptInit(l *lua.LState) {
 			s = KeyToString(sys.keyInput)
 		}
 		if nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 			l.Push(lua.LString(s))
 			//sys.keyInput = KeyUnknown
 			return 1
@@ -3956,19 +3957,10 @@ func systemScriptInit(l *lua.LState) {
 			l.Push(lua.LBool(false))
 			return 1
 		}
-		l.Push(lua.LBool(s == strArg(l, 1)))
-		return 1
-	})
-	luaRegister(l, "getKeyText", func(*lua.LState) int {
-		/*Get the last input text associated with the current key event.
-		@function getKeyText
-		@treturn string text If the last key was Insert, returns the clipboard contents,
-		  otherwise returns the textual representation of the last key press. Empty string if none.*/
-		s := ""
-		if sys.keyInput != KeyUnknown {
-			s = sys.keyString
+		if s == strArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 		}
-		l.Push(lua.LString(s))
+		l.Push(lua.LBool(s == strArg(l, 1)))
 		return 1
 	})
 	luaRegister(l, "getLastInputController", func(l *lua.LState) int {
@@ -3994,29 +3986,43 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getMovelist", func(*lua.LState) int {
-		/*[redirectable] Get the character's movelist text.
+		/*[redirectable] Get a page of the character's current movelist.
 		@function getMovelist
-		@treturn string movelist Movelist text.*/
+		@tparam[opt=1] int page Page number.
+		@treturn string movelist Movelist text, or an empty string if the page doesn't exist.
+		@treturn int pages Number of pages in the current movelist.*/
 		idx := int(sys.debugWC.movelist)
 		if idx < 0 {
 			idx = 0
 		}
-		if ml, ok := sys.debugWC.gi().movelists[idx]; ok {
-			l.Push(lua.LString(ml))
-			return 1
+		pages, ok := sys.debugWC.gi().movelists[idx]
+		if !ok {
+			pages = sys.debugWC.gi().movelists[0]
 		}
-		if ml, ok := sys.debugWC.gi().movelists[0]; ok {
-			l.Push(lua.LString(ml))
-			return 1
+		page := 1
+		if !nilArg(l, 1) {
+			page = int(numArg(l, 1))
 		}
-		l.Push(lua.LString(""))
-		return 1
+		text := ""
+		if page >= 1 && page <= len(pages) {
+			text = pages[page-1]
+		}
+		l.Push(lua.LString(text))
+		l.Push(lua.LNumber(len(pages)))
+		return 2
 	})
 	luaRegister(l, "getRandom", func(l *lua.LState) int {
 		/*Return a 32-bit random number, updating the global seed.
 		@function getRandom
 		@treturn int32 value Random value (1 to 2147483646 inclusive).*/
 		l.Push(lua.LNumber(Random()))
+		return 1
+	})
+	luaRegister(l, "getMenuPlayer", func(l *lua.LState) int {
+		/*Get the player who opened the pause or rematch menu.
+		@function getMenuPlayer
+		@treturn int playerNo 1-based player number, or 0 when no player owns the menu.*/
+		l.Push(lua.LNumber(sys.menuPlayer))
 		return 1
 	})
 	luaRegister(l, "getRemapInput", func(l *lua.LState) int {
@@ -4167,12 +4173,761 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.winnerTeam()))
 		return 1
 	})
-	luaRegister(l, "isUIKeyAction", func(l *lua.LState) int {
-		/*Check whether a UI action name is currently active.
-		@function isUIKeyAction
-		@tparam string action UI action name.
-		@treturn boolean active `true` if the action is currently active.*/
-		l.Push(lua.LBool(sys.uiIsKeyAction(strArg(l, 1))))
+	luaRegister(l, "inputAutoAssign", func(l *lua.LState) int {
+		/*Assign local inputs without displaying side selection.
+		@function inputAutoAssign
+		@tparam int deviceId Device that opened the mode.
+		@tparam int minimum Minimum total number of human participants.
+		@tparam int maximum Maximum human participants per side.
+		@tparam boolean versus Assign both sides instead of keeping players together.
+		@treturn boolean success Enough independent inputs were assigned.*/
+		ok := !sys.netplay() && sys.assignAutomaticInputs(int(numArg(l, 1)),
+			Max(1, int(numArg(l, 2))), Clamp(int(numArg(l, 3)), 1, MaxSimul), boolArg(l, 4))
+		l.Push(lua.LBool(ok))
+		return 1
+	})
+	luaRegister(l, "inputBegin", func(l *lua.LState) int {
+		/*Start side select for a mode: releases all players and stops menus from claiming devices.
+		@function inputBegin
+		@treturn int deviceId Device that opened the mode (`0` if unknown).*/
+		sys.inputs.ClaimLocked = true
+		sys.inputs.sharedDevices = nil
+		sys.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+		sys.applyParticipantsToSlots()
+		l.Push(lua.LNumber(sys.inputs.MenuDevice))
+		return 1
+	})
+	luaRegister(l, "inputClaim", func(l *lua.LState) int {
+		/*Assign a device to a participant on a team side.
+		@function inputClaim
+		@tparam int deviceId Device ID (see `inputGetDevices`).
+		@tparam int side `1` for left, `2` for right, `0` to release the device.
+		@treturn boolean success `false` if the device is unavailable, all positions are taken,
+		  or its keyboard keys overlap another player's keyboard controller.*/
+		device, side := int(numArg(l, 1)), TeamSide(numArg(l, 2))
+		if side == TS_None {
+			if i := sys.inputs.owner(device); i >= 0 {
+				delete(sys.inputs.sharedDevices, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+			l.Push(lua.LTrue)
+			return 1
+		}
+		if sys.keyboardConflict(device) {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		_, err := sys.inputs.claim(device, side)
+		l.Push(lua.LBool(err == nil))
+		return 1
+	})
+	luaRegister(l, "inputCommit", func(l *lua.LState) int {
+		/*Apply current participant sides to gameplay player slots and clear input buffers.
+		@function inputCommit*/
+		sys.applyParticipantsToSlots()
+		return 0
+	})
+	luaRegister(l, "inputCycleSetup", func(l *lua.LState) int {
+		/*Switch a device to the previous or next Controller Setup.
+		@function inputCycleSetup
+		@tparam int deviceId Device ID.
+		@tparam int direction `-1` for previous, `1` for next.
+		@treturn boolean changed `true` if another setup was selected.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		order := sys.inputCfg.setupOrder
+		changed := false
+		if device != nil && len(order) > 1 {
+			for i, id := range order {
+				if id == device.Setup {
+					step := 1
+					if numArg(l, 2) < 0 {
+						step = -1
+					}
+					changed = sys.setDeviceSetup(device.ID, order[(i+step+len(order))%len(order)])
+					break
+				}
+			}
+		}
+		l.Push(lua.LBool(changed))
+		return 1
+	})
+	luaRegister(l, "inputDeleteSetup", func(l *lua.LState) int {
+		/*Delete a custom Controller Setup. Devices using it switch to the first remaining setup.
+		  Disk writes use the normal Options save.
+		@function inputDeleteSetup
+		@tparam string setupId Setup ID.
+		@treturn boolean success `false` for an unknown or shipped setup.*/
+		id := strArg(l, 1)
+		if _, ok := sys.inputCfg.setups[id]; !ok || sys.cfg.shippedSection("controllersetup_"+id, &ControllerSetupProperties{}) {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		sys.cfg.removeControllerSetup(id)
+		sys.loadInputConfig(&sys.cfg)
+		sys.clearCommandBuffers()
+		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputDeviceAction", func(l *lua.LState) int {
+		/*Check whether a motif action was pressed on one device this frame, whether
+		  or not the device has a player yet. KEY: tokens only count for keyboard controllers,
+		  MOUSE: tokens for the device that shows the hints.
+		@function inputDeviceAction
+		@tparam int deviceId Device ID.
+		@tparam table action Action tokens, usually a motif `.action` value.
+		@treturn boolean pressed `true` only on the frame the action was pressed.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		var action []string
+		switch v := l.Get(2).(type) {
+		case lua.LString:
+			action = []string{string(v)}
+		case *lua.LTable:
+			v.ForEach(func(_ lua.LValue, t lua.LValue) {
+				action = append(action, lua.LVAsString(t))
+			})
+		}
+		pressed := false
+		for _, token := range action {
+			// Screens read every device in turn; the mouse acts for the one in use.
+			if _, ok := actionMouse(token); ok && !sys.mouseDevice(device) {
+				continue
+			}
+			if sys.deviceActionTime(device, []string{token}) == 1 {
+				pressed = true
+				break
+			}
+		}
+		// The device pressed last shows as active and gets the hints.
+		if pressed {
+			sys.noteGlyphInput(device.ID)
+		}
+		l.Push(lua.LBool(pressed))
+		return 1
+	})
+	luaRegister(l, "inputDeviceActionTime", func(l *lua.LState) int {
+		/*Get how long a motif action has been held on one device, through its saved
+		  Button Mapping, whether or not the device has a player.
+		@function inputDeviceActionTime
+		@tparam int deviceId Device ID, or `0` for the longest hold on any device.
+		@tparam table action Action tokens, usually a motif `.action` value.
+		@treturn int32 time Frames held, or `0` if not held.*/
+		id := int(numArg(l, 1))
+		var action []string
+		tableArg(l, 2).ForEach(func(_ lua.LValue, t lua.LValue) {
+			action = append(action, lua.LVAsString(t))
+		})
+		var time int32
+		for _, device := range sys.inputs.Devices {
+			if id == 0 || device.ID == id {
+				time = Max(time, sys.deviceActionTime(device, action))
+			}
+		}
+		l.Push(lua.LNumber(time))
+		return 1
+	})
+	luaRegister(l, "inputGetDevices", func(l *lua.LState) int {
+		/*List the keyboard controllers, connected gamepads and disconnected gamepads still used by a player.
+		@function inputGetDevices
+		@treturn table devices Array of tables with fields: `id` (only valid while the game runs), `name`,
+		  `kind` (`"keyboard"` or `"gamepad"`), `joy`, `keyboard` (keyboard controller ID), `setup`,
+		  `setupName`, `connected`, `participant` (1-based, `0` if none), `side` (`0`/`1`/`2`),
+		  `ready`, `order` (join order), `readyOrder` (confirmation order), `primary` (main device
+		  of its participant), `available` (any device of its participant is connected),
+		  `conflict` (keyboard keys overlap another player's keyboard controller).*/
+		sys.pollDevices()
+		out := l.NewTable()
+		for _, device := range sys.inputs.Devices {
+			owner := sys.inputs.owner(device.ID)
+			if !device.Connected && owner < 0 {
+				continue
+			}
+			kind := "gamepad"
+			if device.Joy < 0 {
+				kind = "keyboard"
+			}
+			setupName := ""
+			if p := sys.cfg.ControllerSetup["controllersetup_"+device.Setup]; p != nil {
+				setupName = p.Name
+			}
+			p := InputParticipant{}
+			if owner >= 0 {
+				p = sys.inputs.Participants[owner]
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":          device.ID,
+				"name":        device.Name,
+				"kind":        kind,
+				"joy":         device.Joy,
+				"keyboard":    device.Keyboard,
+				"setup":       device.Setup,
+				"setupName":   setupName,
+				"connected":   device.Connected,
+				"participant": owner + 1,
+				"side":        p.Side,
+				"ready":       p.Ready,
+				"order":       p.joined,
+				"readyOrder":  p.confirmed,
+				"primary":     owner < 0 || p.Device == device.ID,
+				"available":   owner < 0 || sys.inputs.participantConnected(owner),
+				"conflict":    sys.keyboardConflict(device.ID),
+			}))
+		}
+		l.Push(out)
+		return 1
+	})
+	luaRegister(l, "inputGetGlyphDevice", func(l *lua.LState) int {
+		/*Get the device whose buttons hints show, with its current side.
+		@function inputGetGlyphDevice
+		@treturn int deviceId Runtime device ID, or zero if no device is available.
+		@treturn int side Team side (0 unassigned, 1 left, 2 right).*/
+		id, side := 0, TS_None
+		if device := sys.glyphDevice(0); device != nil {
+			id = device.ID
+			if owner := sys.inputs.owner(id); owner >= 0 {
+				side = sys.inputs.Participants[owner].Side
+			}
+		}
+		if nc := sys.inputConnection(); nc != nil {
+			side = TeamSide(nc.locIn%2 + 1)
+		}
+		l.Push(lua.LNumber(id))
+		l.Push(lua.LNumber(side))
+		return 2
+	})
+	luaRegister(l, "inputGetGlyphPack", func(l *lua.LState) int {
+		/*Return the glyph pack hints use for a device: `"mouse"` while the mouse is in
+		  use, else the device's own pack.
+		@function inputGetGlyphPack
+		@tparam[opt=0] int deviceId Device ID, or `0` for the device the UI shows glyphs for.
+		@treturn string pack Glyph pack name, for example `"ps5"`, or an empty string without a device.*/
+		id := 0
+		if !nilArg(l, 1) {
+			id = int(numArg(l, 1))
+		}
+		l.Push(lua.LString(sys.hintGlyphPack(sys.glyphDevice(id))))
+		return 1
+	})
+	luaRegister(l, "inputGetGlyphPacks", func(l *lua.LState) int {
+		/*List the glyph packs that can be chosen for a device.
+		@function inputGetGlyphPacks
+		@tparam int deviceId Device ID.
+		@treturn table packs Array of tables with `id`, `name`, `glyph` (a text tag
+		  drawing the pack's icon), `selected` and `automatic` (no pack chosen, so the
+		  device decides) fields. The first entry is always the automatic one.*/
+		out := l.NewTable()
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(out)
+			return 1
+		}
+		chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(device)])
+		add := func(id, name string, automatic bool) {
+			// The automatic entry shows whatever the device resolves to now.
+			glyph := "<controllericon:" + id + ">"
+			if automatic {
+				glyph = "<controllericon>"
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":        id,
+				"name":      name,
+				"glyph":     glyph,
+				"selected":  id == chosen,
+				"automatic": automatic,
+			}))
+		}
+		add("", sys.motif.ControllerGlyphs.Automatic, true)
+		for _, id := range sys.motif.glyphPacks(glyphDeviceType(device)) {
+			add(id, sys.motif.ControllerGlyphs.Controller[id].Label, false)
+		}
+		l.Push(out)
+		return 1
+	})
+	luaRegister(l, "inputGetMapping", func(l *lua.LState) int {
+		/*Get the Button Mapping of a device.
+		@function inputGetMapping
+		@tparam int deviceId Device ID.
+		@treturn table|nil mapping Physical input per virtual control (`DP_U`, ..., `RS`), `-` if unbound.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			return 0
+		}
+		l.Push(mappingTable(l, sys.inputCfg.mapping(device)))
+		return 1
+	})
+	luaRegister(l, "inputGetMappingDefaults", func(l *lua.LState) int {
+		/*Get the shipped Button Mapping of a device. Gamepads map controls to themselves.
+		@function inputGetMappingDefaults
+		@tparam int deviceId Device ID.
+		@treturn table|nil mapping Same layout as `inputGetMapping`.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			return 0
+		}
+		m := identityButtonMapping()
+		if device.Joy < 0 {
+			m = ButtonMapping{}
+			var p ButtonMappingProperties
+			if sys.cfg.shippedSection("buttonmapping_"+device.Keyboard, &p) {
+				m = p.mapping()
+			}
+		}
+		l.Push(mappingTable(l, m))
+		return 1
+	})
+	luaRegister(l, "inputGetMenuDevice", func(l *lua.LState) int {
+		/*Get the device that last operated a menu.
+		@function inputGetMenuDevice
+		@treturn int deviceId Runtime device ID.*/
+		id := sys.inputs.MenuDevice
+		if sys.netplay() && len(sys.inputs.Participants) > 0 {
+			id = sys.inputs.Participants[0].Device
+		} else if p := sys.menuPlayer - 1; p >= 0 && p < len(sys.inputRemap) {
+			// The pause menu belongs to the player who opened it.
+			if ids := sys.inputs.participantDevices(sys.inputRemap[p]); len(ids) > 0 {
+				id = ids[0]
+			}
+		}
+		l.Push(lua.LNumber(id))
+		return 1
+	})
+	luaRegister(l, "inputGetPhysicalHeld", func(l *lua.LState) int {
+		/*Get the first physical control held on a gamepad, before Button Mapping, for Button Mapping capture.
+		@function inputGetPhysicalHeld
+		@tparam int deviceId Device ID.
+		@treturn string control Control name (`A`, `DP_U`, `LS_X-`...), or an empty string.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		token := ""
+		if device != nil && device.Connected && device.Joy >= 0 {
+			// Directions and triggers first, so a stick bound as a button still reads as a stick.
+			for _, analog := range []bool{true, false} {
+				for i, name := range virtualControlNames {
+					if VirtualControl(i).analog() != analog {
+						continue
+					}
+					if _, held := gamepadControlLevel(device.Joy, name); held && token == "" {
+						token = name
+					}
+				}
+			}
+		}
+		l.Push(lua.LString(token))
+		return 1
+	})
+	luaRegister(l, "inputGetPlayerDevice", func(l *lua.LState) int {
+		/*Return the local device for a gameplay/menu player slot.
+		@function inputGetPlayerDevice
+		@tparam int player 1-based slot.
+		@treturn int deviceId Zero for remote players or unavailable devices.*/
+		l.Push(lua.LNumber(sys.playerGlyphDevice(int(numArg(l, 1)) - 1)))
+		return 1
+	})
+	luaRegister(l, "inputGetSessionSetup", func(l *lua.LState) int {
+		/*Get the Controller Setup a player uses in this netplay session or replay.
+		@function inputGetSessionSetup
+		@tparam int player 1-based player slot.
+		@tparam[opt=false] boolean initial `true` for the setup exchanged when the session started.
+		@treturn table|nil setup Setup table as returned by `inputGetSetup`, or `nil` without a session setup.*/
+		player := int(numArg(l, 1)) - 1
+		if player < 0 || player >= len(sys.inputRemap) {
+			return 0
+		}
+		setup, ok := sys.sessionSetups[sys.inputRemap[player]]
+		if !ok {
+			return 0
+		}
+		definition := setup.definition
+		if !nilArg(l, 2) && boolArg(l, 2) {
+			definition = setup.initial
+		}
+		l.Push(setupTable(l, "session", definition))
+		return 1
+	})
+	luaRegister(l, "inputGetSetup", func(l *lua.LState) int {
+		/*Get a Controller Setup.
+		@function inputGetSetup
+		@tparam string setupId Setup ID.
+		@treturn table|nil setup Table with `id`, `name` and one virtual control per engine
+		  button or combination (`up`, `a`, `xa`, ...), `-` if unbound.*/
+		id := strArg(l, 1)
+		p := sys.cfg.ControllerSetup["controllersetup_"+id]
+		if p == nil {
+			return 0
+		}
+		l.Push(setupTable(l, id, p))
+		return 1
+	})
+	luaRegister(l, "inputGetSetupDefaults", func(l *lua.LState) int {
+		/*Get the shipped definition of a Controller Setup. Custom setups use the first shipped setup.
+		@function inputGetSetupDefaults
+		@tparam string setupId Setup ID.
+		@treturn table|nil setup Same layout as `inputGetSetup`, keeping the current name.*/
+		id := strArg(l, 1)
+		current := sys.cfg.ControllerSetup["controllersetup_"+id]
+		if current == nil {
+			return 0
+		}
+		var p ControllerSetupProperties
+		if !sys.cfg.shippedSection("controllersetup_"+id, &p) {
+			for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
+				if strings.HasPrefix(strings.ToLower(sec.Name()), "controllersetup_") && sys.cfg.shippedSection(iniSectionID(sec), &p) {
+					break
+				}
+			}
+		}
+		p.Name = current.Name
+		l.Push(setupTable(l, id, &p))
+		return 1
+	})
+	luaRegister(l, "inputGetSetupState", func(l *lua.LState) int {
+		/*Engine button and analog stick state of a device, for the Controller Setup input test.
+		@function inputGetSetupState
+		@tparam int deviceId Device ID.
+		@tparam[opt] table setup Setup to test instead of the saved one (an unsaved draft).
+		@tparam[opt] int player Read synchronized inputs of this player instead of the device.
+		@treturn table held `true` for every held engine button (`up`, ..., `r`).
+		@treturn table analog `true` for every held stick direction and trigger (`LT`, `RT`, `LS_Y-`, ..., `RS_X+`).*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		var frame VirtualFrame
+		var setup ControllerSetup
+		if !nilArg(l, 3) {
+			player := int(numArg(l, 3)) - 1
+			if player >= 0 && player < len(sys.commandLists) {
+				if cl := sys.commandLists[player]; cl != nil && cl.Buffer != nil {
+					frame = cl.Buffer.vf
+					setup = *sys.channelSetup(sys.uiControllerKey(player))
+				}
+			}
+		} else {
+			m := sys.inputCfg.mapping(device)
+			frame = device.sample(&m)
+			if device != nil {
+				_, saved := sys.inputCfg.setup(device.Setup)
+				setup = *saved
+			}
+		}
+		if !nilArg(l, 2) {
+			setup = setupFromTable(tableArg(l, 2)).setup()
+		}
+		buttons := setup.project(frame)
+		held, analog := l.NewTable(), l.NewTable()
+		for i, name := range engineButtonNames {
+			held.RawSetString(name, lua.LBool(buttons[i]))
+		}
+		for i, name := range virtualControlNames {
+			if vc := VirtualControl(i); vc.analog() {
+				analog.RawSetString(name, lua.LBool(frame.held(vc)))
+			}
+		}
+		l.Push(held)
+		l.Push(analog)
+		return 2
+	})
+	luaRegister(l, "inputGetVirtualPressed", func(l *lua.LState) int {
+		/*Get the virtual control newly pressed on a device this frame, for Controller Setup capture.
+		@function inputGetVirtualPressed
+		@tparam int deviceId Device ID, or `0` for every device.
+		@tparam[opt] int player Read synchronized inputs of this player instead of the device.
+		@treturn string control Virtual control name, or an empty string.*/
+		token := ""
+		if !nilArg(l, 2) {
+			player := int(numArg(l, 2)) - 1
+			if player >= 0 && player < len(sys.commandLists) {
+				if cl := sys.commandLists[player]; cl != nil && cl.Buffer != nil {
+					for i, held := range cl.Buffer.vb {
+						if held == 1 {
+							token = virtualControlNames[i]
+							break
+						}
+					}
+				}
+			}
+		} else {
+			sys.pollDevices()
+			id := int(numArg(l, 1))
+			for _, device := range sys.inputs.Devices {
+				if (id == 0 || device.ID == id) && device.Connected && token == "" {
+					for i, pressed := range device.pressed {
+						if pressed {
+							token = virtualControlNames[i]
+							break
+						}
+					}
+				}
+			}
+		}
+		l.Push(lua.LString(token))
+		return 1
+	})
+	luaRegister(l, "inputGetVirtualState", func(l *lua.LState) int {
+		/*Virtual controller state of a device, for the Button Mapping input test.
+		@function inputGetVirtualState
+		@tparam int deviceId Device ID.
+		@tparam[opt] table mapping Mapping to test instead of the saved one (an unsaved draft).
+		@treturn table held `true` for every held virtual control (`DP_U`, ..., `RS`).
+		@treturn table level How far each control is pushed, from 0 to 127.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		m := sys.inputCfg.mapping(device)
+		if !nilArg(l, 2) && device != nil {
+			m = mappingFromTable(tableArg(l, 2), device.Joy < 0)
+		}
+		f := device.sample(&m)
+		held, level := l.NewTable(), l.NewTable()
+		for i, name := range virtualControlNames {
+			held.RawSetString(name, lua.LBool(f.held(VirtualControl(i))))
+			level.RawSetString(name, lua.LNumber(f.level(VirtualControl(i))))
+		}
+		l.Push(held)
+		l.Push(level)
+		return 2
+	})
+	luaRegister(l, "inputIsLocal", func(l *lua.LState) int {
+		/*Check whether side select and reconnecting are handled locally (not in netplay).
+		@function inputIsLocal
+		@treturn boolean local `true` if not in a netplay session.*/
+		l.Push(lua.LBool(!sys.netplay()))
+		return 1
+	})
+	luaRegister(l, "inputIsSetupButton", func(l *lua.LState) int {
+		/*Check whether a name is an engine button or concatenated button names, such as xa or startmenu.
+		@function inputIsSetupButton
+		@tparam string name Button name.
+		@treturn boolean valid `true` if the name maps to engine buttons.*/
+		l.Push(lua.LBool(setupButtonMask(strArg(l, 1)) != 0))
+		return 1
+	})
+	luaRegister(l, "inputKeepSide", func(l *lua.LState) int {
+		/*Release every participant that is not on the given side.
+		@function inputKeepSide
+		@tparam int side Team side to keep (`1` or `2`).*/
+		side := TeamSide(numArg(l, 1))
+		for i, p := range sys.inputs.Participants {
+			if p.Side != side {
+				delete(sys.inputs.sharedDevices, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "inputNewSetup", func(l *lua.LState) int {
+		/*Create a Controller Setup and select it for a device. Disk writes use the normal Options save.
+		@function inputNewSetup
+		@tparam table setup Setup table (`name` and engine button fields).
+		@tparam string copyName Name used if `name` is already taken; `%s` is replaced by `name`.
+		@tparam[opt] int deviceId Device that switches to the new setup.
+		@treturn string setupId New setup ID, or an empty string if the name is empty.*/
+		p := setupFromTable(tableArg(l, 1))
+		if p.Name == "" {
+			l.Push(lua.LString(""))
+			return 1
+		}
+		id, err := sys.cfg.addControllerSetup(p, strArg(l, 2))
+		if err != nil {
+			l.RaiseError("%v", err)
+		}
+		sys.loadInputConfig(&sys.cfg)
+		if !nilArg(l, 3) {
+			sys.setDeviceSetup(int(numArg(l, 3)), id)
+		}
+		l.Push(lua.LString(id))
+		return 1
+	})
+	luaRegister(l, "inputPlayerDisconnected", func(l *lua.LState) int {
+		/*Report whether a player slot's device is assigned but disconnected.
+		@function inputPlayerDisconnected
+		@tparam int player 1-based slot.
+		@treturn boolean disconnected `true` only when the slot owns devices and none are connected.*/
+		l.Push(lua.LBool(sys.hintPlayerDisconnected(int(numArg(l, 1)) - 1)))
+		return 1
+	})
+	luaRegister(l, "inputResetForMenus", func(l *lua.LState) int {
+		/*Go back to menu mode: releases all players, so any device can control the menus again.
+		  Does nothing during netplay.
+		@function inputResetForMenus*/
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		return 0
+	})
+	luaRegister(l, "inputRestoreDefaults", func(l *lua.LState) int {
+		/*Restore all keyboard controllers and Controller Setups to their shipped definitions
+		  and drop gamepad mapping overrides. SDL mappings are separate.
+		@function inputRestoreDefaults*/
+		for key := range sys.cfg.ControllerSetup {
+			sys.cfg.removeControllerSetup(strings.TrimPrefix(key, "controllersetup_"))
+		}
+		for key := range sys.cfg.ButtonMapping {
+			if strings.HasPrefix(key, "buttonmapping_controller_") {
+				sys.cfg.removeButtonMapping(strings.TrimPrefix(key, "buttonmapping_"))
+			}
+		}
+		for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
+			key := iniSectionID(sec)
+			if strings.HasPrefix(key, "controllersetup_") {
+				var p ControllerSetupProperties
+				if sys.cfg.shippedSection(key, &p) {
+					_ = sys.cfg.saveControllerSetup(strings.TrimPrefix(key, "controllersetup_"), &p)
+				}
+			} else if strings.HasPrefix(key, "buttonmapping_") {
+				var p ButtonMappingProperties
+				if sec.MapTo(&p) == nil {
+					_ = sys.cfg.saveButtonMapping(strings.TrimPrefix(key, "buttonmapping_"), p.Name, p.mapping())
+				}
+			}
+		}
+		sys.loadInputConfig(&sys.cfg)
+		sys.clearCommandBuffers()
+		return 0
+	})
+	luaRegister(l, "inputSaveMapping", func(l *lua.LState) int {
+		/*Update the Button Mapping of a device. Options saving writes it to disk.
+		  A gamepad mapping that maps every control to itself removes the override.
+		@function inputSaveMapping
+		@tparam int deviceId Device ID.
+		@tparam table mapping Physical input per virtual control, as returned by `inputGetMapping`.
+		@treturn boolean success `false` if the device is unavailable. Keys shared with another
+		  keyboard controller are allowed; side select keeps those players from joining together.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		m := mappingFromTable(tableArg(l, 2), device.Joy < 0)
+		if device.Joy < 0 {
+			_ = sys.cfg.saveButtonMapping(device.Keyboard, device.Name, m)
+		} else if m == identityButtonMapping() {
+			sys.cfg.removeButtonMapping("controller_" + device.preferenceKey())
+		} else {
+			_ = sys.cfg.saveButtonMapping("controller_"+device.preferenceKey(), device.Name, m)
+		}
+		sys.loadInputConfig(&sys.cfg)
+		// Synchronized buffers are match state, and only this peer saves its mapping.
+		if !sys.synchronizedInput() {
+			sys.clearCommandBuffers()
+		}
+		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputSessionCapture", func(l *lua.LState) int {
+		/*Button Mapping capture in netplay. Only the peer with the device sees the press, so it
+		  sends an event and every peer finishes the capture when the event arrives.
+		@function inputSessionCapture
+		@tparam int player 1-based player slot.
+		@tparam[opt=false] boolean send `true` to send the event from this peer.
+		@treturn boolean arrived `true` on the frame the player's event arrives.*/
+		if !nilArg(l, 2) && boolArg(l, 2) {
+			sys.netMenuCapture = true
+		}
+		channel := sys.uiControllerKey(int(numArg(l, 1)) - 1)
+		l.Push(lua.LBool(channel >= 0 && channel < len(sys.menuChannels) && sys.menuChannels[channel].capture))
+		return 1
+	})
+	luaRegister(l, "inputSaveSessionSetup", func(l *lua.LState) int {
+		/*Apply a Controller Setup to a player for the rest of this netplay session, without
+		  changing saved setups. Only the player whose pause menu is open can do this.
+		@function inputSaveSessionSetup
+		@tparam int player 1-based player slot.
+		@tparam table setup Setup table, as returned by `inputGetSessionSetup`.
+		@treturn boolean ok `true` if the setup was applied.*/
+		l.Push(lua.LBool(sys.saveSessionSetup(int(numArg(l, 1)), setupFromTable(tableArg(l, 2)))))
+		return 1
+	})
+	luaRegister(l, "inputSaveSetup", func(l *lua.LState) int {
+		/*Update a Controller Setup. Options saving writes it to disk.
+		@function inputSaveSetup
+		@tparam string setupId Setup ID.
+		@tparam table setup Setup table (`name` and engine button fields).
+		@treturn boolean success `false` for an unknown setup or an empty name.*/
+		id := strArg(l, 1)
+		p := setupFromTable(tableArg(l, 2))
+		if sys.cfg.ControllerSetup["controllersetup_"+id] == nil || p.Name == "" {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		if err := sys.cfg.saveControllerSetup(id, p); err != nil {
+			l.RaiseError("%v", err)
+		}
+		sys.loadInputConfig(&sys.cfg)
+		sys.clearCommandBuffers()
+		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputSetDeviceSetup", func(l *lua.LState) int {
+		/*Select the Controller Setup of a device. The choice is remembered per device.
+		@function inputSetDeviceSetup
+		@tparam int deviceId Device ID.
+		@tparam string setupId Setup ID.
+		@treturn boolean success `false` if the device or setup is unknown.*/
+		l.Push(lua.LBool(sys.setDeviceSetup(int(numArg(l, 1)), strArg(l, 2))))
+		return 1
+	})
+	luaRegister(l, "inputSetGlyphDevice", func(l *lua.LState) int {
+		/*Make a device the one hints show and the mouse acts for, as if it was used last.
+		@function inputSetGlyphDevice
+		@tparam int deviceId Device ID.*/
+		sys.noteGlyphInput(int(numArg(l, 1)))
+		return 0
+	})
+	luaRegister(l, "inputSetGlyphPack", func(l *lua.LState) int {
+		/*Choose the glyph pack of a device. Saved right away.
+		@function inputSetGlyphPack
+		@tparam int deviceId Device ID.
+		@tparam string pack Glyph pack name, or an empty string to detect it from the device.
+		@treturn boolean success `true` if the choice was saved.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		err := sys.cfg.rememberControllerGlyphs(device, strings.ToLower(strArg(l, 2)))
+		if err != nil {
+			LogMessage("Unable to remember controller glyphs: %v", err)
+		}
+		l.Push(lua.LBool(err == nil))
+		return 1
+	})
+	luaRegister(l, "inputSetMenuFocus", func(l *lua.LState) int {
+		/*Let one device alone drive menus, whether or not it has a player slot.
+		@function inputSetMenuFocus
+		@tparam int deviceId Device ID, or `0` to read player slots again.
+		@treturn int previous Previous focus; restore it when the screen closes.*/
+		previous := sys.menuFocus
+		sys.menuFocus = int(numArg(l, 1))
+		if device := sys.inputs.device(sys.menuFocus); device != nil && !sys.netplay() {
+			sys.inputs.MenuDevice = device.ID
+		}
+		l.Push(lua.LNumber(previous))
+		return 1
+	})
+	luaRegister(l, "inputSetReady", func(l *lua.LState) int {
+		/*Set the ready state of the participant owning a device.
+		@function inputSetReady
+		@tparam int deviceId Device ID.
+		@tparam boolean ready Ready state.*/
+		sys.inputs.setReady(int(numArg(l, 1)), boolArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "inputSetupEditable", func(l *lua.LState) int {
+		/*Check whether a device may change a Controller Setup in place: a custom setup no other
+		  device uses. Shipped setups and shared ones are copied before they are edited.
+		@function inputSetupEditable
+		@tparam string setupId Setup ID.
+		@tparam int deviceId Device ID.
+		@treturn boolean owned `true` if the setup can be edited in place.*/
+		id := strArg(l, 1)
+		device := sys.inputs.device(int(numArg(l, 2)))
+		owned := device != nil && sys.cfg.ControllerSetup["controllersetup_"+id] != nil &&
+			!sys.cfg.shippedSection("controllersetup_"+id, &ControllerSetupProperties{})
+		for key, setup := range sys.cfg.Input.ControllerSetup {
+			if setup == id && key != device.preferenceKey() {
+				owned = false
+			}
+		}
+		for _, other := range sys.inputs.Devices {
+			if other.Setup == id && device != nil && other.ID != device.ID && other.preferenceKey() != device.preferenceKey() {
+				owned = false
+			}
+		}
+		l.Push(lua.LBool(owned))
 		return 1
 	})
 	luaRegister(l, "jsonDecode", func(*lua.LState) int {
@@ -4442,9 +5197,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		sys.motif = *m
 
-		// Initialize the LUT for nokey (helps fix #3091 for all cases)
-		StringToButtonLUT[sys.motif.OptionInfo.Menu.Valuename["nokey"]] = 25
-
 		// defaults-only INI (for values baseline)
 		defIni := sys.motif.DefaultOnlyIni
 		if defIni == nil {
@@ -4622,6 +5374,30 @@ func systemScriptInit(l *lua.LState) {
 			eachIniKeys(sys.motif.UserIniFile, sec, pref, func(r, v string) { apply(r, v, false) })
 		}
 
+		// Flatten menu.hint.text.<path> keys (dots -> underscores) into the
+		// menu.hint.text subtable, so lookups match an item's paramname.
+		populateHint := func(sec string, path []string, pref string, root *lua.LTable) {
+			dst := getTbl(root, append(append([]string{}, path...), "hint"))
+			if dst == nil {
+				return
+			}
+			// Replace any generically parsed text table (which keys by last part
+			// only) with one keyed by the full flattened path.
+			text := l.NewTable()
+			dst.RawSetString("text", text)
+			apply := func(rest, v string) {
+				val, empty := normalizeMenuValue(v)
+				k := strings.ReplaceAll(rest, ".", "_")
+				if empty {
+					text.RawSetString(k, lua.LNil)
+					return
+				}
+				text.RawSetString(k, lua.LString(val))
+			}
+			eachIniKeys(defIni, sec, pref, func(r, v string) { apply(r, v) })
+			eachIniKeys(sys.motif.UserIniFile, sec, pref, func(r, v string) { apply(r, v) })
+		}
+
 		// order for flat itemname.*
 		buildFlatOrder := func(sec string, path []string, pref string, root *lua.LTable) {
 			dst := getTbl(root, path)
@@ -4629,7 +5405,7 @@ func systemScriptInit(l *lua.LState) {
 				return
 			}
 			type entry struct {
-				flat, base string
+				flat, base, parent string
 				disabled   bool
 			}
 			collect := func(file *ini.File, sec string) (out []entry) {
@@ -4652,13 +5428,14 @@ func systemScriptInit(l *lua.LState) {
 							continue
 						}
 						p := n[len(pref):]
-						base := p
+						base, parent := p, ""
 						if i := strings.LastIndex(base, "."); i >= 0 {
-							base = base[i+1:]
+							base, parent = base[i+1:], strings.ReplaceAll(p[:i], ".", "_")
 						}
 						e := entry{
 							flat:     strings.ReplaceAll(p, ".", "_"),
 							base:     strings.ToLower(base),
+							parent:   parent,
 							disabled: isEmpty(k.Value()),
 						}
 						if _, ok := byFlat[e.flat]; !ok {
@@ -4686,7 +5463,7 @@ func systemScriptInit(l *lua.LState) {
 			defs := collect(sys.motif.IniFile, sec)
 
 			seenFlat := map[string]bool{}     // exact items we've added (e.g. "menuversus_back")
-			seenBase := map[string]bool{}     // leafs seen among added items (e.g. "arcade", "survival")
+			seenBase := map[string]bool{}     // leafs the user motif placed (e.g. "arcade", "survival")
 			disabledFlat := map[string]bool{} // exact items disabled
 			disabledBase := map[string]bool{} // leaf/suffix disabled via any user empty assignment
 
@@ -4720,8 +5497,41 @@ func systemScriptInit(l *lua.LState) {
 			}
 
 			var final []string
+			indexOf := func(flat string) int {
+				for i, f := range final {
+					if f == flat {
+						return i
+					}
+				}
+				return -1
+			}
+			// Default items the user motif skips stay next to their default neighbours,
+			// instead of moving to the end of the menu.
+			insertDefault := func(arr []entry, k int) {
+				e := arr[k]
+				at := -1
+				for i := k - 1; i >= 0 && at < 0; i-- {
+					if arr[i].parent == e.parent && seenFlat[arr[i].flat] {
+						if idx := indexOf(arr[i].flat); idx >= 0 {
+							at = idx + 1
+						}
+					}
+				}
+				for i := k + 1; i < len(arr) && at < 0; i++ {
+					if arr[i].parent == e.parent && seenFlat[arr[i].flat] {
+						at = indexOf(arr[i].flat)
+					}
+				}
+				if at < 0 {
+					final = append(final, e.flat)
+					return
+				}
+				final = append(final, "")
+				copy(final[at+1:], final[at:])
+				final[at] = e.flat
+			}
 			process := func(arr []entry, isDefault bool) {
-				for _, e := range arr {
+				for k, e := range arr {
 					if e.disabled {
 						disabledFlat[e.flat] = true
 						continue
@@ -4738,13 +5548,18 @@ func systemScriptInit(l *lua.LState) {
 					if seenFlat[e.flat] {
 						continue
 					}
-					// For defaults, suppress items whose leaf was already added from user entries (or earlier), but do not suppress back or spacer*
+					// A user entry moves the item, so drop its default position. Only user entries do this:
+					// defaults may reuse a name across submenus, and back/spacer* repeat by design.
 					if isDefault && e.base != "back" && !isSpacerKey(e.base) && seenBase[e.base] {
 						continue
 					}
 					seenFlat[e.flat] = true
-					seenBase[e.base] = true
-					final = append(final, e.flat)
+					if isDefault {
+						insertDefault(arr, k)
+					} else {
+						seenBase[e.base] = true
+						final = append(final, e.flat)
+					}
 				}
 			}
 
@@ -4908,7 +5723,12 @@ func systemScriptInit(l *lua.LState) {
 		for _, s := range mi {
 			populateItemName(s.sec, s.path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(s.sec, s.path, "menu.itemname.", lTable)
+			populateHint(s.sec, s.path, "menu.hint.text.", lTable)
 		}
+		rematchPath := []string{"victory_screen", "rematch", "menu"}
+		populateItemName("Victory Screen", rematchPath, "rematch.menu.itemname.", "flat", lTable)
+		buildFlatOrder("Victory Screen", rematchPath, "rematch.menu.itemname.", lTable)
+		populateHint("Victory Screen", rematchPath, "rematch.menu.hint.text.", lTable)
 		// Handle every derived [* Pause Menu]
 		for _, sec := range customPauseMenuSections(sys.motif.IniFile) {
 			key := normalizeSectionName(sec)
@@ -4921,9 +5741,8 @@ func systemScriptInit(l *lua.LState) {
 			}
 			populateItemName(src, path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(src, path, "menu.itemname.", lTable)
+			populateHint(src, path, "menu.hint.text.", lTable)
 		}
-		populateItemName("Option Info", []string{"option_info", "keymenu"}, "keymenu.itemname.", "flat", lTable)
-		buildFlatOrder("Option Info", []string{"option_info", "keymenu"}, "keymenu.itemname.", lTable)
 		populateItemName("Select Info", []string{"select_info", "teammenu"}, "teammenu.itemname.", "team", lTable)
 		buildTeamOrder("Select Info", []string{"select_info", "teammenu"}, lTable)
 
@@ -5204,6 +6023,152 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.RaiseError("\nmodifyStoryboard: %v\n", err.Error())
 		return 0
+	})
+	luaRegister(l, "mouseActive", func(l *lua.LState) int {
+		/*Whether the mouse was the last UI input used.
+		@function mouseActive
+		@treturn boolean active*/
+		sys.pollDevices()
+		l.Push(lua.LBool(sys.mouse.enabled() && sys.mouse.active))
+		return 1
+	})
+	luaRegister(l, "mouseMoved", func(l *lua.LState) int {
+		/*Whether the pointer moved this frame, so menus can follow it.
+		@function mouseMoved
+		@treturn boolean moved*/
+		sys.pollDevices()
+		l.Push(lua.LBool(sys.mouse.enabled() && sys.mouse.moved))
+		return 1
+	})
+	luaRegister(l, "mouseOver", func(l *lua.LState) int {
+		/*Check whether the pointer is over a UI element or rectangle.
+		  For a rectangle, all six numbers are required: `left, top, right, bottom, width, height`.
+		@function mouseOver
+		@tparam Rect|Anim|TextSprite|table|number target Element or `batchDraw` item, or the rectangle's left X coordinate.
+		@tparam[opt] boolean|float32 arg2 Numbers: top Y coordinate. Anim/draw item: `true` ignores transparent pixels (default `false`).
+		  Rect: replacement left X; supply all four edges together, or omit them to use its current bounds.
+		@tparam[opt] float32 arg3 Numbers: right X coordinate, not width. Rect: replacement top Y.
+		@tparam[opt] float32 arg4 Numbers: bottom Y coordinate, not height. Rect: replacement right X.
+		@tparam[opt] float32 arg5 Numbers: drawing localcoord width, e.g. `1280`. Rect: replacement bottom Y.
+		@tparam[opt] TextSprite|float32 arg6 Numbers: drawing localcoord height, e.g. `720`; no conversion to 320x240 is needed.
+		  Rect: a TextSprite whose window limits the hit area.
+		@treturn boolean inside `true` if the pointer is over the target.*/
+		previous := sys.captureAspectState()
+		if sys.shouldComposeFullResolution() || sys.textInput.active {
+			sys.restoreAspectState(sys.motifAspectState())
+		}
+		defer sys.restoreAspectState(previous)
+		inside := false
+		if ud, ok := l.Get(1).(*lua.LUserData); ok {
+			switch v := ud.Value.(type) {
+			case *Rect:
+				r := *v
+				if !nilArg(l, 2) {
+					r.SetWindow([4]float32{float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), float32(numArg(l, 5))})
+				}
+				inside = sys.mouse.over(r.drawWindow())
+				if clip, ok := l.Get(6).(*lua.LUserData); ok {
+					if ts, ok := clip.Value.(*TextSprite); ok {
+						inside = inside && sys.mouse.over(ts.drawWindow())
+					}
+				}
+			case *Anim:
+				inside = sys.mouse.overAnim(v, !nilArg(l, 2) && boolArg(l, 2))
+			case *TextSprite:
+				inside = sys.mouse.overText(v)
+			}
+		} else if item, ok := l.Get(1).(*lua.LTable); ok {
+			inside = sys.mouse.overAnim(luaDrawAnim(item), !nilArg(l, 2) && boolArg(l, 2))
+		} else if !nilArg(l, 1) {
+			r := NewRect()
+			r.SetLocalcoord(float32(numArg(l, 5)), float32(numArg(l, 6)))
+			r.SetWindow([4]float32{float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4))})
+			inside = sys.mouse.over(r.drawWindow())
+		}
+		l.Push(lua.LBool(inside))
+		return 1
+	})
+	luaRegister(l, "mousePress", func(l *lua.LState) int {
+		/*Trigger a menu action for this frame.
+		  The next `getAction` call with the same action tokens returns `true`.
+		@function mousePress
+		@tparam number players 1-based player slot, or `-1` for any slot.
+		@tparam table action Action tokens, usually a motif `.action` value.*/
+		players := actionPlayers(l)
+		player := -1
+		if len(players) == 1 {
+			player = players[0]
+		}
+		action := actionTokens(l)
+		if !sys.synchronizedInput() {
+			sys.mouse.pressAction(action, player)
+		} else {
+			if len(players) == 1 && players[0] == -1 {
+				players = sys.mouseSlots(-1)
+			}
+			for _, slot := range players {
+				if mouse := sys.mouseForSlot(slot); mouse != nil {
+					mouse.pressAction(action, slot)
+				}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "mouseSync", func(l *lua.LState) int {
+		/*Share what the mouse points at, so both netplay peers act on the same target.
+		  Outside netplay the local target is returned as is.
+		@function mouseSync
+		@tparam string context Name of the screen or list the target belongs to.
+		@tparam int target Control ID from 1 to 16777215, or `0` when the pointer is over no control.
+		@tparam[opt=-1] int player Player slot starting at 1, or `-1` for the current menu's players.
+		@treturn int target The shared target, or `0` for none.
+		@treturn boolean moved `true` if the pointer moved this frame.
+		@treturn int player 1-based player slot of the pointer, `-1` outside netplay, `0` for none.*/
+		player := -1
+		if !nilArg(l, 3) {
+			player = int(numArg(l, 3))
+		}
+		target := numArg(l, 2)
+		if math.IsNaN(target) || target < 0 || target > menuMouseMaxTarget || target != math.Trunc(target) {
+			l.RaiseError("mouseSync target must be an integer from 0 to %d", menuMouseMaxTarget)
+			return 0
+		}
+		value, moved, owner := sys.syncMouse(strArg(l, 1), uint32(target), sys.mouseSlots(player))
+		l.Push(lua.LNumber(value))
+		l.Push(lua.LBool(moved))
+		l.Push(lua.LNumber(owner))
+		return 3
+	})
+	luaRegister(l, "mouseTake", func(l *lua.LState) int {
+		/*Check for a new mouse press and consume it so another control cannot use it.
+		@function mouseTake
+		@tparam table action Mouse inputs, e.g. `{'MOUSE:LEFT'}`, or a motif `.action` table. Other inputs are ignored.
+		@tparam[opt=-1] int player Player returned by `mouseSync` or `main.f_mouseSync`; `-1` checks the current menu's players.
+		@treturn boolean pressed `true` if one of the listed mouse inputs was pressed this frame.*/
+		var action []string
+		tableArg(l, 1).ForEach(func(_ lua.LValue, v lua.LValue) {
+			action = append(action, lua.LVAsString(v))
+		})
+		player := -1
+		if !nilArg(l, 2) {
+			player = int(numArg(l, 2))
+		}
+		taken := false
+		if player == 0 {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		if !sys.synchronizedInput() {
+			taken = sys.mouse.take(action)
+		} else {
+			for _, slot := range sys.mouseSlots(player) {
+				if mouse := sys.mouseForSlot(slot); mouse != nil {
+					taken = mouse.take(action) || taken
+				}
+			}
+		}
+		l.Push(lua.LBool(taken))
+		return 1
 	})
 	luaRegister(l, "netPlay", func(*lua.LState) int {
 		/*Check whether the current session is running in netplay mode.
@@ -5916,6 +6881,7 @@ func systemScriptInit(l *lua.LState) {
 			} else if sys.motif.fadeIn.isActive() {
 				sys.motif.fadeIn.draw()
 			}
+			sys.textInput.draw()
 		} else {
 			// On skipped frames, discard queued draws to avoid buildup.
 			sys.luaDiscardDrawQueue()
@@ -5925,6 +6891,9 @@ func systemScriptInit(l *lua.LState) {
 			sys.motif.fadeOut.step()
 		} else if sys.motif.fadeIn.isActive() {
 			sys.motif.fadeIn.step()
+		}
+		if sys.motif.bezelActive() {
+			sys.motif.Bezel.AnimData.Update(false)
 		}
 		sys.stepCommandLists()
 		sys.uiFrameCounter++
@@ -5948,10 +6917,10 @@ func systemScriptInit(l *lua.LState) {
 		/*Remap logical player input to another player slot.
 		@function remapInput
 		@tparam int32 srcPlayer Source player number (1-based).
-		@tparam int32 dstPlayer Destination player number (1-based).*/
+		@tparam int32 dstPlayer Local participant or synchronized input channel (1-based); 0 disables input.*/
 		src, dst := int(numArg(l, 1)), int(numArg(l, 2))
 		if src < 1 || src > len(sys.inputRemap) ||
-			dst < 1 || dst > len(sys.inputRemap) {
+			dst < 0 || dst > len(sys.inputRemap) {
 			l.RaiseError("\nInvalid player number: %v, %v\n", src, dst)
 		}
 		sys.inputRemap[src-1] = dst - 1
@@ -6016,10 +6985,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "resetKey", func(*lua.LState) int {
-		/*Clear the last captured key and text input.
+		/*Clear the last captured key.
 		@function resetKey*/
 		sys.keyInput = KeyUnknown
-		sys.keyString = ""
 		return 0
 	})
 	luaRegister(l, "resetMatchData", func(*lua.LState) int {
@@ -6059,6 +7027,12 @@ func systemScriptInit(l *lua.LState) {
 		sys.uiResetTokenGuard()
 		return 0
 	})
+	luaRegister(l, "resetVersusStats", func(*lua.LState) int {
+		/*Clear the wins, win streaks and match count shown on the versus results.
+		@function resetVersusStats*/
+		sys.versusStats = VersusStats{}
+		return 0
+	})
 	luaRegister(l, "resolveCharDef", func(l *lua.LState) int {
 		/*Resolve a character declaration to its `.def` path without adding the character.
 		@function resolveCharDef
@@ -6081,6 +7055,35 @@ func systemScriptInit(l *lua.LState) {
 			l.Push(lua.LString(p))
 			return 1
 		}
+		return 0
+	})
+	luaRegister(l, "restartGame", func(l *lua.LState) int {
+		/*Start a new engine process with the same arguments, then exit this one.
+		  Used when the renderer changes. Not available on Android or iOS.
+		@function restartGame
+		@treturn boolean success `false` if the new process could not start.
+		@treturn string|nil error Reason the restart failed.*/
+		if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString("restarting is not supported on this platform"))
+			return 2
+		}
+		exe, err := os.Executable()
+		if err == nil {
+			cmd := exec.Command(exe, os.Args[1:]...)
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+			// Config, motif and shader paths are relative to the working directory.
+			cmd.Dir, err = os.Getwd()
+			if err == nil {
+				err = cmd.Start()
+			}
+		}
+		if err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		handleExit()
 		return 0
 	})
 	luaRegister(l, "roundOver", func(*lua.LState) int {
@@ -6415,44 +7418,6 @@ func systemScriptInit(l *lua.LState) {
 		sys.credits = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setDefaultConfig", func(l *lua.LState) int {
-		/*Apply default key or joystick bindings for a player.
-		@function setDefaultConfig
-		@tparam string configType Configuration type: `"Keys"` or `"Joystick"`.
-		@tparam int playerNo Player number (1-based).
-		@tparam[opt] table enabled Optional table limiting which bindings are set.
-		  Can be either:
-		  - an array-like table of binding names, or
-		  - a map-like table `{bindingName = true, ...}`.*/
-		cfgType := strArg(l, 1)
-		pn := int(numArg(l, 2))
-		var enabled map[string]bool
-		if !nilArg(l, 3) {
-			enabled = make(map[string]bool, 16)
-			tableArg(l, 3).ForEach(func(k, v lua.LValue) {
-				// map-style: enabled["up"]=true
-				if ks, ok := k.(lua.LString); ok {
-					if lua.LVAsBool(v) {
-						enabled[string(ks)] = true
-					}
-					return
-				}
-				// array-style: {"up","down",...}
-				if vs, ok := v.(lua.LString); ok {
-					enabled[string(vs)] = true
-				}
-			})
-		}
-		switch cfgType {
-		case "Keys":
-			sys.uiSetConfigDefaults(pn, false, enabled)
-		case "Joystick":
-			sys.uiSetConfigDefaults(pn, true, enabled)
-		default:
-			l.RaiseError("\nInvalid config type: %v\n", cfgType)
-		}
-		return 0
-	})
 	luaRegister(l, "setDizzyPoints", func(*lua.LState) int {
 		/*[redirectable] Set the character's dizzy points.
 		@function setDizzyPoints
@@ -6504,104 +7469,6 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		sys.home = tn - 1
-		return 0
-	})
-	luaRegister(l, "setKeyConfig", func(l *lua.LState) int {
-		/*Configure keyboard or joystick bindings for a player.
-		@function setKeyConfig
-		@tparam int playerNo Player number (1-based).
-		@tparam int controllerId Input config target selector: `-1` updates keyboard bindings,
-		  any value `>= 0` updates joystick bindings.
-		@tparam table mapping Table mapping button indices (`1`–`14`) to key/button names (string).*/
-		pn := int(numArg(l, 1))
-		joy := int(numArg(l, 2))
-		if pn < 1 || (joy == -1 && pn > len(sys.keyConfig)) || (joy >= 0 && pn > len(sys.joystickConfig)) {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
-		}
-		if joy < -1 || joy > len(sys.joystickConfig) {
-			l.RaiseError("\nInvalid controller number: %v\n", joy)
-		}
-		tableArg(l, 3).ForEach(func(key, value lua.LValue) {
-			if joy == -1 {
-				btn := int(StringToKey(lua.LVAsString(value)))
-				switch int(lua.LVAsNumber(key)) {
-				case 1:
-					sys.keyConfig[pn-1].dU = btn
-				case 2:
-					sys.keyConfig[pn-1].dD = btn
-				case 3:
-					sys.keyConfig[pn-1].dL = btn
-				case 4:
-					sys.keyConfig[pn-1].dR = btn
-				case 5:
-					sys.keyConfig[pn-1].bA = btn
-				case 6:
-					sys.keyConfig[pn-1].bB = btn
-				case 7:
-					sys.keyConfig[pn-1].bC = btn
-				case 8:
-					sys.keyConfig[pn-1].bX = btn
-				case 9:
-					sys.keyConfig[pn-1].bY = btn
-				case 10:
-					sys.keyConfig[pn-1].bZ = btn
-				case 11:
-					sys.keyConfig[pn-1].bS = btn
-				case 12:
-					sys.keyConfig[pn-1].bD = btn
-				case 13:
-					sys.keyConfig[pn-1].bW = btn
-				case 14:
-					sys.keyConfig[pn-1].bM = btn
-				}
-			} else {
-				btn := StringToButtonLUT[lua.LVAsString(value)]
-				switch int(lua.LVAsNumber(key)) {
-				case 1:
-					sys.joystickConfig[pn-1].dU = btn
-				case 2:
-					sys.joystickConfig[pn-1].dD = btn
-				case 3:
-					sys.joystickConfig[pn-1].dL = btn
-				case 4:
-					sys.joystickConfig[pn-1].dR = btn
-				case 5:
-					sys.joystickConfig[pn-1].bA = btn
-				case 6:
-					sys.joystickConfig[pn-1].bB = btn
-				case 7:
-					sys.joystickConfig[pn-1].bC = btn
-				case 8:
-					sys.joystickConfig[pn-1].bX = btn
-				case 9:
-					sys.joystickConfig[pn-1].bY = btn
-				case 10:
-					sys.joystickConfig[pn-1].bZ = btn
-				case 11:
-					sys.joystickConfig[pn-1].bS = btn
-				case 12:
-					sys.joystickConfig[pn-1].bD = btn
-				case 13:
-					sys.joystickConfig[pn-1].bW = btn
-				case 14:
-					sys.joystickConfig[pn-1].bM = btn
-				}
-			}
-		})
-		sys.uiResetTokenGuard()
-		return 0
-	})
-	luaRegister(l, "setLastInputController", func(l *lua.LState) int {
-		/*Set the last UI input controller.
-		@function setLastInputController
-		@tparam int playerNo 1-based player/controller index. Values less than `1` clear it.*/
-		// Lua-facing controller indices are 1-based
-		n := int(numArg(l, 1))
-		if n >= 1 {
-			sys.lastInputController = n - 1
-		} else {
-			sys.lastInputController = -1
-		}
 		return 0
 	})
 	luaRegister(l, "setLife", func(*lua.LState) int {
@@ -6674,19 +7541,19 @@ func systemScriptInit(l *lua.LState) {
 		if _, ok := sys.fightScreen.match.enabled[sys.gameMode]; ok {
 			sys.fightScreen.match.active = sys.fightScreen.match.enabled[sys.gameMode]
 		}
-		for _, v := range sys.fightScreen.aiLevels {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.aiLevels {
+			if enabled, ok := sys.fightScreen.aiLevels[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
-		for _, v := range sys.fightScreen.scores {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.scores {
+			if enabled, ok := sys.fightScreen.scores[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
-		for _, v := range sys.fightScreen.winCounts {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.winCounts {
+			if enabled, ok := sys.fightScreen.winCounts[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
 		if _, ok := sys.fightScreen.timer.enabled[sys.gameMode]; ok {
@@ -6791,61 +7658,6 @@ func systemScriptInit(l *lua.LState) {
 		})
 		return 0
 	})
-	luaRegister(l, "setPlayers", func(l *lua.LState) int {
-		/*Resize player input configuration data to match `config.Players`.
-		@function setPlayers*/
-		total := sys.cfg.Config.Players
-		if err := sys.uiEnsureCommandLists(total); err != nil {
-			l.RaiseError("\nuiEnsureCommandLists: %v\n", err.Error())
-		}
-		// Resize sys.keyConfig
-		if len(sys.keyConfig) > total {
-			sys.keyConfig = sys.keyConfig[:total]
-		} else {
-			for i := len(sys.keyConfig); i < total; i++ {
-				sys.keyConfig = append(sys.keyConfig, KeyConfig{})
-			}
-		}
-		// Cleanup sys.cfg.Keys
-		for key := range sys.cfg.Keys {
-			var num int
-			if _, err := fmt.Sscanf(key, "keys_p%d", &num); err != nil || num > total {
-				delete(sys.cfg.Keys, key)
-				sys.cfg.IniFile.DeleteSection(fmt.Sprintf("Keys_P%d", num))
-			}
-		}
-		// Resize sys.joystickConfig
-		if len(sys.joystickConfig) > total {
-			sys.joystickConfig = sys.joystickConfig[:total]
-		} else {
-			for i := len(sys.joystickConfig); i < total; i++ {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{})
-			}
-		}
-		// Cleanup sys.cfg.Joystick
-		for key := range sys.cfg.Joystick {
-			var num int
-			if _, err := fmt.Sscanf(key, "joystick_p%d", &num); err != nil || num > total {
-				delete(sys.cfg.Joystick, key)
-				sys.cfg.IniFile.DeleteSection(fmt.Sprintf("Joystick_P%d", num))
-			}
-		}
-		// Defaults for newly added players
-		_, noJoy := sys.cmdFlags["-nojoy"]
-		for pn := 1; pn <= total; pn++ {
-			// Keyboard: apply defaults only if Keys_Pn section is missing.
-			if kp, ok := sys.cfg.Keys[fmt.Sprintf("keys_p%d", pn)]; !ok || kp == nil {
-				sys.uiSetConfigDefaults(pn, false, nil)
-			}
-			if !noJoy {
-				if jp, ok := sys.cfg.Joystick[fmt.Sprintf("joystick_p%d", pn)]; !ok || jp == nil {
-					sys.uiSetConfigDefaults(pn, true, nil)
-				}
-			}
-		}
-		sys.uiResetTokenGuard()
-		return 0
-	})
 	luaRegister(l, "setPower", func(*lua.LState) int {
 		/*[redirectable] Set the character's power.
 		@function setPower
@@ -6871,6 +7683,17 @@ func systemScriptInit(l *lua.LState) {
 			t += sys.curFramesPerCount - 1
 		}
 		sys.maxRoundTime = t
+		return 0
+	})
+	luaRegister(l, "setRunSide", func(l *lua.LState) int {
+		/*Set the side running the mode.
+		@function setRunSide
+		@tparam int side Team side (`1` or `2`).*/
+		side := int(numArg(l, 1))
+		if side < 1 || side > 2 {
+			l.RaiseError("invalid run side: %d", side)
+		}
+		sys.runSide = int32(side - 1)
 		return 0
 	})
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
@@ -7190,7 +8013,8 @@ func systemScriptInit(l *lua.LState) {
 		/*Create a new empty text sprite.
 		@function textImgNew
 		@treturn TextSprite ts Newly created text sprite userdata.*/
-		l.Push(newUserData(l, NewTextSprite()))
+		ts := NewTextSprite()
+		l.Push(newUserData(l, ts))
 		return 1
 	})
 	luaRegister(l, "textImgReset", func(*lua.LState) int {
@@ -7355,6 +8179,18 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.friction[0] = float32(numArg(l, 2))
 		ts.friction[1] = float32(numArg(l, 3))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphDevice", func(*lua.LState) int {
+		/*Select the device whose buttons <action:...>, <control:...> and <input:...> show in this text sprite.
+		@function textImgSetGlyphDevice
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam int deviceId Runtime device ID; zero follows the last menu input.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphDevice = int(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "textImgSetLayerno", func(*lua.LState) int {
@@ -7607,6 +8443,43 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.Update()
+		return 0
+	})
+	luaRegister(l, "textInputCancel", func(l *lua.LState) int {
+		/*Cancel text entry when its owning screen closes.
+		@function textInputCancel*/
+		sys.textInput.finish(false)
+		return 0
+	})
+	luaRegister(l, "textInputPoll", func(l *lua.LState) int {
+		/*Advance text entry once per frame. Drawing uses the normal render loop.
+		@function textInputPoll
+		@treturn boolean finished Session has closed.
+		@treturn string value Current text (initial text on cancellation).
+		@treturn boolean accepted True only on confirmation; empty text may be confirmed.*/
+		sys.textInput.step()
+		l.Push(lua.LBool(!sys.textInput.active))
+		l.Push(lua.LString(string(sys.textInput.value)))
+		l.Push(lua.LBool(sys.textInput.accepted))
+		return 3
+	})
+	luaRegister(l, "textInputStart", func(l *lua.LState) int {
+		/*Open the shared modal keyboard. Poll until finished; only one session may be open.
+		@function textInputStart
+		@tparam string title Prompt text.
+		@tparam[opt=""] string value Initial text.
+		@tparam[opt=0] int maxlength Code point limit; 0 uses Keyboard Info.
+		*/
+		value, maximum := "", 0
+		if !nilArg(l, 2) {
+			value = strArg(l, 2)
+		}
+		if !nilArg(l, 3) {
+			maximum = int(numArg(l, 3))
+		}
+		if err := sys.textInput.open(strArg(l, 1), value, maximum, 0); err != nil {
+			l.RaiseError("%v", err)
+		}
 		return 0
 	})
 	luaRegister(l, "toggleClsnDisplay", func(*lua.LState) int {

@@ -32,12 +32,18 @@ function main.f_fileWrite(path, str, mode)
 	file:close()
 end
 
---returns value depending on button pressed (a = 1; a + start = 7 etc.)
+-- Palette of the button pressed this frame: the Nth button of [Select Info]
+-- palette.action picks palette N, plus 6 while palette.shift is held. 0 if none.
 function main.f_btnPalNo(p)
-	local s = 0
-	if commandGetState(p, '/s') then s = 6 end
-	for i, k in ipairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
-		if commandGetState(p, k) then return i + s end
+	local sec = motif.select_info.palette
+	for i, token in ipairs(sec.action) do
+		if getActionTime(p, token) == 1 then
+			-- A mouse button picks the first palette.
+			if token:upper():find('^MOUSE:') then
+				i = 1
+			end
+			return getActionTime(p, sec.shift.action) > 0 and i + 6 or i
+		end
 	end
 	return 0
 end
@@ -49,7 +55,7 @@ function main.f_restoreInput()
 	end
 	resetRemapInput()
 	-- Restore to the base mapping captured at the mode start.
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		local v = main.t_baseRemapInput[i] or i
 		if i ~= v then
 			remapInput(i, v)
@@ -60,7 +66,7 @@ end
 -- capture current remap state as the "base" mapping restored after each match
 function main.f_saveBaseRemapInput()
 	main.t_baseRemapInput = {}
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		main.t_baseRemapInput[i] = getRemapInput(i)
 	end
 end
@@ -259,8 +265,8 @@ function hook.stop(list, name)
 	hook.lists[list][name] = nil
 end
 
---animDraw at specified coordinates
-function main.f_animPosDraw(a, x, y, f)
+-- animDraw at specified coordinates; capture returns the drawn state for mouseOver
+function main.f_animPosDraw(a, x, y, f, capture)
 	if a == nil then
 		return
 	end
@@ -271,8 +277,9 @@ function main.f_animPosDraw(a, x, y, f)
 	if f ~= nil then
 		animSetFacing(a, f)
 	end
-	animDraw(a)
+	local drawn = animDraw(a, nil, capture == true)
 	animUpdate(a)
+	return drawn
 end
 
 --copy table content into new table
@@ -1125,6 +1132,11 @@ function main.f_commandLine()
 	setTeamMode(2, t_teamMode[2], t_numChars[2])
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	local t_params = {}
+	-- Quick versus has no side select, so assign inputs as if it were disabled:
+	-- one human per side, before remapInput below gives each character its side's controls.
+	if flags['-ip'] == nil then
+		inputAutoAssign(inputBegin(), 1, 1, true)
+	end
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		local charRef = main.f_findCharRef(v.character)
@@ -1162,7 +1174,16 @@ function main.f_commandLine()
 	end
 	hook.run("main.f_commandLine", t, flags, t_teamMode, t_numChars, t_matchWins, t_params)
 	if flags['-ip'] ~= nil then
+		-- Connecting resets menu routing. Preserve the match's input choices,
+		-- including shared Tag controls, explicit overrides and hook changes.
+		local remap = {}
+		for _, v in ipairs(t) do
+			remap[v.num] = getRemapInput(v.num)
+		end
 		enterNetPlay(flags['-ip'])
+		for pn, input in pairs(remap) do
+			remapInput(pn, input)
+		end
 		while not connected() do
 			if esc() then
 				exitNetPlay()
@@ -1226,31 +1247,44 @@ local function showSessionWarning()
 end
 
 --warning display
-function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd)
+function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd, getValue, frameOnly, hintContext)
 	local overlay = overlay or motif.warning_info.overlay.RectData
 	local titleData = titleData or motif.warning_info.title.TextSpriteData
 	local textData = textData or motif.warning_info.text.TextSpriteData
 	local cancel_snd = cancel_snd or motif.warning_info.cancel.snd
 	local done_snd = done_snd or motif.warning_info.done.snd
-	local ret
 	textImgReset(textData)
 	textImgSetText(textData, text)
 	resetKey()
 	esc(false)
-	while true do
-		if esc() or getInput(-1, sec.menu.cancel.key) then
+	local function drawFrame()
+		if esc() or getAction(-1, sec.menu.cancel.action) then
 			esc(false)
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
-			ret = false
-			break
-		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}) then
-			sndPlay(motif.Snd, done_snd[1], done_snd[2])
 			resetKey()
-			ret = true
-			break
+			resetTokenGuard()
+			return true, false
+		end
+		local value = nil
+		if getValue ~= nil then
+			value = getValue()
+		elseif getAction(-1, sec.menu.done.action) then
+			value = true
+		end
+		if value ~= nil then
+			if value == false then
+				sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
+			else
+				sndPlay(motif.Snd, done_snd[1], done_snd[2])
+			end
+			resetKey()
+			resetTokenGuard()
+			return true, value
 		end
 		--draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		if not frameOnly then
+			clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		end
 		--draw layerno = 0 backgrounds
 		bgDraw(background.BGDef, 0)
 		--draw overlay
@@ -1259,58 +1293,75 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		textImgDraw(titleData)
 		--draw text
 		textImgDraw(textData)
+		-- the infobox reuses this screen, and capture mode waits for a button
+		local hint = motif.warning_info.hint
+		if textData == motif.infobox.text.TextSpriteData then
+			hint = motif.infobox.hint
+		end
+		local context = 'default'
+		if hintContext ~= nil then
+			context = hintContext
+		elseif getValue ~= nil then
+			context = 'capture'
+		end
+		main.f_hintDraw(hint, context, nil, nil, nil, {
+			['menu.done'] = sec.menu.done.action,
+			['menu.cancel'] = sec.menu.cancel.action,
+		})
 		--draw layerno = 1 backgrounds
 		bgDraw(background.BGDef, 1)
 		--tick preload
 		main.f_preloadTick(2)
-		--end loop
+		return false
+	end
+	-- A pause screen supplies its own frame and background clear.
+	if frameOnly then
+		return drawFrame
+	end
+	while true do
+		local finished, value = drawFrame()
+		if finished then
+			return value
+		end
 		refresh()
 	end
-	resetTokenGuard()
-	return ret
 end
 
-function main.f_drawInput(textData, text, sec, background, overlay, defaultInput)
-	local input = defaultInput or ''
-	resetKey()
-	while true do
-		if esc() then
-			input = ''
-			break
+function main.f_inputSound(accepted)
+	local sound = accepted and motif.keyboard_info.done.snd or motif.keyboard_info.cancel.snd
+	sndPlay(motif.Snd, sound[1], sound[2])
+end
+
+-- The engine owns text editing and draws the same keyboard over Lua and native screens.
+function main.f_drawInput(text, defaultInput, frameOnly)
+	textInputStart(text, defaultInput or '')
+	if not frameOnly and not gameRunning() then
+		bgReset(motif.keyboardbgdef.BGDef)
+	end
+	local function drawFrame()
+		local finished, value, accepted = textInputPoll()
+		if finished then
+			resetKey()
+			resetTokenGuard()
+			return true, accepted and value or '', accepted
 		end
-		if getKey(sec.textinput.confirm.keycode) then
-			break
-		elseif getKey(sec.textinput.trim.keycode) then
-			input = input:sub(2)
-		elseif getKey(sec.textinput.truncate.keycode) then
-			input = input:sub(1, -2)
-		elseif getKey(sec.textinput.paste.keycode) then
-			input = input .. getClipboardString()
-		else
-			input = input .. getKeyText()
+		-- Standalone keyboard screens draw their own background outside a match.
+		-- Popups (frameOnly) overlay another screen, and a match keeps its own scene.
+		if not frameOnly and not gameRunning() then
+			local bg = motif.keyboardbgdef
+			clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+			bgDraw(bg.BGDef, 0)
+			bgDraw(bg.BGDef, 1)
 		end
-		resetKey()
-		--draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
-		--draw layerno = 0 backgrounds
-		bgDraw(background.BGDef, 0)
-		--draw overlay
-		rectDraw(overlay)
-		--draw text
-		textImgReset(textData)
-		textImgSetText(textData, text)
-		textImgAddText(textData, '\\n\\n' .. input)
-		textImgDraw(textData)
-		--draw layerno = 1 backgrounds
-		bgDraw(background.BGDef, 1)
-		--tick preload
 		main.f_preloadTick(2)
-		--end loop
+		return false
+	end
+	if frameOnly then return drawFrame end
+	while true do
+		local finished, value = drawFrame()
+		if finished then return value end
 		refresh()
 	end
-	resetKey()
-	resetTokenGuard()
-	return input
 end
 
 --add characters and stages using select.def
@@ -1890,13 +1941,26 @@ if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalma
 
 hook.run("main.selectDef.defaults", main.t_selOptions)
 
+-- applies a text change to everything except inline glyph tags, which are case sensitive
+function main.f_textTransform(text, transform)
+	local parts = {}
+	local pos = 1
+	for first, tag, last in text:gmatch('()(<[^<>]+>)()') do
+		table.insert(parts, transform(text:sub(pos, first - 1)))
+		table.insert(parts, tag)
+		pos = last
+	end
+	table.insert(parts, transform(text:sub(pos)))
+	return table.concat(parts)
+end
+
 --uppercase title
 function main.f_itemnameUpper(title, uppercase)
 	if title == nil then
 		return ''
 	end
 	if uppercase then
-		return title:upper()
+		return main.f_textTransform(title, string.upper)
 	end
 	return title
 end
@@ -1904,15 +1968,34 @@ end
 --returns table storing menu window coordinates
 function main.f_menuWindow(t, offset)
 	local offset = offset or {0, 0}
+	local right = motif.info.localcoord[1]
+	if t.window.width ~= nil and t.window.width > 0 then
+		right = t.pos[1] + offset[1] + t.window.width
+	end
 	if t.window.visibleitems > 0 and (t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0) then
 		return {
 			0,
 			math.max(0, t.pos[2] + offset[2] - t.window.margins.y[1]),
-			motif.info.localcoord[1],
+			right,
 			t.pos[2] + offset[2] + (t.window.visibleitems - 1) * t.item.spacing[2] + t.window.margins.y[2]
 		}
 	end
-	return {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+	return {0, 0, right, motif.info.localcoord[2]}
+end
+
+-- Apply the same clipping window to every menu text state.
+function main.f_menuWindowSet(m, clipBackgrounds)
+	local w = main.f_menuWindow(m)
+	for _, props in ipairs({m.item, m.item.active, m.item.selected, m.item.selected.active, m.item.value, m.item.value.active}) do
+		textImgSetWindow(props.TextSpriteData, w[1], w[2], w[3], w[4])
+	end
+	if clipBackgrounds then
+		for _, bg in ipairs({m.item.bg, m.item.active.bg}) do
+			for _, props in pairs(bg) do
+				animSetWindow(props.AnimData, w[1], w[2], w[3], w[4])
+			end
+		end
+	end
 end
 
 function main.f_storyboard(path)
@@ -1945,8 +2028,6 @@ function main.f_hiscore(mode, place)
 		refresh()
 	end
 end
-
-setPlayers()
 
 --Load additional scripts
 start = require('external.script.start')
@@ -1998,6 +2079,15 @@ local function isValidIp(address)
 end
 
 function main.f_default()
+	main.runSide, main.opponentSide = 1, 2
+	main.sideSelectDone = false
+	main.sideDevices = {{}, {}}
+	main.lockedSelection = {}
+	main.lockedTeamMode = false
+	setRunSide(1)
+	if start.challenger == 0 then
+		inputResetForMenus()
+	end
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
 		ai = false,
@@ -2064,6 +2154,7 @@ function main.f_default()
 	main.quickContinue = false --if by default continuing should skip player selection
 	main.rankingCondition = false --if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false --if loosing should set score for the next match to lose count
+	main.versusResults = false --if versus stats and the rematch menu should follow the victory screen
 	main.rotationChars = false --flags modes where gameOption('Arcade.AI.SurvivalColor') should be used instead of gameOption('Arcade.AI.RandomColor')
 	main.roundTime = gameOption('Options.Time') --sets round time
 	main.selectMenu = {true, false} --which team side should be allowed to select players
@@ -2132,6 +2223,8 @@ main.t_itemname = {
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.arcade)
 			main.teamarcade = false
 		else --teamarcade
+			-- Optional co-op: Single remains available when only one player joins.
+			main.coop = start.challenger == 0
 			main.teamMenu[1].simul = true
 			main.teamMenu[1].single = true
 			main.teamMenu[1].tag = true
@@ -2144,8 +2237,6 @@ main.t_itemname = {
 			main.teamarcade = true
 		end
 		main.f_setCredits()
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('arcade')
 		hook.run("main.t_itemname", t, item)
 		if start.challenger == 0 then
@@ -2166,8 +2257,6 @@ main.t_itemname = {
 		main.teamMenu[1].single = true
 		main.teamMenu[2].single = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.bonus)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('bonus')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2181,6 +2270,7 @@ main.t_itemname = {
 	['freebattle'] = function(t, item)
 		--main.fightscreen.p1score = true
 		--main.fightscreen.p2ailevel = true
+		main.coop = true -- Optional co-op: Single remains available when only one player joins.
 		main.motif.vsscreen = true
 		main.motif.victoryscreen = true
 		main.orderSelect[1] = true
@@ -2196,8 +2286,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.freebattle)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('freebattle')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2205,32 +2293,17 @@ main.t_itemname = {
 	--JOIN (NEW ADDRESS)
 	['joinadd'] = function(t, item)
 		sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-		local name = main.f_drawInput(
-			motif[main.group].textinput.TextSpriteData,
-			motif[main.group].textinput.text.name,
-			motif[main.group],
-			motif[main.background],
-			motif[main.group].textinput.overlay.RectData
-		)
+		local name = main.f_drawInput(motif[main.group].textinput.text.name)
+		main.f_inputSound(name ~= '')
 		if name ~= '' then
-			sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-			local address = main.f_drawInput(
-				motif[main.group].textinput.TextSpriteData,
-				motif[main.group].textinput.text.address,
-				motif[main.group],
-				motif[main.background],
-				motif[main.group].textinput.overlay.RectData
-			)
-			if isValidIp(address) then
-				sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
+			local address = main.f_drawInput(motif[main.group].textinput.text.address)
+			local valid = isValidIp(address)
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.IP.' .. name, address)
 				table.insert(t, #t, {itemname = 'ip_' .. name, displayname = name})
 				saveGameOption(getCommandLineValue("-config"))
-			else
-				sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
 			end
-		else
-			sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
 		end
 		hook.run("main.t_itemname", t, item)
 		return t
@@ -2258,7 +2331,8 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.pauseMenu = false
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.persistLife = true
 		main.persistMusic = true
 		main.persistRounds = true
@@ -2267,6 +2341,7 @@ main.t_itemname = {
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
+		main.teamMenu[1].turns = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2299,7 +2374,8 @@ main.t_itemname = {
 		main.motif.winscreen = true
 		main.numSimul = {2, 2}
 		main.numTag = {2, 2}
-		main.pauseMenu = false
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.resetScore = true
 		main.stageOrder = true
 		main.storyboard.credits = true
@@ -2308,6 +2384,7 @@ main.t_itemname = {
 		main.storyboard.intro = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
+		main.teamMenu[1].turns = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2327,7 +2404,6 @@ main.t_itemname = {
 		main.motif.victoryscreen = true
 		main.orderSelect[1] = true
 		main.orderSelect[2] = true
-		main.pauseMenu = false
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
@@ -2338,6 +2414,7 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
+		main.versusResults = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplayversus)
 		setGameMode('netplayversus')
 		setHomeTeam(1)
@@ -2405,8 +2482,6 @@ main.t_itemname = {
 				break
 			end
 		end
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode(t[item].itemname)
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2419,6 +2494,7 @@ main.t_itemname = {
 		main.charparam.single = true
 		main.charparam.stage = true
 		main.charparam.time = true
+		main.coop = true -- Optional co-op: Single remains available when only one player joins.
 		main.dropDefeated = true
 		main.elimination = true
 		main.exitSelect = true
@@ -2450,8 +2526,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.survival)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('survival')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2479,6 +2553,8 @@ main.t_itemname = {
 		main.matchWins.tag = {1, 1}
 		main.numSimul = {2, math.min(4, gameOption('Config.Players'))}
 		main.numTag = {2, math.min(4, gameOption('Config.Players'))}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.persistLife = true
 		main.persistMusic = true
 		main.persistRounds = true
@@ -2488,6 +2564,7 @@ main.t_itemname = {
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
+		main.teamMenu[1].turns = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2520,6 +2597,8 @@ main.t_itemname = {
 		main.motif.winscreen = true
 		main.numSimul = {2, math.min(4, gameOption('Config.Players'))}
 		main.numTag = {2, math.min(4, gameOption('Config.Players'))}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.resetScore = true
 		main.stageOrder = true
 		main.storyboard.credits = true
@@ -2528,6 +2607,7 @@ main.t_itemname = {
 		main.storyboard.intro = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
+		main.teamMenu[1].turns = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2547,6 +2627,7 @@ main.t_itemname = {
 		main.charparam.single = true
 		main.charparam.stage = true
 		main.charparam.time = true
+		main.coop = true -- Optional co-op: Single remains available when only one player joins.
 		main.exitSelect = true
 		--main.fightscreen.p2ailevel = true
 		--main.fightscreen.timer = true
@@ -2573,8 +2654,6 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.f_setCredits()
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.timeattack)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('timeattack')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2602,8 +2681,6 @@ main.t_itemname = {
 		main.matchWins.single = {0, 0}
 		main.matchWins.tag = {0, 0}
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.training)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('training')
 		setHomeTeam(1)
 		hook.run("main.t_itemname", t, item)
@@ -2625,6 +2702,8 @@ main.t_itemname = {
 			main.teamMenu[2].single = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versus)
 		else --teamversus
+			-- Optional co-op: Single remains available on a side with one player.
+			main.coop = start.challenger == 0
 			main.teamMenu[1].simul = true
 			main.teamMenu[1].single = true
 			main.teamMenu[1].tag = true
@@ -2638,6 +2717,7 @@ main.t_itemname = {
 		if start.challenger > 0 then
 			setGameMode('challenger')
 		else
+			main.versusResults = true
 			setGameMode('versus')
 		end
 		setHomeTeam(1)
@@ -2655,14 +2735,19 @@ main.t_itemname = {
 		--main.fightscreen.p2wincount = true
 		main.motif.vsscreen = true
 		main.motif.victoryscreen = true
-		main.numSimul = {2, math.min(4, math.max(2, math.ceil(gameOption('Config.Players') / 2)))}
-		main.numTag = {2, math.min(4, math.max(2, math.ceil(gameOption('Config.Players') / 2)))}
+		main.numSimul = {1, math.min(4, gameOption('Config.Players') - 1)}
+		main.numTag = {1, math.min(4, gameOption('Config.Players') - 1)}
+		main.orderSelect[1] = true
+		main.orderSelect[2] = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
+		main.teamMenu[1].turns = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].tag = true
+		main.teamMenu[2].turns = true
+		main.versusResults = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versuscoop)
 		setGameMode('versuscoop')
 		setHomeTeam(1)
@@ -2687,8 +2772,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.watch)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('watch')
 		setHomeTeam(1)
 		hook.run("main.t_itemname", t, item)
@@ -2705,19 +2788,13 @@ function main.f_editIP(item, t)
 	end
 	local name = t[item].itemname:gsub('^ip_', '')
 	sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-	local address = main.f_drawInput(
-		motif[main.group].textinput.TextSpriteData,
-		motif[main.group].textinput.text.address,
-		motif[main.group],
-		motif[main.background],
-		motif[main.group].textinput.overlay.RectData,
-		gameOption('Netplay.IP.' .. name)
-	)
-	if not isValidIp(address) then
-		sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+	local address = main.f_drawInput(motif[main.group].textinput.text.address,
+		gameOption('Netplay.IP.' .. name))
+	local valid = isValidIp(address)
+	main.f_inputSound(valid)
+	if not valid then
 		return t
 	end
-	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 	modifyGameOption('Netplay.IP.' .. name, address)
 	saveGameOption(getCommandLineValue("-config"))
 	return t
@@ -2841,11 +2918,18 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			if tbl.reset then
 				tbl.reset = false
 			else
-				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif[main.group], motif[main.background], false)
+				local hintContext = nil
+				if bool_del and t[item].itemname:match('^ip_') then
+					hintContext = 'delete'
+				elseif main.f_hiscoreMode(t[item].itemname) ~= nil then
+					hintContext = 'hiscore'
+				end
+				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif[main.group], motif[main.background], false,
+					{hintContext = hintContext})
 			end
 			-- While fading, ignore normal menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if fadeActive() then
-				if esc() or getInput(-1, motif[main.group].menu.cancel.key) then
+				if esc() or getAction(-1, motif[main.group].menu.cancel.action) then
 					fadeSkip()
 				end
 			elseif main.menu.f ~= nil then
@@ -2866,7 +2950,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					demoFrameCounter = 0
 					introWaitCycles = 0
 				end
-				local cancelInputTime = getInputTime(-1, motif[main.group].menu.cancel.key)
+				local cancelInputTime = getActionTime(-1, motif[main.group].menu.cancel.action)
 				if esc() or cancelInputTime > 0 then
 					-- Only a fresh press (or Esc) backs out or moves to Exit.
 					local fresh = esc() or cancelInputTime == 1
@@ -2902,7 +2986,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					if fresh and (not bool_main or esc()) then
 						break
 					end
-				elseif not netPlay() and bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then
+				elseif not netPlay() and bool_f1 and (getAction(-1, motif.infobox.action) or gameOption('Config.FirstRun')) then
 					if gameOption('Config.FirstRun') then
 						modifyGameOption('Config.FirstRun', false)
 						options.f_saveCfg(false)
@@ -2915,19 +2999,19 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						motif.infobox.title.TextSpriteData,
 						motif.infobox.text.TextSpriteData
 					)
-				elseif not netPlay() and motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
+				elseif not netPlay() and motif.attract_mode.enabled and getAction(-1, motif.attract_mode.options.action) then
 					main.f_default()
 					main.menu.f = main.t_itemname.options()
 					sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 					fadeOutInit(motif[main.group].fadeout.FadeData)
 					resetKey()
-				elseif bool_del and getKey(motif[main.group].menu.item.delete.keycode) then
+				elseif bool_del and getAction(-1, motif[main.group].menu.item.delete.action) then
 					tbl.items = main.f_deleteIP(item, t)
-				elseif bool_del and getKey(motif[main.group].menu.item.rename.keycode) then
+				elseif bool_del and getAction(-1, motif[main.group].menu.item.rename.action) then
 					tbl.items = main.f_editIP(item, t)
 				elseif main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
-				elseif getInput(-1, motif[main.group].menu.done.key) then
+				elseif getAction(-1, motif[main.group].menu.done.action) then
 					demoFrameCounter = 0
 					local f = t[item].itemname
 					if f == 'back' then
@@ -3028,7 +3112,6 @@ end
 function main.f_start()
 	main.menu = {title = main.f_itemnameUpper(motif[main.group].title.text, motif[main.group].menu.title.uppercase), submenu = {}, items = {}}
 	main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
-	local w = main.f_menuWindow(motif[main.group].menu)
 	local t_pos = {} --for storing current main.menu table position
 	local t_skipGroup = {}
 	local lastNum = 0
@@ -3047,7 +3130,7 @@ function main.f_start()
 			elseif c == 'storymode' and #main.t_selStoryMode == 0 then --skip story mode if there are no story arc declared
 				t_skipGroup[c] = true
 				break
-			elseif c == 'versuscoop' and gameOption('Config.Players') < 4 then --skip versus coop if there are not enough players
+			elseif c == 'versuscoop' and gameOption('Config.Players') < 2 then -- skip versus coop if there are not enough players
 				t_skipGroup[c] = true
 				break
 			end
@@ -3120,18 +3203,7 @@ function main.f_start()
 			end
 		end
 	end
-	textImgSetWindow(motif[main.group].menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-	--for _, v in pairs(motif[main.group].menu.item.bg) do
-	--	animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	--end
-	--for _, v in pairs(motif[main.group].menu.item.active.bg) do
-	--	animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	--end
+	main.f_menuWindowSet(motif[main.group].menu)
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 end
 
@@ -3171,36 +3243,29 @@ function main.f_renameReplay(item, t)
 		return t, item
 	end
 	sndPlay(motif.Snd, motif.replay_info.cursor.move.snd[1], motif.replay_info.cursor.move.snd[2])
-	local newName = main.f_drawInput(
-		motif.title_info.textinput.TextSpriteData,
-		motif.title_info.textinput.text.replay,
-		motif.title_info,
-		motif.replaybgdef,
-		motif.title_info.textinput.overlay.RectData,
-		oldName
-	)
+	local newName = main.f_drawInput(motif.title_info.textinput.text.replay, oldName)
 	newName = (newName or ''):match('^%s*(.-)%s*$')
 	newName = newName:gsub('%.[Rr][Ee][Pp][Ll][Aa][Yy]$', '')
 	if newName == '' or newName == oldName then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	if newName:match('[\\/:%*%?"<>|]') then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	local newFile = oldPath .. newName .. '.' .. ext
 	if main.f_fileExists(newFile) then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	local ok, err = os.rename(t[item].itemname, newFile)
 	if not ok then
 		print('Unable to rename replay: ' .. t[item].itemname .. ' -> ' .. newFile .. (err and ' (' .. tostring(err) .. ')' or ''))
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
-	sndPlay(motif.Snd, motif.replay_info.cursor.done.snd[1], motif.replay_info.cursor.done.snd[2])
+	main.f_inputSound(true)
 	t[item].itemname = newFile
 	t[item].displayname = newName
 	return t, item
@@ -3208,19 +3273,7 @@ end
 
 --replay menu
 function main.f_replay()
-	local w = main.f_menuWindow(motif.replay_info.menu)
-	textImgSetWindow(motif.replay_info.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-	for _, v in pairs(motif.replay_info.menu.item.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
-	for _, v in pairs(motif.replay_info.menu.item.active.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
+	main.f_menuWindowSet(motif.replay_info.menu, true)
 	textImgReset(motif.replay_info.title.TextSpriteData)
 	textImgSetText(motif.replay_info.title.TextSpriteData, main.f_itemnameUpper(motif.replay_info.title.text, motif.replay_info.menu.title.uppercase))
 	local cursorPosY = 1
@@ -3242,7 +3295,17 @@ function main.f_replay()
 	playBgm({source = "motif.replay"})
 	main.close = false
 	while true do
-		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replaybgdef, false)
+		local hintContext = nil
+		if t[item].itemname:match('%.replay$') then
+			hintContext = 'replay'
+		end
+		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replaybgdef, false, {
+			hintContext = hintContext,
+			hintActions = {
+				['menu.done'] = motif[main.group].menu.done.action,
+				['menu.cancel'] = motif[main.group].menu.cancel.action,
+			},
+		})
 		cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replay_info.cursor)
 		if main.close and not fadeActive() then
 			bgReset(motif[main.background].BGDef)
@@ -3250,20 +3313,20 @@ function main.f_replay()
 			playBgm({source = "motif.title", interrupt = true})
 			main.close = false
 			break
-		elseif esc() or getInput(-1, motif[main.group].menu.cancel.key) or (t[item].itemname == 'back' and getInput(-1, motif[main.group].menu.done.key)) then
+		elseif esc() or getAction(-1, motif[main.group].menu.cancel.action) or (t[item].itemname == 'back' and getAction(-1, motif[main.group].menu.done.action)) then
 			sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
 			fadeOutInit(motif.replay_info.fadeout.FadeData)
 			main.close = true
-		elseif getKey(motif.replay_info.menu.item.delete.keycode) then
+		elseif getAction(-1, motif.replay_info.menu.item.delete.action) then
 			t, item = main.f_deleteReplay(item, t)
 			local visibleItems = motif.replay_info.menu.window.visibleitems
 			if visibleItems == nil or visibleItems <= 0 then
 				visibleItems = #t
 			end
 			cursorPosY = math.max(1, math.min(cursorPosY, item, visibleItems))
-		elseif getKey(motif.replay_info.menu.item.rename.keycode) then
+		elseif getAction(-1, motif.replay_info.menu.item.rename.action) then
 			t, item = main.f_renameReplay(item, t)
-		elseif getInput(-1, motif[main.group].menu.done.key) then
+		elseif getAction(-1, motif[main.group].menu.done.action) then
 			main.f_waitForPreloads(true)
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 			if enterReplay(t[item].itemname) and synchronize() then
@@ -3282,7 +3345,7 @@ end
 function main.f_connect(server, str)
 	enterNetPlay(server)
 	while not connected() do
-		if esc() or getInput(-1, motif.title_info.menu.cancel.key) then
+		if esc() or getAction(-1, motif.title_info.menu.cancel.action) then
 			sndPlay(motif.Snd, motif.title_info.cancel.snd[1], motif.title_info.cancel.snd[2])
 			exitNetPlay()
 			return false
@@ -3301,6 +3364,7 @@ function main.f_connect(server, str)
 		textImgReset(motif.title_info.connecting.TextSpriteData)
 		textImgSetText(motif.title_info.connecting.TextSpriteData, txt)
 		textImgDraw(motif.title_info.connecting.TextSpriteData)
+		main.f_hintDraw(motif.title_info.hint, 'connecting')
 		--draw layerno = 1 backgrounds
 		bgDraw(motif[main.background].BGDef, 1)
 		refresh()
@@ -3405,13 +3469,20 @@ end
 main.t_hiscoreMap = {
 	teamarcade = 'arcade',
 }
-function main.f_hiscoreDisplay(itemname)
+
+function main.f_hiscoreMode(itemname)
 	local stats = jsonDecode(getCommandLineValue("-stats"))
 	local mode = main.t_hiscoreMap[itemname] or itemname
-	if not motif.hiscore_info.enabled or stats.modes == nil or stats.modes[mode] == nil or stats.modes[mode].ranking == nil then
-		return false
+	if motif.hiscore_info.enabled and #motif[main.group].menu.hiscore.action > 0
+		and stats.modes ~= nil and stats.modes[mode] ~= nil and stats.modes[mode].ranking ~= nil then
+		return mode
 	end
-	if not getInput(-1, motif[main.group].menu.hiscore.key) then
+	return nil
+end
+
+function main.f_hiscoreDisplay(itemname)
+	local mode = main.f_hiscoreMode(itemname)
+	if mode == nil or not getAction(-1, motif[main.group].menu.hiscore.action) then
 		return false
 	end
 	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
@@ -3492,7 +3563,7 @@ function main.f_attractStart()
 			creditsCnt = getCredits()
 		end
 		--options
-		if motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
+		if motif.attract_mode.enabled and getAction(-1, motif.attract_mode.options.action) then
 			main.f_default()
 			main.menu.f = main.t_itemname.options()
 			local doneSnd = motif[main.group].cursor.done.snd.options or motif[main.group].cursor.done.snd.default
@@ -3505,8 +3576,13 @@ function main.f_attractStart()
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.BGDef, 1)
+		local hintContext = 'start'
+		if getCredits() == 0 then
+			hintContext = 'insert'
+		end
+		main.f_hintDraw(motif.attract_mode.hint, hintContext)
 		--draw fadein / fadeout
-		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getInput(-1, motif.attract_mode.start.press.key)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
+		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getAction(-1, motif.attract_mode.start.press.action)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
 			if getCredits() ~= 0 then
 				sndPlay(motif.Snd, motif.attract_mode.start.done.snd[1], motif.attract_mode.start.done.snd[2])
 			end
@@ -3514,7 +3590,7 @@ function main.f_attractStart()
 			fadeOutStarted = true
 		end
 		--frame transition
-		if esc() --[[or getInput(-1, motif.attract_mode.menu.cancel.key)]] then
+		if esc() --[[or getAction(-1, motif.attract_mode.menu.cancel.action)]] then
 			esc(false)
 			return false
 		end
@@ -3736,6 +3812,156 @@ local function f_tweenStep(val, target, factor)
 	return newVal
 end
 
+-- Mouse targets: a screen registers what can be clicked, records what the pointer is over and
+-- syncs once per frame. See main.f_menuMouse and start.f_selectMouse.
+local maxTargets = 2 ^ 24 - 1
+
+local function namePart(name)
+	return #name .. ':' .. name
+end
+
+function main.f_mouseContext(name, items)
+	local parts = {namePart(name)}
+	for _, item in ipairs(items) do
+		parts[#parts + 1] = namePart(item.paramname or item.itemname)
+	end
+	return table.concat(parts)
+end
+
+-- Clear this frame's targets while keeping the saved network IDs.
+function main.f_mouseReset(screen, context)
+	if screen == nil or screen.context ~= context then
+		screen = {context = context, wireContext = namePart(context), ids = {}, names = {}}
+	end
+	screen.targets, screen.hover, screen.priority = {}, nil, 0
+	screen.count, screen.changed = 0, false
+	return screen
+end
+
+-- Register targets on both peers, whether or not the local mouse is over them.
+function main.f_mouseAdd(screen, name, value)
+	assert(type(name) == 'string' and name ~= '' and value ~= nil, 'mouse target needs a name and value')
+	assert(screen.targets[name] == nil, 'duplicate mouse target: ' .. name)
+	screen.targets[name] = value
+	screen.count = screen.count + 1
+	screen.changed = screen.changed or screen.ids[name] == nil
+	return name
+end
+
+-- Higher priority wins. Later hits break ties.
+function main.f_mouseHit(screen, name, inside, priority)
+	priority = priority or 0
+	if inside and mouseActive() and (screen.hover == nil or priority >= screen.priority) then
+		screen.hover, screen.priority = name, priority
+	end
+end
+
+-- Sort names only when the target list changes, so both peers use the same IDs.
+function main.f_mouseSync(screen, player)
+	if screen.changed or screen.count ~= #screen.names then
+		assert(screen.count <= maxTargets, 'too many mouse targets')
+		screen.names, screen.ids = {}, {}
+		for name in pairs(screen.targets) do
+			screen.names[#screen.names + 1] = name
+		end
+		table.sort(screen.names)
+		local parts = {namePart(screen.context)}
+		for id, name in ipairs(screen.names) do
+			screen.ids[name] = id
+			parts[#parts + 1] = namePart(name)
+		end
+		screen.wireContext = table.concat(parts)
+	end
+	local id, moved, owner = mouseSync(screen.wireContext, screen.ids[screen.hover] or 0, player or -1)
+	return screen.targets[screen.names[id]], moved, owner
+end
+
+-- The row background under the pointer. The one drawn on top wins.
+function main.f_menuMouseBg(backgrounds)
+	local target = nil
+	for i = #backgrounds, 1, -1 do
+		local bg = backgrounds[i]
+		if (target == nil or bg.layerno > target.layerno) and mouseOver(bg.anim, bg.pixels ~= false) then
+			target = bg
+		end
+	end
+	return target and target.item
+end
+
+-- Modules add named targets to this screen before its single sync call.
+function main.f_menuMouse(t, item, sec)
+	local data, m = sec.mouseData, sec.menu or sec
+	local ready = data ~= nil and data.items == t
+	local context = ready and data.context or main.f_mouseContext('menu', t)
+	local screen = main.f_mouseReset(sec.mouseScreen, context)
+	sec.mouseScreen = screen
+	local function rowName(index) return 'row:' .. index end
+	for i, row in ipairs(t) do
+		if not row.itemname:match('^spacer%d*$') then
+			main.f_mouseAdd(screen, rowName(i), {kind = 'row', item = i})
+		end
+	end
+	main.f_mouseAdd(screen, 'scroll:up', {kind = 'scroll', direction = -1})
+	main.f_mouseAdd(screen, 'scroll:down', {kind = 'scroll', direction = 1})
+	if ready then
+		for _, extra in ipairs(data.targets) do
+			assert(type(extra.item) == 'string' or type(extra.item) == 'number', 'mouse target item needs a string or number')
+			local name = 'extra:' .. type(extra.item) .. ':' .. tostring(extra.item)
+			if screen.targets[name] == nil then
+				main.f_mouseAdd(screen, name, {
+					kind = 'extra', item = extra.item, action = extra.action,
+					onClick = extra.onClick, click = extra.click,
+				})
+			end
+		end
+	end
+	if ready and mouseActive() then
+		for _, direction in ipairs({'down', 'up'}) do
+			main.f_mouseHit(screen, 'scroll:' .. direction, data[direction] and mouseOver(m.arrow[direction].AnimData), 5)
+		end
+		if screen.hover == nil then
+			for i = #t, 1, -1 do
+				local bounds = data.rows[i]
+				if bounds ~= nil and screen.targets[rowName(i)] ~= nil then
+					local inside = mouseOver(m.boxcursor.RectData,
+						bounds[1], bounds[2], bounds[3], bounds[4], m.item.TextSpriteData)
+					main.f_mouseHit(screen, rowName(i), inside, i == item and 4 or 3)
+				end
+			end
+		end
+		if screen.hover == nil then
+			local extra = main.f_menuMouseBg(data.targets)
+			if extra ~= nil then
+				main.f_mouseHit(screen, 'extra:' .. type(extra) .. ':' .. tostring(extra), true, 2)
+			end
+		end
+		if screen.hover == nil then
+			local background = main.f_menuMouseBg(data.backgrounds)
+			if background ~= nil and screen.targets[rowName(background)] ~= nil then
+				main.f_mouseHit(screen, rowName(background), true, 1)
+			end
+		end
+	end
+	hook.run('main.menu.mouse', screen, t, sec, ready and data or nil)
+	local target, moved, player = main.f_mouseSync(screen)
+	if player == 0 or not ready then return nil, 0 end
+	for _, wheel in ipairs({{m.previous.action, -1}, {m.next.action, 1}}) do
+		if mouseTake(wheel[1], player) then return nil, wheel[2] end
+	end
+	if target ~= nil and target.kind == 'row' then
+		if target.item == item then return nil, 0 end
+		if moved then return target.item, 0 end
+	end
+	local clicked = mouseTake(target and target.click or data.done, player)
+	if target ~= nil and target.click ~= nil then mouseTake(data.done, player) end
+	if not clicked or target == nil then return nil, 0 end
+	if target.kind == 'row' then return target.item, 0 end
+	if target.kind == 'scroll' then return nil, target.direction end
+	if target.action ~= nil then mousePress(player, target.action) end
+	if target.onClick ~= nil then target.onClick(player) end
+	return nil, 0, target.item
+end
+
 --common menu calculations
 function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, forcedDir)
 	local m = sec.menu or sec
@@ -3747,85 +3973,76 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			slideOffset = 0
 		}
 	end
+	main.menuWrapped = false
+	if #t == 0 then
+		sec.menuTweenData = {currentPos = 0, targetPos = 0, slideOffset = 0}
+		return 1, 0, 1
+	end
+	-- Show all rows when visibleitems is zero or negative.
+	local visible = (m.window and m.window.visibleitems) or #t
+	if visible <= 0 then
+		visible = #t
+	end
+	local maxFirst = math.max(1, #t - visible + 1)
+	item = math.max(1, math.min(item, #t))
 	local item_before = item
-	local startItem = 1
-	for _, v in ipairs(t) do
-		if not v.itemname:match("^spacer%d*$") then
+	local first = math.max(1, math.min(item - cursorPosY + 1, maxFirst))
+	-- A forced direction overrides input: 1 moves down, -1 moves up, and 0 stops.
+	local moveDir = forcedDir or 0
+	local skip = nil -- direction to skip spacers when input didn't move the cursor
+	if forcedDir == nil then
+		local clicked, scroll, extra = main.f_menuMouse(t, item, sec)
+		sec.mouseClicked = extra
+		if clicked ~= nil then
+			item = clicked
+			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		elseif scroll ~= 0 then
+			-- Mouse scrolling moves the list. The cursor only moves to stay on screen.
+			first = math.max(1, math.min(first + scroll, maxFirst))
+			if item > first + visible - 1 then
+				item, skip = first + visible - 1, -1
+			elseif item < first then
+				item = first
+			end
+		elseif getAction(-1, m.next.action) then
+			moveDir = 1
+		elseif getAction(-1, m.previous.action) then
+			moveDir = -1
+		end
+	end
+	-- Skip spacers without looping forever if every row is a spacer.
+	local candidate = item
+	local wrapped = false
+	if moveDir ~= 0 then
+		candidate = candidate + moveDir
+	end
+	for _ = 1, #t do
+		if candidate < 1 or candidate > #t then
+			if m.wrap == false then break end
+			candidate = candidate < 1 and #t or 1
+			wrapped = true
+		end
+		if not t[candidate].itemname:match("^spacer%d*$") then
+			item = candidate
+			main.menuWrapped = wrapped
 			break
 		end
-		startItem = startItem + 1
+		candidate = candidate + (skip or (moveDir == -1 and -1 or 1))
 	end
-	-- effective visible-items: treat 0 / nil as "all items"
-	local visible = #t
-	if m.window and m.window.visibleitems ~= nil then
-		if m.window.visibleitems > 0 then
-			visible = m.window.visibleitems
-		end
+	if item ~= item_before and forcedDir == nil and moveDir ~= 0 then
+		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
 	end
-	-- movement: forcedDir: 1 = next (down), -1 = previous (up), 0/nil = no forced move
-	local moveDir = 0
-	if forcedDir ~= nil then
-		moveDir = forcedDir
-	elseif getInput(-1, m.next.key) then
-		moveDir = 1
-	elseif getInput(-1, m.previous.key) then
-		moveDir = -1
-	end
-	if moveDir == 1 then
-		if forcedDir == nil then
-			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
-		end
-		while true do
-			item = item + 1
-			if cursorPosY < visible then
-				cursorPosY = cursorPosY + 1
-			end
-			if t[item] == nil or not t[item].itemname:match("^spacer%d*$") then
-				break
-			end
-		end
-	elseif moveDir == -1 then
-		if forcedDir == nil then
-			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
-		end
-		while true do
-			item = item - 1
-			if cursorPosY > startItem then
-				cursorPosY = cursorPosY - 1
-			end
-			if t[item] == nil or not t[item].itemname:match("^spacer%d*$") then
-				break
-			end
-		end
-	end
-	main.menuWrapped = false
-	if item > #t or (item == 1 and t[item].itemname:match("^spacer%d*$")) then
-		item = 1
-		while true do
-			if not t[item].itemname:match("^spacer%d*$") or item >= #t then break end
-			item = item + 1
-		end
-		cursorPosY = item
+	if main.menuWrapped then
+		first = moveDir == -1 and math.max(1, item - visible + 1) or 1
 		if m.tween.wrap.snap then
 			main.menuSnap = true
 		end
-		main.menuWrapped = true
-	elseif item < 1 then
-		item = #t
-		while true do
-			if not t[item].itemname:match("^spacer%d*$") or item <= 1 then break end
-			item = item - 1
-		end
-		if item > visible then
-			cursorPosY = visible
-		else
-			cursorPosY = item
-		end
-		if m.tween.wrap.snap then
-			main.menuSnap = true
-		end
-		main.menuWrapped = true
+	elseif moveDir ~= 0 and m.window.scrollmode == 'immediate' then
+		-- Scroll first. Move the cursor when the window reaches either end.
+		first = math.max(1, math.min(first + item - item_before, maxFirst))
 	end
+	first = math.max(1, math.min(math.max(first, item - visible + 1), item, maxFirst))
+	cursorPosY = item - first + 1
 	-- Reset active background animation when cursor selection changes
 	if item_before ~= item and t ~= nil and t[item] ~= nil then
 		local bgTable = m.item and m.item.active and m.item.active.bg
@@ -3837,23 +4054,8 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			end
 		end
 	end
-	-- compute target: determine first visible item to keep cursor at row `cursorPosY`, clamp to valid range, and convert to pixel offset
-	local spacing = m.item.spacing[2]
-	-- max index that can appear at the top of the window
-	local maxFirst = math.max(1, #t - visible + 1)
 	local t_factor = m.tween.factor
-
-	-- which list index should be drawn on the very first row
-	local desiredFirst = item - cursorPosY + 1
-	-- clamp so we never scroll before the first row or past the end
-	if desiredFirst < 1 then
-		desiredFirst = 1
-	elseif desiredFirst > maxFirst then
-		desiredFirst = maxFirst
-	end
-
-	-- Measure scroll offset from the first drawn row.
-	local targetMove = (desiredFirst - 1) * spacing
+	local targetMove = (first - 1) * m.item.spacing[2]
 	-- update target and offset if changed, snap immediately if requested, otherwise apply tween or direct move
 	if sec.menuTweenData.targetPos ~= targetMove then
 		sec.menuTweenData.targetPos = targetMove
@@ -3879,6 +4081,88 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 	return cursorPosY, moveTxt, item
 end
 
+-- Draws a menu hint, for example "A: Select  B: Back"
+function main.f_hintDraw(hint, context, values, device, side, actions)
+	if hint == nil then
+		return
+	end
+	textImgReset(hint.TextSpriteData)
+	if device ~= nil then
+		textImgSetGlyphDevice(hint.TextSpriteData, device)
+	end
+	context = context or 'default'
+	-- Hint text: glyph.<pack>.<context> while the device shown uses that pack, else <context>.
+	local set = 'glyph.' .. inputGetGlyphPack(device or 0)
+	local text = hint.text[context == 'default' and set or set .. '.' .. context]
+		or hint.text[context] or hint.text.default or ''
+	if actions ~= nil then
+		-- Shared popups use the caller's menu keys, not the Warning Info section.
+		text = text:gsub('<action:([^>]+)>', function(name)
+			if actions[name] == nil then
+				return '<action:' .. name .. '>'
+			end
+			return '<control:' .. table.concat(actions[name], ',') .. '>'
+		end)
+	end
+	if side ~= nil then
+		-- The same human can select a CPU team with that team's menu keys.
+		text = text:gsub('<action:player%.', '<action:p' .. side .. '.')
+		text = text:gsub(',player%.', ',p' .. side .. '.')
+	end
+	if values ~= nil then
+		text = main.f_formatBySpec(text, values)
+	end
+	textImgSetText(hint.TextSpriteData, text)
+	textImgDraw(hint.TextSpriteData)
+end
+
+-- Draw plain labels or columns aligned within the menu width.
+-- Column alignment is 1 for left, 0 for center, and -1 for right.
+function main.f_menuItemTextDraw(row, props, m, x, y)
+	local sprite = props.TextSpriteData
+	local columns = row.columns
+	if columns == nil then
+		local text = row.itemname:match("^spacer%d*$") and '' or row.displayname
+		columns = {{text = text}}
+	end
+	local width = m.window.width or 0
+	if width <= 0 then
+		width = motif.info.localcoord[1] - m.pos[1]
+	end
+	local lengthOffset, previousAlign = 0, nil
+	for _, col in ipairs(columns) do
+		textImgReset(sprite)
+		textImgSetGlyphDevice(sprite, row.glyphDevice or 0)
+		local text = main.f_itemnameUpper(col.text, m.item.uppercase)
+		local alignOffset = 0
+		if col.align ~= nil then
+			if col.align ~= previousAlign then
+				lengthOffset = 0
+				previousAlign = col.align
+			end
+			if col.align == 0 then
+				alignOffset = width * 0.5
+			elseif col.align == -1 then
+				alignOffset = width - 1 -- Match Mugen's extra pixel when flipping.
+			end
+			textImgSetAlign(sprite, col.align == 0 and lengthOffset ~= 0 and 1 or col.align)
+		end
+		textImgAddPos(sprite, x + alignOffset + lengthOffset, y)
+		textImgSetText(sprite, text)
+		textImgDraw(sprite)
+		if col.align ~= nil then
+			local textWidth = textImgGetTextWidth(sprite, text) * props.scale[1]
+			if col.align == 0 and lengthOffset == 0 then
+				lengthOffset = lengthOffset + textWidth / 2
+			elseif col.align == -1 then
+				lengthOffset = lengthOffset - textWidth
+			else
+				lengthOffset = lengthOffset + textWidth
+			end
+		end
+	end
+end
+
 --common menu draw
 function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear, opts)
 	main.f_preloadTick(2)
@@ -3888,10 +4172,19 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	--   skipBG0, skipBG1         : skip bg layer 0 / 1
 	--   skipTitle                : skip drawing the title
 	--   forceInactive            : treat "selected" row as inactive (no highlight, no cursor)
+	--   mouseTargets             : clickable anims with item, anim, layerno, action or onClick
+	--   mouseContext             : a shared name for this screen
 	opts = opts or {}
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
-	local forceInactive = (opts.forceInactive == true)
+	local forceInactive = opts.forceInactive == true or t[item] == nil
+		or t[item].itemname:match("^spacer%d*$") ~= nil
+	-- Where the rows were drawn, for main.f_menuMouse.
+	sec.mouseData = {
+		items = t, rows = {}, backgrounds = {}, targets = opts.mouseTargets or {},
+		context = opts.mouseContext or main.f_mouseContext('menu', t),
+		done = (opts.hintActions or {})['menu.done'] or m.done.action,
+	}
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -3899,11 +4192,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		visible = #t
 	end
 
-	if not skipClear then
+	-- A menu without a background draws over the current screen.
+	if bg ~= nil and not skipClear then
 		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
 	end
 	--draw layerno = 0 backgrounds
-	if not opts.skipBG0 then
+	if bg ~= nil and not opts.skipBG0 then
 		bgDraw(bg.BGDef, 0)
 	end
 
@@ -3939,14 +4233,16 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	-- helper that draws a single item either as active or inactive
 	local function drawItem(i, isActive)
 		local itemData = t[i]
-		-- display name
-		local displayname = main.f_itemnameUpper(itemData.displayname, m.item.uppercase)
-		if itemData.itemname:match("^spacer%d*$") then
-			displayname = ""
-		end
 		-- shared position
 		local posX = offx + (i - 1) * m.item.spacing[1]
 		local posY = offy + (i - 1) * m.item.spacing[2] - moveTxt
+		if not forceInactive and not itemData.itemname:match('^spacer%d*$') then
+			local c = m.boxcursor.coords
+			sec.mouseData.rows[i] = {
+				m.pos[1] + posX + c[1], m.pos[2] + posY + c[2],
+				m.pos[1] + posX + c[3] + 1, m.pos[2] + posY + c[4] + 1,
+			}
+		end
 		-- background params
 		local bgTable = isActive and m.item.active.bg or m.item.bg
 		local params = bgTable[itemData.paramname] or bgTable.default
@@ -3957,38 +4253,26 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			bgPosX = bgPosX + (i - 1) * bgTable.default.spacing[1]
 			bgPosY = bgPosY + (i - 1) * bgTable.default.spacing[2] - moveTxt
 		end
-		main.f_animPosDraw(params.AnimData, bgPosX, bgPosY)
-		-- text sprite for label
-		local labelSprite
-		if itemData.selected then
-			labelSprite = isActive and m.item.selected.active.TextSpriteData or m.item.selected.TextSpriteData
-		else
-			labelSprite = isActive and m.item.active.TextSpriteData or m.item.TextSpriteData
+		-- Keep the drawn position even when several rows share one animation.
+		local drawn = main.f_animPosDraw(params.AnimData, bgPosX, bgPosY, nil, sec.mouseData.rows[i] ~= nil)
+		if drawn ~= nil then
+			table.insert(sec.mouseData.backgrounds, {item = i, anim = drawn, layerno = params.layerno})
 		end
-		textImgReset(labelSprite)
-		textImgAddPos(labelSprite, posX, posY)
-		textImgSetText(labelSprite, displayname)
-		textImgDraw(labelSprite)
-		-- value / info sprites
+		-- text sprite for label
+		local labelProps
+		if itemData.selected then
+			labelProps = isActive and m.item.selected.active or m.item.selected
+		else
+			labelProps = isActive and m.item.active or m.item
+		end
+		main.f_menuItemTextDraw(itemData, labelProps, m, posX, posY)
+		-- value sprite
 		if itemData.vardisplay ~= nil then
-			if itemData.conflict and m.item.value.conflict and m.item.value.conflict.TextSpriteData then
-				local spr = m.item.value.conflict.TextSpriteData
-				textImgReset(spr)
-				textImgAddPos(spr, posX, posY)
-				textImgSetText(spr, itemData.vardisplay)
-				textImgDraw(spr)
-			else
-				local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
-				textImgReset(spr)
-				textImgAddPos(spr, posX, posY)
-				textImgSetText(spr, itemData.vardisplay)
-				textImgDraw(spr)
-			end
-		elseif itemData.infodisplay ~= nil then
-			local spr = isActive and m.item.info.active.TextSpriteData or m.item.info.TextSpriteData
+			local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
 			textImgReset(spr)
 			textImgAddPos(spr, posX, posY)
-			textImgSetText(spr, itemData.infodisplay)
+			textImgSetGlyphDevice(spr, itemData.glyphDevice or 0)
+			textImgSetText(spr, itemData.vardisplay)
 			textImgDraw(spr)
 		end
 	end
@@ -4038,13 +4322,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	end
 	--draw menu cursor
 	if m.boxcursor.visible and not fadeActive() and not forceInactive then
-		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (cursorPosY - 1) * m.item.spacing[1]
+		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (item - 1) * m.item.spacing[1]
 		local y1 = sec.boxCursorData.offsetY
 		local w  = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
 		local h  = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
 		rectSetWindow(m.boxcursor.RectData, x1, y1, x1 + w, y1 + h)
 		rectUpdate(m.boxcursor.RectData)
 		rectDraw(m.boxcursor.RectData)
+		sec.mouseData.rows[item] = {x1, y1, x1 + w, y1 + h}
 	end
 	--draw scroll arrows
 	if #t > visible then
@@ -4053,12 +4338,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			animAddPos(m.arrow.up.AnimData, offx, offy)
 			animUpdate(m.arrow.up.AnimData)
 			animDraw(m.arrow.up.AnimData)
+			sec.mouseData.up = not forceInactive
 		end
 		if item >= cursorPosY and item + visible - cursorPosY < #t then
 			animReset(m.arrow.down.AnimData, {'pos'})
 			animAddPos(m.arrow.down.AnimData, offx, offy)
 			animUpdate(m.arrow.down.AnimData)
 			animDraw(m.arrow.down.AnimData)
+			sec.mouseData.down = not forceInactive
 		end
 	end
 	--draw credits text
@@ -4068,7 +4355,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(motif.attract_mode.credits.TextSpriteData)
 	end
 	--draw layerno = 1 backgrounds
-	if not opts.skipBG1 then
+	if bg ~= nil and not opts.skipBG1 then
 		bgDraw(bg.BGDef, 1)
 	end
 	--draw footer
@@ -4078,10 +4365,66 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.info.TextSpriteData)
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
+	main.f_hintDraw(opts.hint or sec.hint, opts.hintContext, nil, nil, nil, opts.hintActions)
+	-- Description of the highlighted item, keyed by its paramname.
+	main.f_menuItemHintDraw(m.hint, t[item])
 	--frame transition
 	if not skipClear then
 		refresh()
 	end
+end
+
+-- Draws a menu item's description. Tries the full item path, then the item name, then
+-- "<parent>_item" for list rows, with the parent as a full path or its leaf. %s becomes the item's name.
+function main.f_menuItemHintDraw(hint, item)
+	if hint == nil or item == nil or hint.text == nil then
+		return
+	end
+	-- item.hint replaces the description, e.g. while a Controller Setup row waits for a control.
+	local text = item.hint
+	if text == nil and item.paramname ~= nil and item.paramname ~= '' then
+		text = hint.text[item.paramname]
+	end
+	if text == nil and item.itemname ~= nil then
+		text = hint.text[item.itemname]
+	end
+	if text == nil and item.paramname ~= nil and item.paramname ~= '' then
+		-- Dynamic list rows (like shaders) share one "<parent>_item" entry.
+		-- Walk the path up by "_" so filenames containing "_" still resolve.
+		local parents = {}
+		local parent = item.paramname:match('^(.+)_[^_]+$')
+		while parent ~= nil do
+			table.insert(parents, parent)
+			parent = parent:match('^(.+)_[^_]+$')
+		end
+		-- Full parent paths win, then the same paths with leading parts dropped, down to the leaf.
+		for _, p in ipairs(parents) do
+			text = text or hint.text[p .. '_item']
+		end
+		for _, p in ipairs(parents) do
+			local tail = p:match('^[^_]+_(.+)$')
+			while text == nil and tail ~= nil do
+				text = hint.text[tail .. '_item']
+				tail = tail:match('^[^_]+_(.+)$')
+			end
+		end
+	end
+	text = text or hint.text.default
+	-- A row that refused an input shows the warning instead, see menu.hint.warn.
+	local sprite = hint.TextSpriteData
+	if item.warn ~= nil and hint.warn ~= nil and hint.warn.text[item.warn] ~= nil then
+		text, sprite = hint.warn.text[item.warn], hint.warn.TextSpriteData
+	end
+	if text == nil then
+		return
+	end
+	if item.displayname ~= nil and text:find('%%s') ~= nil then
+		text = string.format(text, item.displayname)
+	end
+	textImgReset(sprite)
+	textImgSetGlyphDevice(sprite, item.hint and item.hintDevice or 0)
+	textImgSetText(sprite, tostring(text):gsub('\\n', '\n'))
+	textImgDraw(sprite)
 end
 
 --force menu to snap, boxcursor snaps if enabled

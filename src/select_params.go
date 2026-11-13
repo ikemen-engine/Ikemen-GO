@@ -348,6 +348,7 @@ type GameParams struct {
 	Time                int32    `ini:"time"`
 	VsScreen            bool     `ini:"vsscreen"`
 	VictoryScreen       bool     `ini:"victoryscreen"`
+	VersusResults       bool     `ini:"versusresults"`
 	WinScreen           bool     `ini:"winscreen"`
 	PauseMenu           bool     `ini:"pausemenu"`
 	RankingCondition    bool     `ini:"rankingcondition"`
@@ -363,6 +364,7 @@ type GameParams struct {
 	CharParamStage      bool     `ini:"charparam.stage"`
 	CharParamTime       bool     `ini:"charparam.time"`
 	TurnsOffset         [2]int32
+	CoopTurns           [2]bool
 	NextChar            int32 `ini:"p2.nextchar"`
 	ocd                 [3][]OverrideCharData
 	Raw                 []string
@@ -478,6 +480,11 @@ func (p *GameParams) AppendParams(entries []string) {
 			}
 			p.TurnsOffset[1] = v
 			continue
+		case "p1.coopturns", "p2.coopturns":
+			if b, ok := parseBoolLoose(val); ok {
+				p.CoopTurns[Btoi(kl == "p2.coopturns")] = b
+			}
+			continue
 		case "p2.nextchar":
 			p.NextChar = Atoi(val)
 		case "charparam.ai":
@@ -531,6 +538,10 @@ func (p *GameParams) AppendParams(entries []string) {
 		case "victoryscreen":
 			if b, ok := parseBoolLoose(val); ok {
 				p.VictoryScreen = b
+			}
+		case "versusresults":
+			if b, ok := parseBoolLoose(val); ok {
+				p.VersusResults = b
 			}
 		case "winscreen":
 			if b, ok := parseBoolLoose(val); ok {

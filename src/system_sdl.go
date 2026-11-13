@@ -81,11 +81,14 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 
 		// 3. CALCULATION
 		_, forceWindowed := sys.cmdFlags["-windowed"]
-		fullscreen := s.cfg.Video.Fullscreen && !forceWindowed
+		fullscreen = s.cfg.Video.Fullscreen && !forceWindowed
 
-		// Override default sizes if config specifies
-		if sys.cfg.Video.WindowWidth > 0 || sys.cfg.Video.WindowHeight > 0 {
-			w2, h2 = int32(sys.cfg.Video.WindowWidth), int32(sys.cfg.Video.WindowHeight)
+		// A zero window dimension follows the corresponding game dimension.
+		if s.cfg.Video.WindowWidth > 0 {
+			w2 = int32(s.cfg.Video.WindowWidth)
+		}
+		if s.cfg.Video.WindowHeight > 0 {
+			h2 = int32(s.cfg.Video.WindowHeight)
 		}
 
 		x, y = (desktopW-w2)/2, (desktopH-h2)/2
@@ -158,8 +161,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		title:           s.cfg.Config.WindowTitle,
 		x:               int(x),
 		y:               int(y),
-		w:               w,
-		h:               h,
+		w:               int(w2),
+		h:               int(h2),
 		fullscreen:      fullscreen,
 		closeflag:       false,
 		focused:         true,
@@ -218,38 +221,69 @@ func (w *Window) GetSize() (int, int) {
 	return int(w2), int(h2)
 }
 
-// Calculates a position and size for the viewport to fill the window while centered (see render_gl.go)
-// Returns x, y, width, height respectively
-func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
-	winWidth, winHeight := w.GetDrawablePixelSize() //w.GetSize()
-
-	// If aspect ratio should not be kept, just return full window
-	if !sys.cfg.Video.KeepAspect {
-		return 0, 0, int32(winWidth), int32(winHeight)
+// Applies the new windowed dimensions, or remembers them while
+// fullscreen so toggleFullscreen restores the correct size later.
+func (w *Window) ResizeWindowed(width, height int) {
+	w.w, w.h = width, height
+	if w.fullscreen {
+		return
 	}
-
-	var x, y, resizedWidth, resizedHeight int32 = 0, 0, int32(winWidth), int32(winHeight)
-
-	// Select stage or default aspect ratio
-	aspectGame := sys.getCurrentAspect()
-	aspectWindow := float32(winWidth) / float32(winHeight)
-
-	// Keep aspect ratio
-	if aspectWindow > aspectGame {
-		// Window is wider: black bars on sides
-		resizedHeight = int32(winHeight)
-		resizedWidth = int32(float32(resizedHeight) * aspectGame)
-		x = (int32(winWidth) - resizedWidth) / 2
-		y = 0
-	} else {
-		// Window is taller: black bars on top and bottom
-		resizedWidth = int32(winWidth)
-		resizedHeight = int32(float32(resizedWidth) / aspectGame)
-		x = 0
-		y = (int32(winHeight) - resizedHeight) / 2
+	w.Window.SetSize(int32(width), int32(height))
+	if sys.cfg.Video.WindowCentered {
+		displayIndex, err := w.Window.GetDisplayIndex()
+		if err != nil {
+			displayIndex = 0
+		}
+		position := sdl.WINDOWPOS_CENTERED_MASK | int32(displayIndex)
+		w.Window.SetPosition(position, position)
 	}
+}
 
-	return x, y, resizedWidth, resizedHeight
+// Where the render target appears in the window, scaled to fit.
+func (w *Window) GetScaledViewportSize() (float32, float32, float32, float32) {
+	winWidth, winHeight := w.GetDrawablePixelSize()
+	if !sys.cfg.Video.KeepAspect || winWidth <= 0 || winHeight <= 0 {
+		return 0, 0, float32(winWidth), float32(winHeight)
+	}
+	target := sys.renderTargetRect
+	view := sys.renderTargetView
+	scale := math.Min(float64(winWidth)/view[0], float64(winHeight)/view[1])
+	width, height := float64(target[2])*scale, float64(target[3])*scale
+	// Keep fractions: rounding would break exact pixel scaling (e.g. 3x at 720p).
+	return float32((float64(winWidth) - width) / 2), float32((float64(winHeight) - height) / 2),
+		float32(width), float32(height)
+}
+
+// The final image is clipped to this area so shaders and fades leave the black bars alone.
+func (w *Window) GetPresentationScissor() [4]int32 {
+	x, y, width, height := w.GetScaledViewportSize()
+	rect := sys.compositionViewport(true)
+	target := sys.renderTargetRect
+	sx, sy := float64(width)/float64(target[2]), float64(height)/float64(target[3])
+	x1 := int32(math.Round(float64(x) + float64(rect[0])*sx))
+	y1 := int32(math.Round(float64(y) + float64(rect[1])*sy))
+	x2 := int32(math.Round(float64(x) + float64(rect[0]+rect[2])*sx))
+	y2 := int32(math.Round(float64(y) + float64(rect[1]+rect[3])*sy))
+	dw, dh := w.GetDrawablePixelSize()
+	return intersectRect([4]int32{x1, y1, x2 - x1, y2 - y1}, [4]int32{0, 0, dw, dh})
+}
+
+// Tell SDL where the text box is on screen, so the IME candidate window appears next to it.
+func (w *Window) SetTextInputRect(bounds [4]int32) {
+	width, height := w.Window.GetSize()
+	dw, dh := w.GetDrawablePixelSize()
+	vx, vy, vw, vh := w.GetScaledViewportSize()
+	if dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0 {
+		return
+	}
+	bounds = sys.viewportScissor(bounds)
+	sx := float32(width) / float32(dw)
+	sy := float32(height) / float32(dh)
+	x, y := float32(vx)*sx, float32(vy)*sy
+	sx *= float32(vw) / float32(sys.renderTargetRect[2])
+	sy *= float32(vh) / float32(sys.renderTargetRect[3])
+	sdl.SetTextInputRect(&sdl.Rect{X: int32(x + float32(bounds[0])*sx), Y: int32(y + float32(bounds[1])*sy),
+		W: int32(float32(bounds[2]) * sx), H: int32(float32(bounds[3]) * sy)})
 }
 
 func (w *Window) GetClipboardString() string {
@@ -361,6 +395,7 @@ func attachController(deviceIndex int) {
 	input.controllers[slot] = controller
 	resetControllerState(slot)
 	input.controllerstate[slot].HasRumble = controller.HasRumble()
+	sys.attachGamepad(slot)
 }
 
 func (w *Window) UpdateDebugFPS() {
@@ -420,7 +455,9 @@ func (w *Window) pollEvents() {
 		case sdl.ControllerAxisEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
-				input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				if int(t.Axis) < len(input.controllerstate[idx].Axes) {
+					input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				}
 			}
 		case sdl.ControllerButtonEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
@@ -429,6 +466,46 @@ func (w *Window) pollEvents() {
 			}
 		case sdl.QuitEvent:
 			w.closeflag = true
+		case sdl.MouseMotionEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			if t.XRel != 0 || t.YRel != 0 {
+				sys.mouse.active, sys.mouse.motion = true, true
+			}
+		case sdl.MouseButtonEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			i := -1
+			switch t.Button {
+			case sdl.ButtonLeft:
+				i = 0
+			case sdl.ButtonRight:
+				i = 1
+			case sdl.ButtonMiddle:
+				i = 2
+			case sdl.ButtonX1:
+				i = 3
+			case sdl.ButtonX2:
+				i = 4
+			}
+			if i >= 0 {
+				down := t.State == sdl.PRESSED
+				if down && !sys.mouse.down[i] {
+					sys.mouse.clicked[i] = true
+					sys.mouse.active = true
+				}
+				sys.mouse.down[i] = down
+			}
+		case sdl.MouseWheelEvent:
+			sys.mouse.x, sys.mouse.y, _ = sdl.GetMouseState()
+			if t.X != 0 || t.Y != 0 {
+				sys.mouse.active = true
+			}
+			if t.Direction == sdl.MOUSEWHEEL_FLIPPED {
+				sys.mouse.wheel[0] -= t.X
+				sys.mouse.wheel[1] -= t.Y
+			} else {
+				sys.mouse.wheel[0] += t.X
+				sys.mouse.wheel[1] += t.Y
+			}
 		case sdl.KeyboardEvent:
 			if t.State == sdl.PRESSED {
 				OnKeyPressed(t.Keysym.Sym, t.Keysym.Mod)
@@ -449,10 +526,19 @@ func (w *Window) pollEvents() {
 				w.focused = true
 			case sdl.WINDOWEVENT_FOCUS_LOST:
 				w.focused = false
+				sys.netMenuEscapeHeld = false
+				sys.mouse.release()
 			}
 		case sdl.TextInputEvent:
-			if len(t.Text) > 0 {
-				OnTextEntered(t.Text)
+			if sys.textInput.active {
+				sys.textInput.keyboard = true
+				sys.textInput.composition = ""
+				sys.textInput.insert(t.Text)
+			}
+		case sdl.TextEditingEvent:
+			if sys.textInput.active {
+				sys.textInput.keyboard = true
+				sys.textInput.composition = t.Text
 			}
 		case sdl.JoyDeviceAddedEvent:
 			attachController(int(t.Which))
@@ -460,12 +546,22 @@ func (w *Window) pollEvents() {
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
 				if controller := input.controllers[idx]; controller != nil {
+					sys.detachGamepad(idx)
 					controller.Close()
 					input.controllers[idx] = nil // Clear the reference
 					resetControllerState(idx)
 				}
 			}
 		}
+	}
+	sys.pollDevices()
+	sys.textInput.releaseInputs()
+	// Fullscreen menus need a pointer too. Gameplay keeps its hidden cursor.
+	if !w.fullscreen || sys.mouse.enabled() &&
+		(!sys.gameRunning || sys.motifOverlayActive() || sys.postMatchFlg || sys.textInput.active) {
+		sdl.ShowCursor(sdl.ENABLE)
+	} else {
+		sdl.ShowCursor(sdl.DISABLE)
 	}
 }
 

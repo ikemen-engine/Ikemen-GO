@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"sort"
 	"strings"
+	"unicode"
 
+	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -50,6 +54,8 @@ const (
 	CK_d
 	CK_w
 	CK_m
+	CK_l
+	CK_r
 )
 
 func (ck CommandStepKey) IsDirectionPress() bool {
@@ -61,11 +67,11 @@ func (ck CommandStepKey) IsDirectionRelease() bool {
 }
 
 func (ck CommandStepKey) IsButtonPress() bool {
-	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 func (ck CommandStepKey) IsButtonRelease() bool {
-	return ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 type ShortcutScript struct {
@@ -112,18 +118,28 @@ func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 }
 
 func OnKeyReleased(key Key, mk ModifierKey) {
+	if key == KeyEscape {
+		sys.netMenuEscapeHeld = false
+	}
 	if key != KeyUnknown {
 		sys.keyState[key] = false
 		// sys.keyInput is used as an edge-triggered "new key press" signal for Lua (getKey()).
 		if sys.keyInput == key {
 			sys.keyInput = KeyUnknown
-			sys.keyString = ""
 		}
 	}
 }
 
 func OnKeyPressed(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
+		if sys.textInput.active || sys.textInput.release {
+			repeat := sys.keyState[key]
+			sys.keyState[key] = true
+			if sys.textInput.active {
+				sys.textInput.key(key, repeat)
+			}
+			return
+		}
 		// Treat sys.keyInput as edge-triggered. Ignore repeats.
 		if sys.keyState[key] {
 			return
@@ -131,8 +147,12 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		sys.keyState[key] = true
 		sys.keyInput = key
 		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
-		sys.esc = sys.esc || escPressed
-		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		if escPressed && sys.gameRunning && sys.inputConnection() != nil {
+			sys.netMenuEscape, sys.netMenuEscapeHeld = true, true
+		} else {
+			sys.esc = sys.esc || escPressed
+			sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		}
 		for k, v := range sys.shortcutScripts {
 			if !sys.motif.me.active && sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
 				//(!sys.paused || sys.frameStepFlag || v.Pause) &&
@@ -143,7 +163,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		if key == KeyF12 {
 			sys.isTakingScreenshot = true
 		}
-		if !sys.netplay() && key == StringToKeyLUT[sys.motif.AttractMode.Credits.KeyCode] && sys.credits != -1 {
+		if !sys.netplay() && actionHasKey(sys.motif.AttractMode.Credits.Action, key) && sys.credits != -1 {
 			sys.credits += 1
 			sys.motif.Snd.play(sys.motif.AttractMode.Credits.Snd, 100, 0, 0, 0, 0)
 		}
@@ -161,111 +181,757 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 	}
 }
 
-func OnTextEntered(s string) {
-	sys.keyString = s
+// Mouse buttons in motif actions, as "MOUSE:<name>". Wheel directions count as
+// buttons that stay pressed for one frame.
+var mouseButtonNames = [...]string{"LEFT", "RIGHT", "MIDDLE", "X1", "X2",
+	"WHEELUP", "WHEELDOWN", "WHEELLEFT", "WHEELRIGHT"}
+
+const mouseClickButtons = 5 // LEFT to X2; the wheel directions follow
+
+func actionMouse(token string) (int, bool) {
+	token = strings.TrimSpace(token)
+	if len(token) > 6 && strings.EqualFold(token[:6], "MOUSE:") {
+		for i, name := range mouseButtonNames {
+			if strings.EqualFold(name, token[6:]) {
+				return i, true
+			}
+		}
+	}
+	return -1, false
 }
 
-// Return the state of all keyboard keys for a player
-func GetKeyboardState(kc KeyConfig) [14]bool {
-	var out [14]bool
+// The mouse is a UI input next to the controllers. It acts as the device that
+// shows the hints and never reaches character commands.
+type MouseInput struct {
+	x, y    int32
+	down    [mouseClickButtons]bool
+	clicked [mouseClickButtons]bool // pressed since the last frame, so short clicks count
+	wheel   [2]int32
+	held    [len(mouseButtonNames)]int32
+	taken   [len(mouseButtonNames)]bool
+	active  bool // used last, so hints show mouse buttons
+	motion  bool // moved since the last frame
+	moved   bool // moved this frame
+	remote  bool // read from a synchronized menu packet
 
-	// If this config is for a joystick, return no input
-	if kc.Joy >= 0 {
-		return out
+	// An action pressed by clicking what it selects, for one frame.
+	press       []string
+	pressPlayer int
+	pressFrame  int32
+}
+
+func (m *MouseInput) enabled() bool {
+	return m.remote || sys.motif.Mouse.Enabled
+}
+
+// Advances held times, once per frame from pollDevices.
+func (m *MouseInput) step() {
+	for i := 0; i < mouseClickButtons; i++ {
+		if m.down[i] || m.clicked[i] {
+			m.held[i]++
+		} else {
+			m.held[i] = 0
+		}
 	}
+	m.clicked = [mouseClickButtons]bool{}
+	for i, on := range [4]bool{m.wheel[1] > 0, m.wheel[1] < 0, m.wheel[0] < 0, m.wheel[0] > 0} {
+		m.held[mouseClickButtons+i] = 0
+		if on {
+			m.held[mouseClickButtons+i] = 1
+		}
+	}
+	m.wheel = [2]int32{}
+	m.taken = [len(mouseButtonNames)]bool{}
+	m.moved, m.motion = m.motion, false
+}
 
-	return [14]bool{
-		sys.keyState[Key(kc.dU)],
-		sys.keyState[Key(kc.dD)],
-		sys.keyState[Key(kc.dL)],
-		sys.keyState[Key(kc.dR)],
-		sys.keyState[Key(kc.bA)],
-		sys.keyState[Key(kc.bB)],
-		sys.keyState[Key(kc.bC)],
-		sys.keyState[Key(kc.bX)],
-		sys.keyState[Key(kc.bY)],
-		sys.keyState[Key(kc.bZ)],
-		sys.keyState[Key(kc.bS)],
-		sys.keyState[Key(kc.bD)],
-		sys.keyState[Key(kc.bW)],
-		sys.keyState[Key(kc.bM)],
+func (m *MouseInput) release() {
+	m.down, m.clicked, m.wheel = [mouseClickButtons]bool{}, [mouseClickButtons]bool{}, [2]int32{}
+}
+
+// Frames a button has been held, or 0 while the pointer is outside the game.
+func (m *MouseInput) time(button int) int32 {
+	sys.pollDevices()
+	if !m.enabled() || m.taken[button] {
+		return 0
+	}
+	if m.remote {
+		if !m.active {
+			return 0
+		}
+	} else if _, _, inside := m.position(); !inside {
+		return 0
+	}
+	return m.held[button]
+}
+
+// Frames the mouse buttons of an action have been held.
+func (m *MouseInput) actionTime(action []string) int32 {
+	for _, token := range action {
+		if button, ok := actionMouse(token); ok {
+			if t := m.time(button); t > 0 {
+				return t
+			}
+		}
+	}
+	return 0
+}
+
+// Takes the mouse buttons of an action pressed this frame, so no other action
+// reads them. Used when a click lands on, or misses, something on screen.
+func (m *MouseInput) take(action []string) bool {
+	taken := false
+	for _, token := range action {
+		if button, ok := actionMouse(token); ok && m.time(button) == 1 {
+			m.taken[button], taken = true, true
+		}
+	}
+	return taken
+}
+
+// Presses a whole action for this frame, for example after clicking a menu row.
+// player is a 0-based slot, or -1 for any.
+func (m *MouseInput) pressAction(action []string, player int) {
+	m.press, m.pressPlayer, m.pressFrame = append([]string(nil), action...), player, sys.frameCounter
+}
+
+// Reports and clears an action pressed by pressAction.
+func (m *MouseInput) pressed(action []string, player int) bool {
+	if m.press == nil || m.pressFrame != sys.frameCounter || len(m.press) != len(action) ||
+		m.pressPlayer >= 0 && player >= 0 && m.pressPlayer != player {
+		return false
+	}
+	for i := range action {
+		if !strings.EqualFold(strings.TrimSpace(action[i]), strings.TrimSpace(m.press[i])) {
+			return false
+		}
+	}
+	m.press = nil
+	return true
+}
+
+// Converts the mouse position in the window into the coordinates used to draw sprites.
+func (m *MouseInput) position() (float32, float32, bool) {
+	if !m.enabled() || sys.window == nil || !sys.window.Focused() {
+		return 0, 0, false
+	}
+	w, h := sys.window.GetSize()
+	dw, dh := sys.window.GetDrawablePixelSize()
+	vx, vy, vw, vh := sys.window.GetScaledViewportSize()
+	viewport := sys.currentDrawViewport()
+	if w <= 0 || h <= 0 || vw <= 0 || vh <= 0 || viewport[2] <= 0 || viewport[3] <= 0 {
+		return 0, 0, false
+	}
+	x := float32(m.x)*float32(dw)/float32(w) - float32(vx)
+	y := float32(m.y)*float32(dh)/float32(h) - float32(vy)
+	x = x*float32(sys.renderTargetRect[2])/float32(vw) - float32(viewport[0])
+	y = y*float32(sys.renderTargetRect[3])/float32(vh) - float32(viewport[1])
+	return x * float32(sys.scrrect[2]) / float32(viewport[2]), y * float32(sys.scrrect[3]) / float32(viewport[3]),
+		x >= 0 && y >= 0 && x < float32(viewport[2]) && y < float32(viewport[3])
+}
+
+func (m *MouseInput) over(bounds [4]int32) bool {
+	x, y, inside := m.position()
+	return inside && x >= float32(bounds[0]) && y >= float32(bounds[1]) &&
+		x < float32(bounds[0]+bounds[2]) && y < float32(bounds[1]+bounds[3])
+}
+
+func (m *MouseInput) overText(ts *TextSprite) bool {
+	if ts == nil || ts.fnt == nil || ts.xscl == 0 || ts.yscl == 0 || !m.over(ts.drawWindow()) {
+		return false
+	}
+	for i, line := range strings.Split(ts.decodeEscapes(ts.text), "\n") {
+		width := float32(ts.TextWidth(line)) * ts.xscl
+		height := float32(ts.fnt.Size[1]) * ts.yscl
+		x := ts.x + ts.vel[0] + ts.xshear*float32(ts.fnt.offset[1])*ts.yscl
+		y := ts.y + ts.vel[1] + float32(i)*(float32(ts.fnt.Size[1])+float32(ts.fnt.Spacing[1])+ts.textSpacing[1])*ts.yscl
+		if ts.align == -1 {
+			x += ts.localScale
+		}
+		var rcx, rcy float32
+		if ts.fnt.Type == "truetype" {
+			x += float32(ts.fnt.offset[0])*ts.xscl + float32(sys.gameWidth-320)/2
+			rcx, rcy = x, y
+			y -= height
+		} else {
+			x, y, rcx, rcy = ts.fnt.textPosition(x, y, ts.xscl, ts.yscl, ts.rot)
+		}
+		// Make the hover area tall enough for scaled glyphs.
+		top, bottom := ts.glyphLineExtent(line, height)
+		y += top
+		height = bottom - top
+		if ts.align == 0 {
+			x -= width / 2
+		} else if ts.align == -1 {
+			x -= width
+		}
+		if ts.fnt.Type == "truetype" {
+			x1, y1, x2, y2, x3, y3, x4, y4 := transformTextQuad(x+width, y, x, y, x, y+height, x+width, y+height,
+				-ts.xshear, ts.rot, ts.projection, ts.fLength, rcx, rcy)
+			if m.overQuad([4][2]float32{{x1 * sys.widthScale, y1 * sys.heightScale}, {x2 * sys.widthScale, y2 * sys.heightScale},
+				{x3 * sys.widthScale, y3 * sys.heightScale}, {x4 * sys.widthScale, y4 * sys.heightScale}}) {
+				return true
+			}
+		} else if m.overSprite(RenderParams{
+			size: [2]uint16{1, 1}, x: -x * sys.widthScale, y: -y * sys.heightScale,
+			xts: width * sys.widthScale, xbs: width * sys.widthScale, ys: height * sys.heightScale,
+			vs: 1, xas: 1, yas: 1, rxadd: -ts.xshear, rot: ts.rot, rcx: rcx, rcy: rcy,
+			projectionMode: ts.projection, fLength: ts.fLength * sys.heightScale,
+		}, nil) {
+			return true
+		}
+	}
+	return false
+}
+
+// Whether the pointer is inside a four-cornered shape, so rotated and tilted
+// sprites are hit where they appear. Coordinates are screen pixels.
+func (m *MouseInput) overQuad(quad [4][2]float32) bool {
+	x, y, inside := m.position()
+	if !inside {
+		return false
+	}
+	var positive, negative bool
+	var area float32
+	for i, a := range quad {
+		b := quad[(i+1)%len(quad)]
+		cross := (b[0]-a[0])*(y-a[1]) - (b[1]-a[1])*(x-a[0])
+		positive = positive || cross > 0.01
+		negative = negative || cross < -0.01
+		area += a[0]*b[1] - b[0]*a[1]
+	}
+	return Abs(area) > 0.01 && !(positive && negative)
+}
+
+// With pixels set, transparent parts of the sprite don't count.
+func (m *MouseInput) overAnim(a *Anim, pixels bool) bool {
+	if a == nil || a.anim == nil || a.anim.isBlank() || a.anim.spr == nil || !m.over(a.drawWindow()) {
+		return false
+	}
+	rp := a.drawParams()
+	if !rp.IsValid() {
+		return false
+	}
+	var opaque func(float32, float32) bool
+	if pixels && rp.mask != -1 && len(a.anim.spr.hitPixels) > 0 {
+		opaque = func(u, v float32) bool {
+			var pal []uint32
+			if a.anim.spr.coldepth <= 8 {
+				pal, _ = a.anim.pal(a.palfx)
+			}
+			return a.anim.spr.opaqueAt(u, v, pal)
+		}
+	}
+	return m.overSprite(rp, opaque)
+}
+
+func (m *MouseInput) overSprite(rp RenderParams, opaque func(float32, float32) bool) bool {
+	initRenderSpriteQuad(&rp)
+	matrix, quad := spriteQuad(mgl.Translate3D(0, float32(sys.scrrect[3]), 0), rp)
+	var invW [4]float32
+	for i, point := range quad {
+		v := matrix.Mul4x1(mgl.Vec4{point[0], point[1], 0, 1})
+		if v.W() <= 0 || !IsFinite(v.X()+v.Y()+v.W()) {
+			return false
+		}
+		quad[i] = [2]float32{v.X() / v.W(), float32(sys.scrrect[3]) - v.Y()/v.W()}
+		invW[i] = 1 / v.W()
+	}
+	if !m.overQuad(quad) {
+		return false
+	}
+	if opaque == nil {
+		return true
+	}
+	// Find the texture position under the pointer the same way the sprite is drawn,
+	// including perspective, rotation and flips.
+	uv := [4][2]float32{{spriteUVBias, 1 - spriteUVBias}, {1, 1 - spriteUVBias}, {1, 0}, {spriteUVBias, 0}}
+	x, y, _ := m.position()
+	for _, tri := range [2][3]int{{0, 1, 2}, {0, 2, 3}} {
+		a, b, c := quad[tri[0]], quad[tri[1]], quad[tri[2]]
+		dx1, dy1, dx2, dy2 := b[0]-a[0], b[1]-a[1], c[0]-a[0], c[1]-a[1]
+		det := dx1*dy2 - dy1*dx2
+		if det == 0 {
+			continue
+		}
+		wb := ((x-a[0])*dy2 - (y-a[1])*dx2) / det
+		wc := (dx1*(y-a[1]) - dy1*(x-a[0])) / det
+		wa := 1 - wb - wc
+		if wa < 0 || wb < 0 || wc < 0 {
+			continue
+		}
+		wa, wb, wc = wa*invW[tri[0]], wb*invW[tri[1]], wc*invW[tri[2]]
+		u := (wa*uv[tri[0]][0] + wb*uv[tri[1]][0] + wc*uv[tri[2]][0]) / (wa + wb + wc)
+		v := (wa*uv[tri[0]][1] + wb*uv[tri[1]][1] + wc*uv[tri[2]][1]) / (wa + wb + wc)
+		return opaque(u, v)
+	}
+	return false
+}
+
+type TextInput struct {
+	active, accepted, release   bool
+	closedByAction              bool
+	keyboard, shifted, symbols  bool
+	title, initial, composition string
+	value                       []rune
+	cursor, scroll, maximum     int
+	device                      int
+	held                        [VC_Count]int32
+	waitRelease                 bool
+	waitMouseRelease            bool // the click that opened the keyboard is still down
+	frame                       int32
+	time                        int32 // -1 unless the caller supplies a countdown.
+	selected, pressed           int
+	keys                        []TextInputKey
+}
+
+type TextInputKey struct {
+	text string
+	row  int
+	rect [4]float32
+}
+
+// These characters need names in layouts because INI uses them as separators.
+var textInputCharacters = map[string]string{"pipe": "|", "hash": "#", "semicolon": ";"}
+
+func (t *TextInput) open(title, value string, maximum, deviceID int) error {
+	if t.active {
+		return fmt.Errorf("text input is already open")
+	}
+	device := sys.glyphDevice(deviceID)
+	*t = TextInput{active: true, keyboard: !(sys.mouse.active && sys.mouse.enabled()), title: title, initial: value,
+		maximum: maximum, frame: -1, time: -1, pressed: -1, waitRelease: true, waitMouseRelease: true}
+	if maximum <= 0 {
+		t.maximum = Max(1, sys.motif.KeyboardInfo.MaxLength)
+	}
+	t.insert(value)
+	t.initial = string(t.value)
+	if device != nil && device.Joy >= 0 {
+		t.useDevice(device)
+	}
+	t.layout()
+	k := &sys.motif.KeyboardInfo
+	for _, a := range []*Anim{k.Key.Bg.AnimData, k.Key.Active.Bg.AnimData, k.Key.Pressed.Bg.AnimData} {
+		if a != nil {
+			a.Reset()
+		}
+	}
+	sys.keyInput = KeyUnknown
+	sys.esc, sys.escPending = false, false
+	sys.clearCommandBuffers()
+	sdl.StartTextInput()
+	return nil
+}
+
+func (t *TextInput) useDevice(device *InputDevice) {
+	t.device, t.keyboard = device.ID, false
+}
+
+func (t *TextInput) finish(accepted bool) {
+	if !t.active {
+		return
+	}
+	t.active, t.accepted, t.release = false, accepted, true
+	t.composition = ""
+	if !accepted {
+		t.value = []rune(t.initial)
+	}
+	sdl.StopTextInput()
+	sys.keyInput = KeyUnknown
+	sys.esc, sys.escPending = false, false
+	sys.clearCommandBuffers()
+	// Block the opening device so the closing press is not read by the parent
+	// menu after this returns; it unblocks itself on release.
+	if device := sys.inputs.device(t.device); device != nil {
+		sys.blockDevice(device)
 	}
 }
 
-// Return the state of all joystick keys for a player
-// This is now called only once instead of per button and retrieves
-// values from a shared state for both buttons and axes.
-// All XInput axes and digital buttons are supported.
-func GetJoystickState(kc KeyConfig) [14]bool {
-	var out [14]bool
-	joy := kc.Joy
-
-	// If this config is for keyboard or out of range, return no input
-	if joy < 0 || joy >= input.GetMaxJoystickCount() {
-		return out
+// Keep the closing press out of the parent menu, including when held for several frames.
+func (t *TextInput) releaseInputs() {
+	if !t.release {
+		return
 	}
-
-	if !input.IsJoystickPresent(joy) {
-		return out
-	}
-
-	axes := input.GetJoystickAxes(joy)
-	btns := input.GetJoystickButtons(joy)
-
-	// Convert button polling results to bools
-	getBtn := func(idx int) bool {
-		return idx >= 0 && idx < len(btns) && btns[idx] != 0
-	}
-
-	// axes as buttons
-	handleAxisBtn := func(axisBtn int) bool {
-		var axis int = 0
-		if axisBtn == 16 || axisBtn == 17 { // LS_X
-			axis = 0
-		} else if axisBtn == 15 || axisBtn == 18 { // LS_Y
-			axis = 1
-		} else if axisBtn == 22 || axisBtn == 23 { // RS_X
-			axis = 2
-		} else if axisBtn == 21 || axisBtn == 24 { // RS_Y
-			axis = 3
-		} else if axisBtn == 19 { // LT
-			axis = 4
-		} else if axisBtn == 20 { // RT
-			axis = 5
-		} else { // Invalid
-			return false
+	for _, down := range sys.mouse.down {
+		if down {
+			return
 		}
-		val := axes[axis]
-
-		// Evaluate LR triggers on the Xbox 360 controller
-		if axis == 4 || axis == 5 {
-			return val > sys.cfg.Input.XinputTriggerSensitivity
+	}
+	for _, down := range sys.keyState {
+		if down {
+			return
 		}
+	}
+	if device := sys.inputs.device(t.device); device != nil && device.Connected {
+		for _, down := range t.controllerState(device) {
+			if down {
+				return
+			}
+		}
+	}
+	t.release = false
+	sys.clearCommandBuffers()
+}
 
-		if val < 0 && (axisBtn == 15 || axisBtn == 16 || axisBtn == 21 || axisBtn == 22) {
-			return -val > sys.cfg.Input.ControllerStickSensitivity
-		} else if axisBtn == 17 || axisBtn == 18 || axisBtn == 23 || axisBtn == 24 {
-			return val > sys.cfg.Input.ControllerStickSensitivity
+func (t *TextInput) insert(value string) bool {
+	var text []rune
+	for _, r := range value {
+		if !unicode.IsControl(r) && r != '\u2028' && r != '\u2029' {
+			text = append(text, r)
+		}
+	}
+	available := Max(0, t.maximum-len(t.value))
+	complete := len(text) <= available
+	if !complete {
+		text = text[:available]
+	}
+	if len(text) == 0 {
+		return false
+	}
+	valueRunes := append([]rune(nil), t.value[:t.cursor]...)
+	valueRunes = append(valueRunes, text...)
+	t.value = append(valueRunes, t.value[t.cursor:]...)
+	t.cursor += len(text)
+	return complete
+}
+
+func (t *TextInput) action(action string, playSound bool) {
+	sound := sys.motif.KeyboardInfo.Done.Snd
+	switch action {
+	case "done":
+		t.finish(true)
+		t.closedByAction = true
+	case "cancel":
+		t.finish(false)
+		t.closedByAction = true
+	case "backspace":
+		if t.cursor > 0 {
+			t.value = append(t.value[:t.cursor-1], t.value[t.cursor:]...)
+			t.cursor--
+		}
+		sound = sys.motif.KeyboardInfo.Cancel.Snd
+	case "delete":
+		if t.cursor < len(t.value) {
+			t.value = append(t.value[:t.cursor], t.value[t.cursor+1:]...)
+		}
+		sound = sys.motif.KeyboardInfo.Cancel.Snd
+	case "previous":
+		t.cursor = Max(0, t.cursor-1)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "next":
+		t.cursor = Min(len(t.value), t.cursor+1)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "start":
+		t.cursor = 0
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "end":
+		t.cursor = len(t.value)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "shift":
+		t.shifted = !t.shifted
+		t.layout()
+	case "page":
+		t.symbols = !t.symbols
+		t.layout()
+	case "space":
+		if !t.insert(" ") {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	case "paste":
+		if !t.insert(sys.window.GetClipboardString()) {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	default:
+		if character, ok := textInputCharacters[action]; ok {
+			action = character
+		}
+		if !t.insert(action) {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	}
+	// The owner handles closing sounds after validating the input; physical
+	// keyboard editing never plays selection sounds.
+	if !playSound || action == "done" || action == "cancel" {
+		return
+	}
+	sys.motif.Snd.play(sound, 100, 0, 0, 0, 0)
+}
+
+type textInputAction struct {
+	action []string
+	name   string
+	repeat bool // repeats while held
+}
+
+// The editing actions of [Keyboard Info], shared by every input that drives it.
+func textInputActions() []textInputAction {
+	k := &sys.motif.KeyboardInfo
+	return []textInputAction{
+		{k.Done.Action, "done", false}, {k.Cancel.Action, "cancel", false},
+		{k.Backspace.Action, "backspace", true}, {k.Delete.Action, "delete", true},
+		{k.Shift.Action, "shift", false}, {k.Page.Action, "page", false},
+		{k.Paste.Action, "paste", false},
+		{k.Cursor.Previous.Action, "previous", true}, {k.Cursor.Next.Action, "next", true},
+		{k.Cursor.Start.Action, "start", false}, {k.Cursor.End.Action, "end", false},
+	}
+}
+
+// SDL text commits and editing keys have separate paths. A typed letter must
+// never also activate the action bound to that physical key.
+func (t *TextInput) key(key Key, repeat bool) {
+	t.keyboard = true
+	// Let the IME handle its own editing keys until its text is committed.
+	if t.composition != "" {
+		return
+	}
+	for _, entry := range textInputActions() {
+		if actionHasKey(entry.action, key) {
+			if !repeat || entry.repeat {
+				t.action(entry.name, false)
+			}
+			return
+		}
+	}
+}
+
+// Virtual controls held on the gamepad driving the keyboard.
+func (t *TextInput) controllerState(device *InputDevice) [VC_Count]bool {
+	var state [VC_Count]bool
+	f := sys.deviceFrame(device)
+	for vc := range state {
+		state[vc] = f.held(VirtualControl(vc))
+	}
+	return state
+}
+
+// True when an action's virtual control was just pressed, or repeats while held.
+func (t *TextInput) button(action []string, repeat bool) bool {
+	for _, token := range action {
+		if vc := parseVirtualControl(token); vc != VC_None && (t.held[vc] == 1 || repeat && sys.uiRepeatShouldFire(t.held[vc])) {
+			return true
+		}
+	}
+	return false
+}
+
+// Handles one frame of on-screen keyboard input.
+func (t *TextInput) step() {
+	if !t.active || t.frame == sys.frameCounter {
+		return
+	}
+	t.frame, t.pressed = sys.frameCounter, -1
+	if t.stepMouse() {
+		return
+	}
+	device := sys.inputs.device(t.device)
+	if t.device != 0 && (device == nil || !device.Connected) {
+		t.finish(false)
+		return
+	}
+	if device == nil || !device.Connected {
+		// A keyboard-opened session may be picked up by the first gamepad used.
+		for _, candidate := range sys.inputs.Devices {
+			if !candidate.Connected || candidate.Joy < 0 {
+				continue
+			}
+			for _, down := range t.controllerState(candidate) {
+				if down {
+					t.useDevice(candidate)
+					t.held = [VC_Count]int32{}
+					t.waitRelease = true
+					device = candidate
+					break
+				}
+			}
+			if device != nil && device.Connected {
+				break
+			}
+		}
+	}
+	if device == nil || !device.Connected || device.Joy < 0 {
+		return
+	}
+	state := t.controllerState(device)
+	if t.waitRelease {
+		for _, down := range state {
+			if down {
+				return
+			}
+		}
+		t.waitRelease = false
+	}
+	for i, down := range state {
+		if down {
+			t.held[i]++
 		} else {
-			return false
+			t.held[i] = 0
 		}
 	}
-
-	// Apply axis button logic
-	axisIndices := []int{
-		kc.dU, kc.dD, kc.dL, kc.dR,
-		kc.bA, kc.bB, kc.bC, kc.bX, kc.bY, kc.bZ,
-		kc.bS, kc.bD, kc.bW, kc.bM,
-	}
-	for i, idx := range axisIndices {
-		if idx >= 15 && idx <= 24 {
-			out[i] = handleAxisBtn(idx)
-		} else {
-			out[i] = getBtn(idx)
+	k := &sys.motif.KeyboardInfo
+	for _, entry := range textInputActions() {
+		if t.button(entry.action, entry.repeat) {
+			t.keyboard = false
+			t.action(entry.name, true)
+			return
 		}
 	}
+	if t.button(k.Up.Action, true) {
+		t.move(0, -1)
+	} else if t.button(k.Down.Action, true) {
+		t.move(0, 1)
+	} else if t.button(k.Left.Action, true) {
+		t.move(-1, 0)
+	} else if t.button(k.Right.Action, true) {
+		t.move(1, 0)
+	} else if len(t.keys) > 0 && t.button(k.Select.Action, false) {
+		t.selectKey()
+	}
+}
 
-	return out
+// Types or runs the selected key.
+func (t *TextInput) selectKey() {
+	k := &sys.motif.KeyboardInfo
+	t.keyboard, t.pressed = false, t.selected
+	key := t.keys[t.selected].text
+	if strings.HasPrefix(key, "{") && strings.HasSuffix(key, "}") {
+		t.action(key[1:len(key)-1], true)
+	} else {
+		sound := k.Done.Snd
+		if !t.insert(key) {
+			sound = k.Cancel.Snd
+		}
+		sys.motif.Snd.play(sound, 100, 0, 0, 0, 0)
+	}
+}
+
+// Mouse buttons of the [Keyboard Info] actions. Reports whether the mouse
+// did something this frame.
+func (t *TextInput) stepMouse() bool {
+	if !sys.mouse.enabled() {
+		return false
+	}
+	sys.pollDevices()
+	if sys.mouse.active {
+		t.keyboard = false
+	}
+	if t.waitMouseRelease {
+		for i, down := range sys.mouse.down {
+			if down || sys.mouse.held[i] > 0 {
+				return false
+			}
+		}
+		t.waitMouseRelease = false
+	}
+	// The keys are laid out in motif coordinates.
+	previous := sys.captureAspectState()
+	sys.restoreAspectState(sys.motifAspectState())
+	defer sys.restoreAspectState(previous)
+	k := &sys.motif.KeyboardInfo
+	// Pointing at a key selects it, a click types it.
+	if bg := k.Key.BoxBg.RectData; bg != nil {
+		for i, key := range t.keys {
+			bounds := *bg
+			bounds.SetWindow(key.rect)
+			if !sys.mouse.over(bounds.drawWindow()) {
+				continue
+			}
+			if sys.mouse.moved {
+				t.selected = i
+			}
+			if sys.mouse.actionTime(k.Select.Action) == 1 {
+				t.selected = i
+				t.selectKey()
+				return true
+			}
+			break
+		}
+	}
+	for _, entry := range textInputActions() {
+		if sys.mouse.actionTime(entry.action) == 1 {
+			t.action(entry.name, true)
+			return true
+		}
+	}
+	for _, move := range []struct {
+		action []string
+		x, y   int
+	}{{k.Up.Action, 0, -1}, {k.Down.Action, 0, 1}, {k.Left.Action, -1, 0}, {k.Right.Action, 1, 0}} {
+		if sys.mouse.actionTime(move.action) == 1 {
+			t.move(move.x, move.y)
+			return true
+		}
+	}
+	return false
+}
+
+// Builds the key grid for the current layout (lower or upper case).
+func (t *TextInput) layout() {
+	k := &sys.motif.KeyboardInfo
+	name := "lower"
+	if t.shifted {
+		name = "upper"
+	}
+	if t.symbols {
+		name = "symbols"
+		if t.shifted {
+			name = "symbolsupper"
+		}
+	}
+	t.keys = nil
+	for row, text := range strings.Split(k.Layout[name], "|") {
+		x, y := k.Pos[0], k.Pos[1]+float32(row)*(k.Key.Size[1]+k.Key.Spacing[1])
+		for _, key := range strings.Fields(text) {
+			width := k.Key.Width[strings.Trim(key, "{}")]
+			if width <= 0 {
+				width = 1
+			}
+			width = width*k.Key.Size[0] + (width-1)*k.Key.Spacing[0]
+			t.keys = append(t.keys, TextInputKey{key, row, [4]float32{x, y, x + width, y + k.Key.Size[1]}})
+			x += width + k.Key.Spacing[0]
+		}
+	}
+	t.selected = Max(0, Min(t.selected, len(t.keys)-1))
+}
+
+func (t *TextInput) move(dx, dy int) {
+	if len(t.keys) == 0 {
+		return
+	}
+	current := t.keys[t.selected]
+	row := current.row
+	if dy != 0 {
+		rows := t.keys[len(t.keys)-1].row + 1
+		row = (row + dy + rows) % rows
+	}
+	var candidates []int
+	for i, key := range t.keys {
+		if key.row == row {
+			candidates = append(candidates, i)
+		}
+	}
+	if len(candidates) == 0 {
+		return
+	}
+	if dx != 0 {
+		for i, index := range candidates {
+			if index == t.selected {
+				t.selected = candidates[(i+dx+len(candidates))%len(candidates)]
+				break
+			}
+		}
+	} else {
+		center := (current.rect[0] + current.rect[2]) / 2
+		distance := float32(math.MaxFloat32)
+		for _, index := range candidates {
+			r := t.keys[index].rect
+			d := Abs((r[0]+r[2])/2 - center)
+			if d < distance {
+				distance, t.selected = d, index
+			}
+		}
+	}
+	t.keyboard = false
+	sys.motif.Snd.play(sys.motif.KeyboardInfo.Move.Snd, 100, 0, 0, 0, 0)
 }
 
 type CommandSpec struct {
@@ -277,85 +943,7 @@ type CommandSpec struct {
 	StepTime       int32
 }
 
-type KeyConfig struct {
-	Joy                                                    int
-	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM int
-	isInitialized                                          bool
-	rumbleOn                                               bool
-	GUID                                                   string
-}
-
-func (kc *KeyConfig) set(v [14]int) {
-	kc.dU = v[0]
-	kc.dD = v[1]
-	kc.dL = v[2]
-	kc.dR = v[3]
-	kc.bA = v[4]
-	kc.bB = v[5]
-	kc.bC = v[6]
-	kc.bX = v[7]
-	kc.bY = v[8]
-	kc.bZ = v[9]
-	kc.bS = v[10]
-	kc.bD = v[11]
-	kc.bW = v[12]
-	kc.bM = v[13]
-}
-
-func (kc *KeyConfig) swap(kc2 *KeyConfig) {
-	joy := kc.Joy
-	// dD := kc.dD
-	// dL := kc.dL
-	// dR := kc.dR
-	// dU := kc.dU
-	// bA := kc.bA
-	// bB := kc.bB
-	// bC := kc.bC
-	// bD := kc.bD
-	// bW := kc.bW
-	// bX := kc.bX
-	// bY := kc.bY
-	// bZ := kc.bZ
-	// bM := kc.bM
-	// bS := kc.bS
-
-	kc.Joy = kc2.Joy
-	// kc.dD = kc2.dD
-	// kc.dL = kc2.dL
-	// kc.dR = kc2.dR
-	// kc.dU = kc2.dU
-	// kc.bA = kc2.bA
-	// kc.bB = kc2.bB
-	// kc.bC = kc2.bC
-	// kc.bD = kc2.bD
-	// kc.bW = kc2.bW
-	// kc.bX = kc2.bX
-	// kc.bY = kc2.bY
-	// kc.bZ = kc2.bZ
-	// kc.bM = kc2.bM
-	// kc.bS = kc2.bS
-
-	kc2.Joy = joy
-	// kc2.dD = dD
-	// kc2.dL = dL
-	// kc2.dR = dR
-	// kc2.dU = dU
-	// kc2.bA = bA
-	// kc2.bB = bB
-	// kc2.bC = bC
-	// kc2.bD = bD
-	// kc2.bW = bW
-	// kc2.bX = bX
-	// kc2.bY = bY
-	// kc2.bZ = bZ
-	// kc2.bM = bM
-	// kc2.bS = bS
-
-	kc.isInitialized = true
-	kc2.isInitialized = true
-}
-
-type InputBits int16
+type InputBits uint16
 
 const (
 	IB_PU InputBits = 1 << iota
@@ -372,56 +960,775 @@ const (
 	IB_D
 	IB_W
 	IB_M
-	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
+	IB_L
+	IB_R
+	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M | IB_L | IB_R
 )
 
-// Save local inputs as input bits to send or record
-func (ibit *InputBits) KeysToBits(buttons [14]bool) {
-	*ibit = InputBits(Btoi(buttons[0]) |
-		Btoi(buttons[1])<<1 |
-		Btoi(buttons[2])<<2 |
-		Btoi(buttons[3])<<3 |
-		Btoi(buttons[4])<<4 |
-		Btoi(buttons[5])<<5 |
-		Btoi(buttons[6])<<6 |
-		Btoi(buttons[7])<<7 |
-		Btoi(buttons[8])<<8 |
-		Btoi(buttons[9])<<9 |
-		Btoi(buttons[10])<<10 |
-		Btoi(buttons[11])<<11 |
-		Btoi(buttons[12])<<12 |
-		Btoi(buttons[13])<<13)
+// Positions in the [16]bool button arrays, in the same order as InputBits.
+type ButtonIndex int
+
+const (
+	BI_PU ButtonIndex = iota
+	BI_PD
+	BI_PL
+	BI_PR
+	BI_A
+	BI_B
+	BI_C
+	BI_X
+	BI_Y
+	BI_Z
+	BI_S
+	BI_D
+	BI_W
+	BI_M
+	BI_L
+	BI_R
+)
+
+// Input goes physical keys or SDL controls -> Button Mapping -> virtual controller -> Controller Setup -> engine buttons.
+
+// One control of the standard XInput-style virtual controller.
+type VirtualControl int
+
+const (
+	VC_DP_U VirtualControl = iota
+	VC_DP_D
+	VC_DP_L
+	VC_DP_R
+	VC_A
+	VC_B
+	VC_X
+	VC_Y
+	VC_START
+	VC_BACK
+	VC_LB
+	VC_RB
+	VC_LT
+	VC_RT
+	VC_LS_YN
+	VC_LS_YP
+	VC_LS_XN
+	VC_LS_XP
+	VC_RS_YN
+	VC_RS_YP
+	VC_RS_XN
+	VC_RS_XP
+	VC_LS
+	VC_RS
+	VC_Count
+	VC_None VirtualControl = -1
+)
+
+var virtualControlNames = [VC_Count]string{
+	"DP_U", "DP_D", "DP_L", "DP_R", "A", "B", "X", "Y", "START", "BACK",
+	"LB", "RB", "LT", "RT", "LS_Y-", "LS_Y+", "LS_X-", "LS_X+",
+	"RS_Y-", "RS_Y+", "RS_X-", "RS_X+", "LS", "RS",
 }
 
-// Convert received input bits back into keys
-func (ibit InputBits) BitsToKeys() [14]bool {
-	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
+// Bit of each digital control in VirtualFrame.Buttons, or -1 for analog controls.
+var virtualButtonBit = [VC_Count]int8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 13}
 
-	// Convert bits to logical symbols
-	U = ibit&IB_PU != 0
-	D = ibit&IB_PD != 0
-	L = ibit&IB_PL != 0
-	R = ibit&IB_PR != 0
-	a = ibit&IB_A != 0
-	b = ibit&IB_B != 0
-	c = ibit&IB_C != 0
-	x = ibit&IB_X != 0
-	y = ibit&IB_Y != 0
-	z = ibit&IB_Z != 0
-	s = ibit&IB_S != 0
-	d = ibit&IB_D != 0
-	w = ibit&IB_W != 0
-	m = ibit&IB_M != 0
+// Axis and direction of each analog control. Digital controls use axis -1.
+var virtualControlAxis = [VC_Count][2]int8{
+	{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0},
+	{-1, 0}, {-1, 0}, {4, 1}, {5, 1}, {1, -1}, {1, 1}, {0, -1}, {0, 1},
+	{3, -1}, {3, 1}, {2, -1}, {2, 1}, {-1, 0}, {-1, 0},
+}
 
-	return [14]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+// SDL buttons behind the digital virtual controls of a recognized gamepad.
+var virtualControlButton = map[VirtualControl]sdl.GameControllerButton{
+	VC_DP_U: sdl.CONTROLLER_BUTTON_DPAD_UP, VC_DP_D: sdl.CONTROLLER_BUTTON_DPAD_DOWN,
+	VC_DP_L: sdl.CONTROLLER_BUTTON_DPAD_LEFT, VC_DP_R: sdl.CONTROLLER_BUTTON_DPAD_RIGHT,
+	VC_A: sdl.CONTROLLER_BUTTON_A, VC_B: sdl.CONTROLLER_BUTTON_B,
+	VC_X: sdl.CONTROLLER_BUTTON_X, VC_Y: sdl.CONTROLLER_BUTTON_Y,
+	VC_START: sdl.CONTROLLER_BUTTON_START, VC_BACK: sdl.CONTROLLER_BUTTON_BACK,
+	VC_LB: sdl.CONTROLLER_BUTTON_LEFTSHOULDER, VC_RB: sdl.CONTROLLER_BUTTON_RIGHTSHOULDER,
+	VC_LS: sdl.CONTROLLER_BUTTON_LEFTSTICK, VC_RS: sdl.CONTROLLER_BUTTON_RIGHTSTICK,
+}
+
+// Returns the control with this name (case insensitive), or VC_None.
+func parseVirtualControl(name string) VirtualControl {
+	name = strings.TrimSpace(name)
+	for i, n := range virtualControlNames {
+		if strings.EqualFold(n, name) {
+			return VirtualControl(i)
+		}
+	}
+	return VC_None
+}
+
+// Motif actions name virtual controls, or local keyboard keys as "KEY:<name>".
+func actionKey(token string) (Key, bool) {
+	token = strings.TrimSpace(token)
+	if len(token) > 4 && strings.EqualFold(token[:4], "KEY:") {
+		if key := StringToKey(token[4:]); key != KeyUnknown {
+			return key, true
+		}
+	}
+	return KeyUnknown, false
+}
+
+// Engine buttons in motif actions, as "BTN:<name>" with the Controller Setup button
+// names (BTN:a, BTN:start). They are read after the Controller Setup.
+func actionButton(token string) (int, bool) {
+	token = strings.TrimSpace(token)
+	if len(token) > 4 && strings.EqualFold(token[:4], "BTN:") {
+		for i, name := range engineButtonNames {
+			if strings.EqualFold(name, token[4:]) {
+				return i, true
+			}
+		}
+	}
+	return -1, false
+}
+
+func actionHasKey(action []string, key Key) bool {
+	for _, token := range action {
+		if k, ok := actionKey(token); ok && k == key {
+			return true
+		}
+	}
+	return false
+}
+
+func (vc VirtualControl) String() string {
+	if vc < 0 || vc >= VC_Count {
+		return "-"
+	}
+	return virtualControlNames[vc]
+}
+
+// True for stick directions and triggers.
+func (vc VirtualControl) analog() bool {
+	return vc >= 0 && vc < VC_Count && virtualButtonBit[vc] < 0
+}
+
+// Netplay and replays store eight bytes per player, for a controller or a menu pointer.
+type VirtualFrame struct {
+	Buttons uint16
+	Axes    [6]int8 // LS_X, LS_Y, RS_X, RS_Y, LT, RT. Triggers stay in 0..127.
+}
+
+const virtualFrameBytes = 8
+
+const virtualFrameButtonMask = 1<<14 - 1
+const virtualFrameMenu = 1 << 14 // Bit 15 stays clear for delay netplay's end marker.
+
+func (f VirtualFrame) isMenu() bool { return f.Buttons&virtualFrameMenu != 0 }
+
+// Menu payloads must not pass through axis normalization or Controller Setup.
+func (f VirtualFrame) controller() VirtualFrame {
+	if f.isMenu() {
+		return VirtualFrame{}
+	}
+	return f
+}
+
+// A menu frame carries menu input that no controller button can, such as Esc
+// in netplay and the mouse. Only menuFrame knows its layout:
+//
+//	Buttons bit 14     marks a menu frame, see virtualFrameMenu
+//	Buttons bit 12     a Button Mapping capture finished
+//	Buttons bit 11     Esc
+//	Buttons bit 10     the pointer is in use
+//	Buttons bit 9      the pointer moved
+//	Buttons bits 0-8   held mouse buttons, see mouseButtonNames
+//	Axes 0-1           menu generation, see MenuMouse.setContext
+//	Axes 2-4           what the pointer is on, see mouseSync
+//	Axes 5             event sequence
+const (
+	menuFrameCapture = 1 << 12
+	menuFrameEscape  = 1 << 11
+	menuFrameMouseActive = 1 << 10
+	menuFrameMouseMoved  = 1 << 9
+	menuMouseMaxTarget   = 1<<24 - 1
+)
+
+type menuFrame struct {
+	menu       bool // decoded from a menu frame
+	escape  bool
+	capture bool
+	active     bool
+	moved      bool
+	buttons    uint16
+	generation uint16
+	target     uint32
+	sequence   byte
+}
+
+func (m menuFrame) encode() VirtualFrame {
+	f := VirtualFrame{Buttons: virtualFrameMenu | m.buttons, Axes: [6]int8{
+		int8(m.generation), int8(m.generation >> 8),
+		int8(m.target), int8(m.target >> 8), int8(m.target >> 16), int8(m.sequence),
+	}}
+	if m.escape {
+		f.Buttons |= menuFrameEscape
+	}
+	if m.capture {
+		f.Buttons |= menuFrameCapture
+	}
+	if m.active {
+		f.Buttons |= menuFrameMouseActive
+	}
+	if m.moved {
+		f.Buttons |= menuFrameMouseMoved
+	}
+	return f
+}
+
+func decodeMenuFrame(f VirtualFrame) menuFrame {
+	if !f.isMenu() {
+		return menuFrame{}
+	}
+	return menuFrame{
+		menu:       true,
+		escape:     f.Buttons&menuFrameEscape != 0,
+		capture:    f.Buttons&menuFrameCapture != 0,
+		active:     f.Buttons&menuFrameMouseActive != 0,
+		moved:      f.Buttons&menuFrameMouseMoved != 0,
+		buttons:    f.Buttons & (1<<len(mouseButtonNames) - 1),
+		generation: uint16(byte(f.Axes[0])) | uint16(byte(f.Axes[1]))<<8,
+		target:     uint32(byte(f.Axes[2])) | uint32(byte(f.Axes[3]))<<8 | uint32(byte(f.Axes[4]))<<16,
+		sequence:   byte(f.Axes[5]),
+	}
+}
+
+// Menu input of a netplay or replay channel, read from its menu frames. It
+// follows the synchronized UI clock and is copied with rollback state.
+type MenuChannel struct {
+	escape      int32 // frames Esc has been held
+	escapeTaken bool  // a menu already used this press, see the esc Lua function
+	capture     bool  // a Button Mapping capture finished this frame
+	mouse       MenuMouse
+	stepped     bool
+	frame       int32
+}
+
+func (c *MenuChannel) step(f VirtualFrame) {
+	if c.stepped && c.frame == sys.uiFrameCounter {
+		return
+	}
+	c.stepped, c.frame = true, sys.uiFrameCounter
+	in := decodeMenuFrame(f)
+	c.escapeTaken, c.capture = false, in.capture
+	if in.escape {
+		c.escape++
+	} else {
+		c.escape = 0
+	}
+	c.mouse.step(in)
+}
+
+// The pointer of a netplay or replay channel, see MenuChannel.
+type MenuMouse struct {
+	input      MouseInput
+	context    string
+	generation uint16
+	received   uint16
+	target     uint32
+	sequence   byte
+	seen       bool
+}
+
+func (m *MenuMouse) setContext(context string) {
+	if m.context != context {
+		m.context = context
+		m.generation++
+	}
+}
+
+func (m *MenuMouse) step(in menuFrame) {
+	fresh := !m.seen || in.sequence != m.sequence || in.generation != m.received
+	m.seen, m.sequence = in.menu, in.sequence
+	m.received, m.target = in.generation, in.target
+	m.input.remote, m.input.active = true, in.active
+	m.input.moved = in.active && fresh && in.moved
+	m.input.taken = [len(mouseButtonNames)]bool{}
+	for button := range m.input.held {
+		if in.buttons&(1<<uint(button)) == 0 {
+			m.input.held[button] = 0
+		} else if button < mouseClickButtons {
+			m.input.held[button]++
+		} else if fresh {
+			m.input.held[button] = 1
+		} else {
+			m.input.held[button] = 0
+		}
+	}
+}
+
+func (m *MenuMouse) available() bool {
+	return m.input.active && m.received == m.generation
+}
+
+func (m *MouseInput) packet(generation uint16, target uint32) VirtualFrame {
+	sys.pollDevices()
+	out := menuFrame{generation: generation, target: target, sequence: byte(sys.frameCounter)}
+	if _, _, inside := m.position(); inside && m.active {
+		out.active, out.moved = true, m.moved
+		for button, held := range m.held {
+			if held > 0 {
+				out.buttons |= 1 << uint(button)
+			}
+		}
+	}
+	return out.encode()
+}
+
+func (f VirtualFrame) encode() []byte {
+	b := make([]byte, virtualFrameBytes)
+	b[0], b[1] = byte(f.Buttons), byte(f.Buttons>>8)
+	for i, axis := range f.Axes {
+		b[2+i] = byte(axis)
+	}
+	return b
+}
+
+func decodeVirtualFrame(b []byte) VirtualFrame {
+	var f VirtualFrame
+	if len(b) < virtualFrameBytes {
+		return f
+	}
+	f.Buttons = (uint16(b[0]) | uint16(b[1])<<8) & (1<<15 - 1)
+	for i := range f.Axes {
+		f.Axes[i] = int8(b[2+i])
+	}
+	// A trigger never rests below zero.
+	if !f.isMenu() {
+		f.Axes[4], f.Axes[5] = int8(Max(int32(f.Axes[4]), 0)), int8(Max(int32(f.Axes[5]), 0))
+	}
+	return f
+}
+
+// How far a control is pushed, from 0 to 127.
+func (f VirtualFrame) level(vc VirtualControl) int32 {
+	if f.isMenu() || vc < 0 || vc >= VC_Count {
+		return 0
+	}
+	if bit := virtualButtonBit[vc]; bit >= 0 {
+		if f.Buttons&(1<<uint(bit)) != 0 {
+			return 127
+		}
+		return 0
+	}
+	a := virtualControlAxis[vc]
+	return Clamp(int32(f.Axes[a[0]])*int32(a[1]), 0, 127)
+}
+
+// Sensitivity of a stick direction or trigger, from 0 to 127.
+func virtualThreshold(vc VirtualControl) float32 {
+	if vc == VC_LT || vc == VC_RT {
+		return sys.cfg.Input.XinputTriggerSensitivity * 127
+	}
+	return sys.cfg.Input.ControllerStickSensitivity * 127
+}
+
+// True if a control counts as held. Sticks and triggers use the configured sensitivities.
+func (f VirtualFrame) held(vc VirtualControl) bool {
+	if !vc.analog() {
+		return f.level(vc) > 0
+	}
+	return float32(f.level(vc)) > virtualThreshold(vc)
+}
+
+// True if any face, shoulder, trigger, Start, Back or stick button is held.
+func (f VirtualFrame) anyButton() bool {
+	for _, vc := range []VirtualControl{VC_A, VC_B, VC_X, VC_Y, VC_START, VC_BACK, VC_LB, VC_RB, VC_LT, VC_RT, VC_LS, VC_RS} {
+		if f.held(vc) {
+			return true
+		}
+	}
+	return false
+}
+
+// Combines two devices driving one player. Buttons add up and the stronger axis wins.
+func (f VirtualFrame) merge(o VirtualFrame) VirtualFrame {
+	f.Buttons |= o.Buttons
+	for i, axis := range o.Axes {
+		if Abs(int32(axis)) > Abs(int32(f.Axes[i])) {
+			f.Axes[i] = axis
+		}
+	}
+	return f
+}
+
+// Physical binding of every virtual control, in VirtualControl order. "-" or "" is unbound.
+type ButtonMapping [VC_Count]string
+
+// A recognized gamepad maps every control to itself.
+func identityButtonMapping() ButtonMapping {
+	var m ButtonMapping
+	for i := range m {
+		m[i] = virtualControlNames[i]
+	}
+	return m
+}
+
+// Builds a virtual frame. read reports how far a physical input is pushed
+// (0-127) and whether it counts as held. Opposite directions held together cancel out.
+func (m *ButtonMapping) sample(read func(token string) (int32, bool)) VirtualFrame {
+	var f VirtualFrame
+	var positive, negative [6]int32
+	for i, token := range m {
+		if token == "" || token == "-" {
+			continue
+		}
+		level, held := read(token)
+		vc := VirtualControl(i)
+		if bit := virtualButtonBit[vc]; bit >= 0 {
+			if held {
+				f.Buttons |= 1 << uint(bit)
+			}
+			continue
+		}
+		a := virtualControlAxis[vc]
+		if a[1] < 0 {
+			negative[a[0]] = Max(negative[a[0]], level)
+		} else {
+			positive[a[0]] = Max(positive[a[0]], level)
+		}
+	}
+	for i := range f.Axes {
+		f.Axes[i] = int8(Clamp(positive[i]-negative[i], -128, 127))
+	}
+	return f
+}
+
+// Every key bound by a keyboard mapping, for conflict checks.
+func (m *ButtonMapping) keys() []Key {
+	var keys []Key
+	for _, token := range m {
+		if key := StringToKey(token); key != KeyUnknown {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+// How far a recognized gamepad pushes one of its standard controls.
+func gamepadControlLevel(joy int, token string) (int32, bool) {
+	vc := parseVirtualControl(token)
+	if vc == VC_None || !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
+		return 0, false
+	}
+	state := input.controllerstate[joy]
+	if !vc.analog() {
+		if state.Buttons[virtualControlButton[vc]] != 0 {
+			return 127, true
+		}
+		return 0, false
+	}
+	a := virtualControlAxis[vc]
+	level := Clamp(int32(state.Axes[a[0]])*int32(a[1]), 0, 127)
+	return level, float32(level) > virtualThreshold(vc)
+}
+
+func keyboardKeyLevel(token string) (int32, bool) {
+	if key := StringToKey(token); key != KeyUnknown && sys.keyState[key] {
+		return 127, true
+	}
+	return 0, false
+}
+
+// Engine buttons, in ButtonIndex order.
+var engineButtonNames = [16]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu", "l", "r"}
+
+// Engine buttons named by a setup row, including combinations such as xa or startmenu.
+func setupButtonMask(name string) uint16 {
+	name = strings.ToLower(strings.TrimSpace(name))
+	var mask uint16
+	for name != "" {
+		matched := false
+		for i, button := range engineButtonNames {
+			if strings.HasPrefix(name, button) {
+				bit := uint16(1) << uint(i)
+				if mask&bit != 0 {
+					return 0
+				}
+				mask |= bit
+				name = name[len(button):]
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return 0
+		}
+	}
+	return mask
+}
+
+// Virtual controls behind each engine button, with its individual binding first.
+type ControllerSetup [16][]VirtualControl
+
+// Engine buttons held for a virtual frame.
+func (cs *ControllerSetup) project(f VirtualFrame) [16]bool {
+	var buttons [16]bool
+	for i, controls := range cs {
+		for _, vc := range controls {
+			if f.held(vc) {
+				buttons[i] = true
+				break
+			}
+		}
+	}
+	return buttons
+}
+
+// The Controller Setup of a netplay or replay channel, as rows and as bindings.
+// It is never changed in place, so rollback snapshots can share it.
+type SessionSetup struct {
+	initial, definition *ControllerSetupProperties
+	controls   ControllerSetup
+}
+
+func newSessionSetup(p *ControllerSetupProperties) SessionSetup {
+	var definition ControllerSetupProperties
+	if p != nil {
+		definition = *p
+		definition.Buttons = maps.Clone(p.Buttons)
+	}
+	return SessionSetup{initial: &definition, definition: &definition, controls: definition.setup()}
+}
+
+// Runtime copy of the input sections of config.ini.
+type InputConfig struct {
+	keyboards  []string                   // keyboard controller IDs in config.ini order
+	mappings   map[string]ButtonMapping   // keyboard IDs and "controller_<guid>" overrides
+	setups     map[string]ControllerSetup // Controller Setups by ID
+	setupOrder []string
+}
+
+// The Controller Setup of an ID. Unknown IDs fall back to the first setup.
+func (ic *InputConfig) setup(id string) (string, *ControllerSetup) {
+	id = strings.ToLower(id)
+	if s, ok := ic.setups[id]; ok {
+		return id, &s
+	}
+	if len(ic.setupOrder) > 0 {
+		s := ic.setups[ic.setupOrder[0]]
+		return ic.setupOrder[0], &s
+	}
+	var s ControllerSetup
+	return "", &s
+}
+
+// Button Mapping of a device. Gamepads without an override map controls to themselves.
+func (ic *InputConfig) mapping(device *InputDevice) ButtonMapping {
+	if device == nil {
+		return ButtonMapping{}
+	}
+	if device.Joy < 0 {
+		return ic.mappings[device.Keyboard]
+	}
+	if m, ok := ic.mappings["controller_"+strings.ToLower(device.GUID)]; ok {
+		return m
+	}
+	return identityButtonMapping()
+}
+
+// A keyboard controller or a connected gamepad. IDs are never reused while the game runs.
+type InputDevice struct {
+	ID        int
+	Joy       int    // gamepad slot, -1 for a keyboard controller
+	Keyboard  string // keyboard controller ID, empty for gamepads
+	Name      string
+	GUID      string
+	Setup     string // Controller Setup in use
+	Connected bool
+	blocked   bool
+	held      [VC_Count]int32
+	pressed   [VC_Count]bool
+}
+
+// Key for per-device preferences: the keyboard ID or the controller model (GUID).
+func (device *InputDevice) preferenceKey() string {
+	if device == nil {
+		return ""
+	}
+	if device.Joy < 0 {
+		return strings.ToLower(device.Keyboard)
+	}
+	return strings.ToLower(device.GUID)
+}
+
+// Virtual controller state of a device, using the given mapping.
+func (device *InputDevice) sample(m *ButtonMapping) VirtualFrame {
+	if device == nil || !device.Connected {
+		return VirtualFrame{}
+	}
+	if device.Joy < 0 {
+		return m.sample(keyboardKeyLevel)
+	}
+	joy := device.Joy
+	return m.sample(func(token string) (int32, bool) { return gamepadControlLevel(joy, token) })
+}
+
+type TeamSide int
+
+const (
+	TS_None TeamSide = iota
+	TS_Left
+	TS_Right
+)
+
+// A human player. Several devices can drive the same participant.
+type InputParticipant struct {
+	Device    int
+	Side      TeamSide
+	Ready     bool
+	joined    int
+	confirmed int
+}
+
+type InputAssignment struct {
+	Devices       []*InputDevice
+	Participants  []InputParticipant
+	ClaimLocked   bool // no automatic claiming
+	MenuDevice    int
+	sharedDevices map[int][]int // optional sharing; the primary device stays in Participants
+	nextID        int
+	nextOrder     int
+	frame         int32
+}
+
+// Returns the device with this ID, or nil.
+func (a *InputAssignment) device(id int) *InputDevice {
+	for _, device := range a.Devices {
+		if device.ID == id {
+			return device
+		}
+	}
+	return nil
+}
+
+func (a *InputAssignment) addDevice(device *InputDevice) *InputDevice {
+	a.nextID++
+	device.ID, device.Connected = a.nextID, true
+	a.Devices = append(a.Devices, device)
+	return device
+}
+
+// Devices driving a participant. The primary device comes first.
+func (a *InputAssignment) participantDevices(participant int) []int {
+	if participant < 0 || participant >= len(a.Participants) || a.Participants[participant].Device == 0 {
+		return nil
+	}
+	if ids := a.sharedDevices[participant]; len(ids) > 0 {
+		return ids
+	}
+	return []int{a.Participants[participant].Device}
+}
+
+func (a *InputAssignment) participantConnected(participant int) bool {
+	for _, id := range a.participantDevices(participant) {
+		if device := a.device(id); device != nil && device.Connected {
+			return true
+		}
+	}
+	return false
+}
+
+// Participant using a device, or -1. Shared devices belong to the same human.
+func (a *InputAssignment) owner(device int) int {
+	if device != 0 {
+		for i := range a.Participants {
+			for _, id := range a.participantDevices(i) {
+				if id == device {
+					return i
+				}
+			}
+		}
+	}
+	return -1
+}
+
+// Puts a device on a side. Reuses its participant if it has one,
+// otherwise takes the first free participant. Returns the participant index.
+func (a *InputAssignment) claim(deviceID int, side TeamSide) (int, error) {
+	device := a.device(deviceID)
+	if device == nil || !device.Connected || side < TS_None || side > TS_Right {
+		return -1, fmt.Errorf("input device is unavailable")
+	}
+	i := a.owner(deviceID)
+	if i < 0 {
+		for n, p := range a.Participants {
+			if p.Device == 0 {
+				i = n
+				break
+			}
+		}
+	}
+	if i < 0 {
+		return -1, fmt.Errorf("all participant positions are occupied")
+	}
+	delete(a.sharedDevices, i)
+	a.nextOrder++
+	a.Participants[i] = InputParticipant{Device: deviceID, Side: side, joined: a.nextOrder}
+	return i, nil
+}
+
+// Keeps confirmed players in confirmation order, followed by players still choosing.
+func (a *InputAssignment) setReady(device int, ready bool) {
+	if i := a.owner(device); i >= 0 {
+		p := &a.Participants[i]
+		if ready && !p.Ready {
+			a.nextOrder++
+			p.confirmed = a.nextOrder
+		} else if !ready {
+			p.confirmed = 0
+		}
+		p.Ready = ready
+	}
+}
+
+// Returns ready participants in confirmation order, then other participants in join order.
+func (a *InputAssignment) participantsOnSide(side TeamSide) []int {
+	var out []int
+	for i, p := range a.Participants {
+		if p.Device != 0 && p.Side == side {
+			out = append(out, i)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		left, right := a.Participants[out[i]], a.Participants[out[j]]
+		if left.Ready != right.Ready {
+			return left.Ready
+		}
+		if left.Ready {
+			return left.confirmed < right.confirmed
+		}
+		return left.joined < right.joined
+	})
+	return out
+}
+
+// Maps player slots to participants. Odd slots (P1, P3...) are team 1, even slots are team 2.
+func (a *InputAssignment) participantsBySlot(slots int) []int {
+	out := make([]int, slots)
+	for i := range out {
+		out[i] = -1
+	}
+	for side := TS_Left; side <= TS_Right; side++ {
+		for member, participant := range a.participantsOnSide(side) {
+			slot := int(side-TS_Left) + member*2
+			if slot < slots {
+				out[slot] = participant
+			}
+		}
+	}
+	return out
 }
 
 type CommandKeyRemap struct {
-	a, b, c, x, y, z, s, d, w, m CommandKey
+	a, b, c, x, y, z, s, d, w, m, l, r CommandKey
 }
 
 func NewCommandKeyRemap() *CommandKeyRemap {
-	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m}
+	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r}
 }
 
 type InputReader struct {
@@ -436,61 +1743,6 @@ func NewInputReader() *InputReader {
 
 func (ir *InputReader) Reset() {
 	*ir = InputReader{}
-}
-
-func (ir *InputReader) LocalInput(in int) [14]bool {
-	// Keyboard
-	var keyIn [14]bool
-	if in < len(sys.keyConfig) {
-		keyIn = GetKeyboardState(sys.keyConfig[in])
-	}
-
-	// Joystick
-	var joyIn [14]bool
-	if in < len(sys.joystickConfig) {
-		joyIn = GetJoystickState(sys.joystickConfig[in])
-	}
-
-	// Merge both
-	U := keyIn[0] || joyIn[0]
-	D := keyIn[1] || joyIn[1]
-	L := keyIn[2] || joyIn[2]
-	R := keyIn[3] || joyIn[3]
-	a := keyIn[4] || joyIn[4]
-	b := keyIn[5] || joyIn[5]
-	c := keyIn[6] || joyIn[6]
-	x := keyIn[7] || joyIn[7]
-	y := keyIn[8] || joyIn[8]
-	z := keyIn[9] || joyIn[9]
-	s := keyIn[10] || joyIn[10]
-	d := keyIn[11] || joyIn[11]
-	w := keyIn[12] || joyIn[12]
-	m := keyIn[13] || joyIn[13]
-
-	// Apply button assist
-	// Checked locally so that network inputs are processed before being sent
-	if sys.cfg.Input.ButtonAssist {
-		result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
-		a, b, c, x, y, z, s, d, w = result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8]
-	}
-
-	return [14]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
-}
-
-func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	if in < 0 || in >= len(sys.joystickConfig) {
-		return [6]int8{}
-	}
-
-	joy := sys.joystickConfig[in].Joy
-	if joy < 0 || joy >= len(input.controllerstate) {
-		return [6]int8{}
-	}
-	if input.controllerstate[joy] == nil {
-		return [6]int8{}
-	}
-
-	return input.controllerstate[joy].Axes
 }
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
@@ -631,6 +1883,20 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 	return U, D, B, F
 }
 
+// Applies button assist to the buttons it covers.
+func (ir *InputReader) ButtonAssist(buttons [16]bool) [16]bool {
+	covered := [9]ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W}
+	var current [9]bool
+	for i, button := range covered {
+		current[i] = buttons[button]
+	}
+	result := ir.ButtonAssistCheck(current)
+	for i, button := range covered {
+		buttons[button] = result[i]
+	}
+	return buttons
+}
+
 // Add extra frame of leniency when checking button presses
 func (ir *InputReader) ButtonAssistCheck(current [9]bool) [9]bool {
 	var result [9]bool
@@ -674,9 +1940,17 @@ func (ir *InputReader) ButtonAssistCheck(current [9]bool) [9]bool {
 type InputBuffer struct {
 	InputReader                            *InputReader
 	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Current state of buffer
-	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
+	ab, bb, cb, xb, yb, zb, sb, db, wb, mb, lb, rb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
-	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp int32
+	vb                                     [VC_Count]int32 // frames each virtual control is held, for motif actions
+	vf                                             VirtualFrame
+	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp, lp, rp int32
+}
+
+// Frames an engine button (in engineButtonNames order) has been held, or 0.
+func (ib *InputBuffer) buttonTime(button int) int32 {
+	times := [16]int32{ib.Ub, ib.Db, ib.Lb, ib.Rb, ib.ab, ib.bb, ib.cb, ib.xb, ib.yb, ib.zb, ib.sb, ib.db, ib.wb, ib.mb, ib.lb, ib.rb}
+	return Max(times[button], 0)
 }
 
 func NewInputBuffer() *InputBuffer {
@@ -693,8 +1967,20 @@ func (ib *InputBuffer) Reset() {
 	ib.InputReader.Reset()
 }
 
+// Counts how long each virtual control is held. Motif actions read these.
+func (ib *InputBuffer) updateVirtualTime(f VirtualFrame) {
+	ib.vf = f
+	for vc := range ib.vb {
+		if f.held(VirtualControl(vc)) {
+			ib.vb[vc]++
+		} else {
+			ib.vb[vc] = 0
+		}
+	}
+}
+
 // Updates how long ago a char pressed or released a button
-func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
+func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r bool) {
 	// Save previous buffer state before updating
 	ib.Up = ib.Ub
 	ib.Dp = ib.Db
@@ -713,6 +1999,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	ib.dp = ib.db
 	ib.wp = ib.wb
 	ib.mp = ib.mb
+	ib.lp = ib.lb
+	ib.rp = ib.rb
 
 	// Function to update current buffer state of each key
 	update := func(held bool, buffer *int32) {
@@ -757,6 +2045,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	update(d, &ib.db)
 	update(w, &ib.wb)
 	update(m, &ib.mb)
+	update(l, &ib.lb)
+	update(r, &ib.rb)
 }
 
 // Get the state of any symbol/key combination
@@ -1317,6 +2607,12 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		case CK_m:
 			return __.mb
 
+		case CK_l:
+			return __.lb
+
+		case CK_r:
+			return __.rb
+
 		}
 	}
 
@@ -1372,13 +2668,23 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 			if __.mb < 0 || __.mp > 0 {
 				return -__.mb
 			}
+
+		case CK_l:
+			if __.lb < 0 || __.lp > 0 {
+				return -__.lb
+			}
+
+		case CK_r:
+			if __.rb < 0 || __.rp > 0 {
+				return -__.rb
+			}
 		}
 	}
 
 	// Special $N (and ~$N) case
 	// This one somehow returns "any change" in Mugen. Since "any neutral" is useless anyway we'll just add support for that
 	if dollar && ck.key == CK_N {
-		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb))
+		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb), Abs(__.lb), Abs(__.rb))
 	}
 
 	return 0
@@ -1812,6 +3118,12 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 		case CK_m:
 			return ib.mb
+
+		case CK_l:
+			return ib.lb
+
+		case CK_r:
+			return ib.rb
 		}
 	}
 
@@ -1847,6 +3159,12 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 		case CK_m:
 			return ib.mp
+
+		case CK_l:
+			return ib.lp
+
+		case CK_r:
+			return ib.rp
 		}
 	}
 
@@ -1929,7 +3247,7 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	}
 
 	// Buttons
-	for _, k := range [10]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m} {
+	for _, k := range [12]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r} {
 		if checkKey(k) {
 			return true
 		}
@@ -1942,12 +3260,12 @@ type AiInput struct {
 	dir, dirt, at, bt, ct, xt, yt, zt, st, dt, wt, mt int32
 }
 
-func (ai *AiInput) Buttons() [14]bool {
-	return [14]bool{
+func (ai *AiInput) Buttons() [16]bool {
+	return [16]bool{
 		ai.U(), ai.D(), ai.L(), ai.R(),
 		ai.a(), ai.b(), ai.c(),
 		ai.x(), ai.y(), ai.z(),
-		ai.s(), ai.d(), ai.w(), ai.m(),
+		ai.s(), ai.d(), ai.w(), ai.m(), false, false,
 	}
 }
 
@@ -2327,7 +3645,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					chargetime: chargetime,
 				})
 				nextChar()
-			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm':
+			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm', 'l', 'r':
 				// Maybe too restrictive. Will make people blame poor module code on IkemenVersion characters
 				//if dollar {
 				//	err = Error("'$' symbol not supported for buttons")
@@ -2358,6 +3676,10 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					k = kr.w
 				case 'm':
 					k = kr.m
+				case 'l':
+					k = kr.l
+				case 'r':
+					k = kr.r
 				}
 				cs.keys = append(cs.keys, CommandStepKey{
 					key:        k,
@@ -2777,7 +4099,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	// Needed for motif
 	hadStepped := cl.Buffer.Ub != 0 || cl.Buffer.Db != 0 || cl.Buffer.Lb != 0 || cl.Buffer.Rb != 0
 
-	var buttons [14]bool
+	var buttons [16]bool
 	var axes [6]float32
 
 	if isAI {
@@ -2791,35 +4113,38 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 				char.analogAxes = [6]float32{0, 0, 0, 0, 0, 0}
 			}
 		}
-	} else if sys.replayFile != nil {
-		buttons = sys.replayFile.readReplayInput(controller)
-		rawAxes := sys.replayFile.readReplayInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.netConnection != nil {
-		buttons = sys.netConnection.readNetInput(controller)
-		rawAxes := sys.netConnection.readNetInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.rollback.session != nil {
-		buttons = sys.rollback.readRollbackInput(controller)
-		rawAxes := sys.rollback.readRollbackInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
 	} else {
-		// If not AI, replay, or network, then it's a local human player
-		if controller >= 0 {
-			if controller < len(sys.inputRemap) {
-				in := sys.inputRemap[controller] // remapped input index/config
-				buttons = cl.Buffer.InputReader.LocalInput(in)
-				// Keep analog axes in sync with the same remap used for digital inputs
-				if in >= 0 && in < len(sys.joystickConfig) &&
-					sys.joystickConfig[in].Joy >= 0 &&
-					sys.joystickConfig[in].Joy < input.GetMaxJoystickCount() &&
-					input.IsJoystickPresent(sys.joystickConfig[in].Joy) {
-					axes = input.GetJoystickAxes(sys.joystickConfig[in].Joy)
-				} else {
-					axes = [6]float32{0, 0, 0, 0, 0, 0}
-				}
-			}
+		// Human players send virtual controller frames. Every peer and replays turn
+		// them into game buttons the same way, with the player's Controller Setup.
+		var frame VirtualFrame
+		var setup *ControllerSetup
+		channel := -1
+		if controller < len(sys.inputRemap) {
+			channel = sys.inputRemap[controller]
 		}
+		if sys.replayFile != nil {
+			frame, setup = sys.replayFile.readReplayInput(controller), sys.channelSetup(channel)
+		} else if char == nil && sys.netConnection != nil && !sys.netConnection.IsConnected() {
+			// The connection-wait menu still reads local controls until the peer has connected.
+			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
+		} else if sys.netConnection != nil {
+			frame, setup = sys.netConnection.readNetInput(controller), sys.channelSetup(channel)
+		} else if sys.rollback.session != nil {
+			frame, setup = sys.rollback.readRollbackInput(controller), sys.channelSetup(channel)
+		} else {
+			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
+		}
+		if char == nil && sys.synchronizedInput() && channel >= 0 && channel < len(sys.menuChannels) {
+			sys.menuChannels[channel].step(frame)
+		}
+		frame = frame.controller()
+		buttons = setup.project(frame)
+		// Button assist keeps its state in the buffer, so rollback restores it.
+		if char != nil && sys.cfg.Input.ButtonAssist {
+			buttons = cl.Buffer.InputReader.ButtonAssist(buttons)
+		}
+		axes = NormalizeAxes(&frame.Axes)
+		cl.Buffer.updateVirtualTime(frame)
 	}
 
 	// Convert bool slice back to named inputs
@@ -2827,6 +4152,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	a, b, c := buttons[4], buttons[5], buttons[6]
 	x, y, z := buttons[7], buttons[8], buttons[9]
 	s, d, w, m := buttons[10], buttons[11], buttons[12], buttons[13]
+	l, r := buttons[14], buttons[15]
 	B, F := L, R
 
 	// UI-only: let Left Stick drive U/D/L/R even if the player's config uses DPAD.
@@ -2869,12 +4195,14 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			d = d || ibit&IB_D != 0
 			w = w || ibit&IB_W != 0
 			m = m || ibit&IB_M != 0
+			l = l || ibit&IB_L != 0
+			r = r || ibit&IB_R != 0
 		}
 
 		// Apply ShiftInput
 		if char.inputShift != nil {
 			// Collect current input states and prepare remap states
-			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m, l, r}
 			output := make([]bool, len(inputs))
 
 			// Use a map for fast lookup
@@ -2904,6 +4232,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			U, D, L, R = output[0], output[1], output[2], output[3]
 			a, b, c, x, y, z = output[4], output[5], output[6], output[7], output[8], output[9]
 			s, d, w, m = output[10], output[11], output[12], output[13]
+			l, r = output[14], output[15]
 		}
 
 		// Get B and F from L and R for SOCD resolution
@@ -2930,7 +4259,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	}
 
 	// Send final inputs to buffer
-	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
+	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r)
 
 	// This check is currently needed to prevent screenpack inputs from rapid firing
 	// It forces the command list update to wait one frame after a buffer reset
@@ -2944,16 +4273,13 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	return true
 }
 
-// Normalize from [-32768,32767] to [-1.0,1.0]
+// Virtual stick directions have magnitudes in 0..127, so both signs use 127.
+// Clamp decoded -128 values as well to keep every axis within [-1.0, 1.0].
 func NormalizeAxes(axes *[6]int8) [6]float32 {
-	const MAX_VALUE float32 = 128.0
+	const MAX_VALUE float32 = 127.0
 	normalizedAxes := [6]float32{0, 0, 0, 0, 0, 0}
 	for i := 0; i < len(axes); i++ {
-		if (*axes)[i] < 0 {
-			normalizedAxes[i] = float32((*axes)[i]) / MAX_VALUE
-		} else {
-			normalizedAxes[i] = float32((*axes)[i]) / (MAX_VALUE - 1)
-		}
+		normalizedAxes[i] = Clamp(float32((*axes)[i])/MAX_VALUE, -1, 1)
 	}
 	return normalizedAxes
 }
@@ -3088,64 +4414,6 @@ func (cl *CommandList) CopyList(src CommandList) {
 			cl.Commands[i][j].stepTimers = make([]int32, len(c.stepTimers))
 		}
 	}
-}
-
-// Checks raw controller tokens (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT).
-// controllerIdx is the index in sys.commandLists (0-based).
-func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int) bool {
-	token = strings.TrimSpace(token)
-	if token == "" {
-		return false
-	}
-	idx, ok := StringToButtonLUT[token]
-	if !ok || idx == 25 { // "Not used"
-		return false
-	}
-	// Resolve controllerIdx -> physical joystick index
-	joyIdx := controllerIdx
-	if controllerIdx >= 0 {
-		in := controllerIdx
-		if controllerIdx < len(sys.inputRemap) {
-			m := sys.inputRemap[controllerIdx]
-			if m >= 0 {
-				in = m
-			}
-		}
-		if in >= 0 && in < len(sys.joystickConfig) && sys.joystickConfig[in].Joy >= 0 {
-			joyIdx = sys.joystickConfig[in].Joy
-		} else {
-			joyIdx = in
-		}
-	}
-
-	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() || !input.IsJoystickPresent(joyIdx) {
-		return false
-	}
-
-	// Axis tokens
-	if idx >= 15 && idx <= 24 {
-		axes := input.GetJoystickAxes(joyIdx)
-		btns := input.GetJoystickButtons(joyIdx)
-		// Determine active axis token (sticks first, then triggers)
-		active := CheckAxisForDpad(&axes, len(btns))
-		if active == "" {
-			active = CheckAxisForTrigger(&axes)
-		}
-		// Axis tokens are treated as "held" state checks here.
-		return active != "" && active == token
-	}
-
-	// Digital buttons / DPAD: direct state check.
-	buttons := input.GetJoystickButtons(joyIdx)
-	if len(buttons) == 0 {
-		return false
-	}
-	for i, b := range buttonOrder {
-		if int(b) == idx {
-			return i < len(buttons) && buttons[i] != 0
-		}
-	}
-	return false
 }
 
 /*

@@ -54,10 +54,10 @@ function start.f_unifySettings(t, t_chars)
 				infinite = true
 			end
 			for j = 1, num do --iterate up to max amount of matches versus characters with this order
-				table.insert(ret, {['rmin'] = start.p[2].numChars, ['rmax'] = start.p[2].numChars, ['order'] = i})
+				table.insert(ret, {['rmin'] = start.p[main.opponentSide].numChars, ['rmax'] = start.p[main.opponentSide].numChars, ['order'] = i})
 			end
 			if infinite then
-				table.insert(ret, {['rmin'] = start.p[2].numChars, ['rmax'] = start.p[2].numChars, ['order'] = -1})
+				table.insert(ret, {['rmin'] = start.p[main.opponentSide].numChars, ['rmax'] = start.p[main.opponentSide].numChars, ['order'] = -1})
 				break --no point in appending additional matches
 			end
 		end
@@ -70,10 +70,10 @@ end
 -- external module, without conflicting with default scripts.
 start.t_makeRoster = {}
 function start.f_rosterMaxMatches(baseMode)
-	local charData = start.f_getCharData(start.p[1].t_selected[1].ref)
+	local charData = start.f_getCharData(start.p[main.runSide].t_selected[1].ref)
 	local mode = gameMode() or ''
 	local t_chars = start.f_getOrderChars(baseMode)
-	local fallback = start.p[2].teamMode == 0 and 'arcade' or 'team'
+	local fallback = start.p[main.opponentSide].teamMode == 0 and 'arcade' or 'team'
 	local useMode = mode ~= '' and mode ~= 'arcade' and mode ~= 'team'
 	local candidates = {}
 	local function add(prefix, name)
@@ -184,7 +184,7 @@ end
 -- external module, without conflicting with default scripts.
 start.t_aiRampData = {}
 start.t_aiRampData.arcade = function()
-	if start.p[2].teamMode == 0 then --Single
+	if start.p[main.opponentSide].teamMode == 0 then -- Single
 		return gameOption('Arcade.arcade.AIramp.start')[1], gameOption('Arcade.arcade.AIramp.start')[2], gameOption('Arcade.arcade.AIramp.end')[1], gameOption('Arcade.arcade.AIramp.end')[2]
 	else --Simul / Turns / Tag
 		return gameOption('Arcade.team.AIramp.start')[1], gameOption('Arcade.team.AIramp.start')[2], gameOption('Arcade.team.AIramp.end')[1], gameOption('Arcade.team.AIramp.end')[2]
@@ -249,6 +249,15 @@ function start.f_difficulty(player, offset)
 	end
 end
 
+-- Optional co-op is decided per side. A solo side keeps normal team controls
+-- even when the other side has several players; dedicated co-op still fixes
+-- its team size to the joined count (including one-player sides).
+function start.f_coopSide(side)
+	return main.coop and not main.cpuSide[side] and (
+		not main.sideSelectDone or not main.teamMenu[side].single or #main.sideDevices[side] > 1
+	)
+end
+
 --assigns AI level, remaps input
 function start.f_remapAI(ai)
 	--Offset
@@ -259,24 +268,52 @@ function start.f_remapAI(ai)
 		end
 		offset = t_aiRamp[matchNo()] - gameOption('Options.Difficulty')
 	end
-	local t_ex = {}
-	for side = 1, 2 do
-		if main.coop then
-			for k, v in ipairs(start.p[side].t_selCmd) do
-				if gameMode('versuscoop') then
-					remapInput(v.player, v.cmd)
-					setCom(v.player, 0)
-					t_ex[v.player] = true
+	if main.sideSelectDone then
+		main.f_restoreInput()
+		for side = 1, 2 do
+			local devices = main.sideDevices[side] or {}
+			local leader = getRemapInput(side)
+			for member = 1, #start.p[side].t_selected do
+				-- Turns: only the first member is in the fight
+				if start.p[side].teamMode == 2 and member > 1 then
+					break
+				end
+				local slot = side + (member - 1) * 2
+				-- human controlled: team leader, every Tag member, or a co-op player's own character
+				local human = false
+				if not main.cpuSide[side] then
+					if member == 1 or start.p[side].teamMode == 3 then
+						human = true
+					elseif start.f_coopSide(side) and member <= #devices then
+						human = true
+					end
+				end
+				-- outside of co-op, all human controlled members use the leader's controls
+				if human and not start.f_coopSide(side) and leader > 0 then
+					remapInput(slot, leader)
+				end
+				if human or gameMode('training') then
+					setCom(slot, 0)
 				else
-					local pn = v.player * 2 - 1
-					remapInput(pn, v.cmd)
-					setCom(pn, 0)
-					t_ex[pn] = true
+					setCom(slot, ai or start.f_difficulty(slot, offset))
 				end
 			end
 		end
+		return
+	end
+	local t_ex = {}
+	for side = 1, 2 do
+		if main.coop and not main.cpuSide[side] then
+			for member = 1, #start.p[side].t_selCmd do
+				-- Cursor artwork numbers do not identify fight slots.
+				local slot = side + (member - 1) * 2
+				remapInput(slot, start.f_coopInput(side, member))
+				setCom(slot, 0)
+				t_ex[slot] = true
+			end
+		end
 		if start.p[side].teamMode == 0 or start.p[side].teamMode == 2 then --Single or Turns
-			if (not main.cpuSide[side] and not main.coop) or start.challenger > 0 or gameMode('training') then
+			if t_ex[side] or (not main.cpuSide[side] and not main.coop) or start.challenger > 0 or gameMode('training') then
 				setCom(side, 0)
 			else
 				setCom(side, ai or start.f_difficulty(side, offset))
@@ -310,6 +347,29 @@ function start.f_remapAI(ai)
 	end
 end
 
+-- Resolve the selection owner's input before fight slots are remapped.
+function start.f_coopInput(side, member)
+	local selection = start.p[side].t_selCmd[member]
+	if selection == nil then
+		return 0
+	end
+	return main.t_baseRemapInput[selection.cmd] or selection.cmd
+end
+
+-- After order select, keep each co-op player on the character they picked.
+function start.f_remapCoopOrder()
+	if not main.coop then
+		return
+	end
+	for side = 1, 2 do
+		if start.f_coopSide(side) then
+			for slot, member in ipairs(start.t_orderRemap[side]) do
+				remapInput(side + (slot - 1) * 2, start.f_coopInput(side, member))
+			end
+		end
+	end
+end
+
 --sets lifebar elements, round time, rounds to win
 function start.f_setRounds(roundTime, t_rounds)
 	setMotifElements(main.motif)
@@ -335,8 +395,8 @@ function start.f_setRounds(roundTime, t_rounds)
 	setTimeFramesPerCount(frames)
 	if roundTime ~= nil then
 		setRoundTime(math.max(-1, roundTime * frames)) --round time predefined
-	elseif main.charparam.time and start.f_getCharData(start.p[2].t_selected[1].ref).time ~= nil then --round time assigned as character param
-		setRoundTime(math.max(-1, start.f_getCharData(start.p[2].t_selected[1].ref).time * frames))
+	elseif main.charparam.time and start.f_getCharData(start.p[main.opponentSide].t_selected[1].ref).time ~= nil then -- round time assigned as character param
+		setRoundTime(math.max(-1, start.f_getCharData(start.p[main.opponentSide].t_selected[1].ref).time * frames))
 	else --default round time
 		setRoundTime(math.max(-1, main.roundTime * frames))
 	end
@@ -347,8 +407,8 @@ function start.f_setRounds(roundTime, t_rounds)
 			setMatchWins(side, start.p[enemy].numChars)
 		elseif t_rounds[side] ~= nil then --Use override if it exists
 			setMatchWins(side, t_rounds[side])
-		elseif enemy == 2 and main.charparam.rounds and start.f_getCharData(start.p[2].t_selected[1].ref).rounds ~= nil then --round num assigned as character param
-			setMatchWins(side, start.f_getCharData(start.p[2].t_selected[1].ref).rounds)
+		elseif enemy == main.opponentSide and main.charparam.rounds and start.f_getCharData(start.p[main.opponentSide].t_selected[1].ref).rounds ~= nil then -- round num assigned as character param
+			setMatchWins(side, start.f_getCharData(start.p[main.opponentSide].t_selected[1].ref).rounds)
 		elseif start.p[enemy].teamMode == 1 then --default rounds num (Simul)
 			setMatchWins(side, main.matchWins.simul[enemy])
 		elseif start.p[enemy].teamMode == 3 then --default rounds num (Tag)
@@ -389,24 +449,26 @@ function start.f_accStats(upto)
 	local streak = {0,0}
 	for i = 1, n do
 		local m = matches[i] or {}
+		local owner = (m.RunSide or 0) + 1
+		local sideMap = {[main.runSide] = owner, [main.opponentSide] = 3 - owner}
 		ret.time.total = ret.time.total + (m.MatchTime or 0)
 		if m.TotalScore then
-			ret.score.total[1] = m.TotalScore[1] or ret.score.total[1]
-			ret.score.total[2] = m.TotalScore[2] or ret.score.total[2]
+			ret.score.total[1] = m.TotalScore[sideMap[1]] or ret.score.total[1]
+			ret.score.total[2] = m.TotalScore[sideMap[2]] or ret.score.total[2]
 		end
 		local tr, sr = {}, {}
 		if m.Rounds then
 			for j, r in ipairs(m.Rounds) do
 				tr[j] = r.Timer or 0
-				sr[j] = { [1] = (r.Score and r.Score[1]) or 0, [2] = (r.Score and r.Score[2]) or 0 }
+				sr[j] = { [1] = (r.Score and r.Score[sideMap[1]]) or 0, [2] = (r.Score and r.Score[sideMap[2]]) or 0 }
 			end
 		end
 		table.insert(ret.time.matches, tr)
 		table.insert(ret.score.matches, sr)
-		if m.WinSide == 1 then
+		if m.WinSide == sideMap[1] - 1 then
 			ret.win[1] = ret.win[1] + 1; ret.lose[2] = ret.lose[2] + 1
 			streak[1] = streak[1] + 1; streak[2] = 0
-		elseif m.WinSide == 2 then
+		elseif m.WinSide == sideMap[2] - 1 then
 			ret.win[2] = ret.win[2] + 1; ret.lose[1] = ret.lose[1] + 1
 			streak[2] = streak[2] + 1; streak[1] = 0
 		end
@@ -431,8 +493,8 @@ function start.f_prefightHUD()
 	local gameStats = getGameStats()
 	local last = (gameStats and gameStats.Matches and gameStats.Matches[prev]) or nil
 	if last and main.resetScore and matchNo() ~= -1 then
-		if last.WinSide == 2 then
-			t_score[1] = acc.lose[1]
+		if last.WinSide == 1 - (last.RunSide or 0) then
+			t_score[main.runSide] = acc.lose[main.runSide]
 		end
 	end
 	return timer, t_score
@@ -501,7 +563,7 @@ function start.f_setStage(num, assigned)
 		assigned = true
 	end
 	if not assigned then
-		local sel = start.p[2] and start.p[2].t_selected and start.p[2].t_selected[1]
+		local sel = start.p[main.opponentSide] and start.p[main.opponentSide].t_selected and start.p[main.opponentSide].t_selected[1]
 		local charData = sel and sel.ref and start.f_getCharData(sel.ref)
 		if main.charparam.stage and charData and charData.stage and #charData.stage > 0 and not (gameMode('training') and gameOption('Config.TrainingStage')) then --stage assigned as character param
 			num = start.f_stageShuffleBag('char:' .. sel.ref, charData.stage)
@@ -651,9 +713,14 @@ function start.f_selectPal(ref, palno)
 	panicError("\n" .. charData.name .. " palette was not selected\n")
 end
 
+-- True for co-op with human players on both sides, as in Versus Co-op or Team Versus with co-op.
+function start.f_versusCoop()
+	return main.coop and not main.cpuSide[1] and not main.cpuSide[2]
+end
+
 --returns player number
 function start.f_getPlayerNo(side, member)
-	if main.coop and not gameMode('versuscoop') then
+	if main.coop and not start.f_versusCoop() then
 		return side + member - 1
 	end
 	if side == 1 then
@@ -865,6 +932,16 @@ local function getPortraitDrawData(v, side, member, params, dataField)
 	return data, drawParams, drawParams == params.loading
 end
 
+-- VS screen portraits and order icons under the pointer, for order selection by mouse.
+local function addMouseOrderTarget(t, side, member, anim)
+	if t == motif.vs_screen and start.mouseOrderTargets ~= nil and anim ~= nil
+		and not main.cpuSide[side] and inputGetPlayerDevice(side) ~= 0
+		and not start.p[side].t_selected[member].loading and mouseOver(anim) then
+		-- Checked while the sprite still has this member's draw position.
+		table.insert(start.mouseOrderTargets, {side = side, member = member})
+	end
+end
+
 local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	local lastIdx = #t_portraits
 	local skipField = dataField == 'face2_data' and 'skipCurrentFace2' or 'skipCurrentFace'
@@ -882,6 +959,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2])
 			)
+			addMouseOrderTarget(t, side, idx, data)
 		end
 		-- we're done for this layer in this mode
 		return
@@ -911,6 +989,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2]) + (member - 1) * paramsSide.spacing[2]
 			)
+			addMouseOrderTarget(t, side, member, data)
 		end
 	end
 end
@@ -992,6 +1071,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			f_portraitsXCalc(side, member, paramsSide, params),
 			paramsSide.pos[2] + params.offset[2] + (member - 1) * paramsSide.spacing[2]
 		)
+		addMouseOrderTarget(t, side, member, animData)
 	end
 end
 
@@ -1000,7 +1080,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 	local tmpX = selX
 	local tmpY = selY
 	local found = false
-	if getInput(cmd, motif.select_info.cell.up.key) or dir == 'U' then
+	if getAction(cmd, motif.select_info.cell.up.action) or dir == 'U' then
 		for i = 1, motif.select_info.rows do
 			selY = selY - 1
 			if selY < 0 then
@@ -1021,7 +1101,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				break
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.down.key) or dir == 'D' then
+	elseif getAction(cmd, motif.select_info.cell.down.action) or dir == 'D' then
 		for i = 1, motif.select_info.rows do
 			selY = selY + 1
 			if selY >= motif.select_info.rows then
@@ -1042,7 +1122,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				break
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.left.key) or dir == 'B' then
+	elseif getAction(cmd, motif.select_info.cell.left.action) or dir == 'B' then
 		if dir ~= nil then
 			found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
 		else
@@ -1060,7 +1140,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				end
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.right.key) or dir == 'F' then
+	elseif getAction(cmd, motif.select_info.cell.right.action) or dir == 'F' then
 		if dir ~= nil then
 			found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
 		else
@@ -1546,7 +1626,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 		-- [Select Info] cell.slot.next / cell.slot.previous
 		if not pressed and #grid.chars > 1 then
 			for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
-				if #entry[1].key > 0 and getInput(cmd, entry[1].key) then
+				if #entry[1].action > 0 and getAction(cmd, entry[1].action) then
 					if slotCycle(cell, entry[2]) then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].swap.snd[1], motif.select_info['p' .. side].swap.snd[2])
 					end
@@ -1562,6 +1642,11 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			start.t_grid[y + 1][x + 1].skip = start.f_selGrid(cell).skip
 			return selected, (grid.slot ~= original_slot)
 		end
+	end
+	-- A button that is both a palette button and cancel goes back instead.
+	-- getActionTime does not consume the press, so the caller still sees cancel.
+	if getActionTime(cmd, motif.select_info.cancel.action) == 1 then
+		return false, false
 	end
 	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
 	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect'),false
@@ -1661,7 +1746,7 @@ function start.f_matchPersistence()
 		local matches = (getGameStats().Matches) or {}
 		local idx = #matches
 		if idx <= (start.matchPersistenceStatsIdx or 0) then
-			return start.p[1].numChars
+			return start.p[main.runSide].numChars
 		end
 		start.matchPersistenceStatsIdx = idx
 		local roundStats = matches[idx].Rounds
@@ -1681,14 +1766,14 @@ function start.f_matchPersistence()
 		end
 		-- if defeated members should be skipped from next match, or if life should be maintained
 		if main.dropDefeated or main.persistLife then
-			local turnsOffset = start.p[1].turnsOffset or 0
+			local turnsOffset = start.p[main.runSide].turnsOffset or 0
 			-- Turns
-			if start.p[1].teamMode == 2 then
+			if start.p[main.runSide].teamMode == 2 then
 				--for each round in the last match
 				if roundStats then
 					for _, round in ipairs(roundStats) do
 						-- P1 active fighter snapshot for the round
-						local f1 = (round.Fighters and round.Fighters[1] and round.Fighters[1][1]) or nil
+						local f1 = (round.Fighters and round.Fighters[main.runSide] and round.Fighters[main.runSide][1]) or nil
 						if f1 then
 							local memberIdx = (f1.MemberNo or 0) + 1
 							-- if defeated
@@ -1697,24 +1782,24 @@ function start.f_matchPersistence()
 								-- so defeated members are skipped in the next match.
 								if main.dropDefeated then
 									turnsOffset = math.max(turnsOffset, memberIdx)
-									if start.p[1].t_selected[memberIdx] ~= nil then
-										start.p[1].t_selected[memberIdx].life = 0
+									if start.p[main.runSide].t_selected[memberIdx] ~= nil then
+										start.p[main.runSide].t_selected[memberIdx].life = 0
 									end
 								-- or resurrect and recover character's life
 								elseif main.persistLife then
-									start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f1.LifeMax or 0, f1))
+									start.p[main.runSide].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f1.LifeMax or 0, f1))
 								end
 							-- otherwise maintain character's life
 							elseif main.persistLife then
-								start.p[1].t_selected[memberIdx].life = f1.Life or start.p[1].t_selected[memberIdx].life
+								start.p[main.runSide].t_selected[memberIdx].life = f1.Life or start.p[main.runSide].t_selected[memberIdx].life
 							end
 						end
 					end
 				end
 				if main.dropDefeated then
-					start.p[1].turnsOffset = turnsOffset
-					local total = #start.p[1].t_selected
-					start.p[1].numChars = math.max(0, total - turnsOffset)
+					start.p[main.runSide].turnsOffset = turnsOffset
+					local total = #start.p[main.runSide].t_selected
+					start.p[main.runSide].numChars = math.max(0, total - turnsOffset)
 				end
 			-- Single / Simul / Tag
 			else
@@ -1730,11 +1815,11 @@ function start.f_matchPersistence()
 								-- if defeated
 								if f.KO and (f.Life or 0) <= 0 then
 									if main.persistLife then
-										start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f.LifeMax or 0, f))
+										start.p[main.runSide].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f.LifeMax or 0, f))
 									end
 								-- otherwise maintain character's life
 								elseif main.persistLife then
-									start.p[1].t_selected[memberIdx].life = f.Life or start.p[1].t_selected[memberIdx].life
+									start.p[main.runSide].t_selected[memberIdx].life = f.Life or start.p[main.runSide].t_selected[memberIdx].life
 								end
 							end
 						end
@@ -1743,7 +1828,7 @@ function start.f_matchPersistence()
 			end
 		end
 	end
-	return start.p[1].numChars
+	return start.p[main.runSide].numChars
 end
 
 --start game
@@ -1760,6 +1845,12 @@ function start.f_game(common)
 	if gameOption('Debug.DumpLuaTables') then
 		main.f_printTable(getGameStats(), 'debug/t_gameStats.txt')
 	end
+	-- Native post-run name entry follows the last fighter's controller slot.
+	-- Menu mappings restored below can route that slot to a different participant.
+	start.t_fightRemapInput = {}
+	for slot = 1, 8 do
+		start.t_fightRemapInput[slot] = getRemapInput(slot)
+	end
 	main.f_restoreInput()
 	updateCommon(common, false)
 	if shutdown() then
@@ -1773,6 +1864,33 @@ end
 --; MODES LOOP
 --;===========================================================
 function start.f_selectMode()
+	-- Side select and co-op adjust these, so going back to side select restores them.
+	local setup = main.f_tableCopy({coop = main.coop, cpuSide = main.cpuSide, selectMenu = main.selectMenu,
+		forceChar = main.forceChar, teamMenu = main.teamMenu, orderSelect = main.orderSelect, motif = main.motif})
+	local ok, sideSelectShown = start.f_sideSelect()
+	if not ok then
+		bgReset(motif[main.background].BGDef)
+		fadeInInit(motif[main.group].fadein.FadeData)
+		return
+	end
+	-- Single-capable co-op is optional: a side with one player keeps the normal
+	-- team controls, while each player on a larger side controls a team member.
+	if main.sideSelectDone and start.f_optionalCoop() then
+		local shared = false
+		for side = 1, 2 do
+			if not main.cpuSide[side] and #main.sideDevices[side] > 1 then
+				shared = true
+				-- Single cannot give every joined player their own character.
+				main.teamMenu[side].single = false
+			end
+		end
+		if shared then
+			-- A challenger can't interrupt a co-op run.
+			main.motif.challenger = false
+		else
+			main.coop = false
+		end
+	end
 	start.f_selectReset(true)
 	while true do
 		--select screen
@@ -1780,23 +1898,31 @@ function start.f_selectMode()
 			main.f_waitForPreloads()
 		end
 		if not start.f_selectScreen() then
+			playBgm({source = "motif.title", interrupt = true})
+			-- Cancel goes back to side select when it was shown, Esc to the menu.
+			if start.selectBack and sideSelectShown then
+				start.f_setRunSide(1)
+				for k, v in pairs(setup) do
+					main[k] = v
+				end
+				return start.f_selectMode()
+			end
 			bgReset(motif[main.background].BGDef)
 			fadeInInit(motif[main.group].fadein.FadeData)
-			playBgm({source = "motif.title", interrupt = true})
 			return
 		end
 		-- lua file with custom arcade path detection
 		local path = main.luaPath
 		if main.charparam.arcadepath then
-			if start.f_getCharData(start.p[1].t_selected[1].ref).arcadepath ~= '' then
-				path = start.f_getCharData(start.p[1].t_selected[1].ref).arcadepath
+			if start.f_getCharData(start.p[main.runSide].t_selected[1].ref).arcadepath ~= '' then
+				path = start.f_getCharData(start.p[main.runSide].t_selected[1].ref).arcadepath
 			end
 			path = hook.runFirst("start.f_selectMode.luaPath", path) or path
 			if path ~= '' and path ~= main.defaultLuaPath then
 				if not main.f_fileExists(path) then
 					local label = "arcadepath"
 					if path ~= main.luaPath then
-						label = start.f_getCharData(start.p[1].t_selected[1].ref).name .. " arcadepath"
+						label = start.f_getCharData(start.p[main.runSide].t_selected[1].ref).name .. " arcadepath"
 					end
 					panicError("\n" .. label .. " doesn't exist: " .. path .. "\n")
 				end
@@ -1842,7 +1968,11 @@ function start.f_selectMode()
 				-- hiscore & stats handled in Go; returns (cleared, place, nameEntry)
 				local cleared, place, nameEntry = computeRanking(gameMode())
 				if main.motif.hiscore and nameEntry then
+					for slot, participant in ipairs(start.t_fightRemapInput or {}) do
+						remapInput(slot, participant)
+					end
 					main.f_hiscore(gameMode(), place)
+					main.f_restoreInput()
 				end
 				--credits
 				if cleared and main.storyboard.credits and motif.end_credits.enabled and main.f_fileExists(motif.end_credits.storyboard) then
@@ -1860,7 +1990,7 @@ function start.f_selectMode()
 						main.f_storyboard(motif.files.intro.storyboard)
 					end
 				end
-				start.exit = start.exit or main.exitSelect or not main.selectMenu[1]
+				start.exit = start.exit or main.exitSelect or not main.selectMenu[main.runSide]
 			end
 			if start.exit then
 				bgReset(motif[main.background].BGDef)
@@ -1869,7 +1999,12 @@ function start.f_selectMode()
 				start.exit = false
 				return
 			end
-			if not continued() or esc() then
+			if start.stageselect then
+				-- Keep the confirmed characters and reopen stage select on the last stage.
+				start.stageselect = false
+				start.f_unloadSelected()
+				selScreenEnd, stageEnd, stageRandom = false, false, false
+			elseif not continued() or esc() then
 				start.f_selectReset(false)
 			else
 				t_reservedChars = {{}, {}}
@@ -1878,9 +2013,26 @@ function start.f_selectMode()
 	end
 end
 
+-- Lets the next loading screen select the same characters again.
+function start.f_unloadSelected()
+	start.bgLoadStarted = false
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			v.selected = false
+			v.loading = false
+		end
+	end
+end
+
 --resets various data
 function start.f_selectReset(hardReset, preserveProgress)
 	esc(false)
+	if hardReset then
+		resetVersusStats()
+		start.rematch = false
+		start.orderselect = false
+		start.stageselect = false
+	end
 	if not preserveProgress then
 		resetGameStats()
 		start.matchPersistenceStatsIdx = 0
@@ -1919,7 +2071,7 @@ function start.f_selectReset(hardReset, preserveProgress)
 		end
 		restoreCursor = false
 		--cursor start cell
-		for i = 1, gameOption('Config.Players') do
+		for i = 1, #start.c do
 			if start.f_getCursorData(i).cursor.startcell[1] < motif.select_info.rows then
 				start.c[i].selY = start.f_getCursorData(i).cursor.startcell[1]
 			else
@@ -1952,7 +2104,7 @@ function start.f_selectReset(hardReset, preserveProgress)
 		start.p[side].numTag = math.min(start.p[side].numTag, gameOption('Options.Tag.Max'))
 		start.p[side].numTurns = math.min(start.p[side].numTurns, gameOption('Options.Turns.Max'))
 		start.p[side].numChars = 1
-		start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
+		start.p[side].teamEnd = main.cpuSide[side] and (side == main.opponentSide or not main.cpuSide[main.runSide]) and main.forceChar[side] == nil
 		start.p[side].selEnd = not main.selectMenu[side]
 		start.p[side].t_selected = {}
 		start.p[side].t_selTemp = {}
@@ -1985,16 +2137,39 @@ function start.f_selectReset(hardReset, preserveProgress)
 	hook.run("start.f_selectReset")
 end
 
+-- Show hints for the device used last if it can still act, else the first pending player.
+-- Online, inputGetPlayerDevice excludes the remote command lists.
+function start.f_pendingHint(choices)
+	local active = inputGetGlyphDevice()
+	local first, used = nil, nil
+	for _, choice in ipairs(choices) do
+		choice.device = inputGetPlayerDevice(choice.cmd)
+		choice.disconnected = inputPlayerDisconnected(choice.cmd)
+		if choice.device ~= 0 then
+			first = first or choice
+			if choice.device == active then
+				used = used or choice
+			end
+		elseif choice.disconnected then
+			-- A pending player whose controller is unplugged still needs a hint,
+			-- so keep it as a fallback even though its device is unplugged.
+			first = first or choice
+		end
+	end
+	return used or first
+end
+
 -- Which command list should drive menu navigation for a given side.
 function start.f_menuCmd(side)
-	if not main.coop and side == 2 and main.cpuSide[2] then
-		return 1
+	if main.cpuSide[side] then
+		return main.runSide
 	end
 	return side
 end
 
 local function makeChallengerResumeSnapshot(pendingFightData, stageNo)
 	local resume = {
+		runSide = main.runSide,
 		p = main.f_tableCopy(start.p),
 		c = main.f_tableCopy(start.c),
 		roster = main.f_tableCopy(start.t_roster),
@@ -2013,137 +2188,83 @@ local function makeChallengerResumeSnapshot(pendingFightData, stageNo)
 	return resume
 end
 
-local function applyWinnerSelectMemory(resume, winnerSide, challengerState)
-	if resume == nil or challengerState == nil or winnerSide < 1 or winnerSide > 2 then
-		return
-	end
-	resume.p = resume.p or {{}, {}}
-	resume.c = resume.c or {}
-	local srcSide = challengerState.p and challengerState.p[winnerSide] or nil
-	if srcSide ~= nil then
-		resume.p[1] = resume.p[1] or {}
-		-- Preserve the winner's last confirmed selection cells / team menu state.
-		resume.p[1].t_cursor = main.f_tableCopy(srcSide.t_cursor or {})
-		if srcSide.teamMenu ~= nil then resume.p[1].teamMenu = srcSide.teamMenu end
-		if srcSide.teamMode ~= nil then resume.p[1].teamMode = srcSide.teamMode end
-		if srcSide.numSimul ~= nil then resume.p[1].numSimul = srcSide.numSimul end
-		if srcSide.numTag ~= nil then resume.p[1].numTag = srcSide.numTag end
-		if srcSide.numTurns ~= nil then resume.p[1].numTurns = srcSide.numTurns end
-	end
-	if challengerState.c ~= nil then
-		-- Promote the winner-side cursor slots onto the new arcade P1 slots:
-		-- side 1: 1/3/5/7 -> 1/3/5/7
-		-- side 2: 2/4/6/8 -> 1/3/5/7
-		for srcPn = winnerSide, gameOption('Config.Players'), 2 do
-			if challengerState.c[srcPn] ~= nil then
-				local dstPn = srcPn
-				if winnerSide == 2 then
-					dstPn = srcPn - 1
-				end
-				resume.c[dstPn] = main.f_tableCopy(challengerState.c[srcPn])
-			end
-		end
-	end
-	hook.run("start.f_selectChallenger.resume", resume, winnerSide, challengerState)
-end
-
+-- Challenger fight. Both players stay on their side, and the winner continues
+-- the arcade run with the team they picked.
 function start.f_selectChallenger(resume)
 	esc(false)
 	resume = resume or makeChallengerResumeSnapshot()
-	local challengerCmd = start.challenger
-	local arcadeP1Controller = getRemapInput(1)
-	local challengerController = getRemapInput(challengerCmd)
-
-	-- Start challenger match from a clean state.
+	local device = start.challenger
+	local incumbent = resume.runSide
+	local challenger = 3 - incumbent
 	main.f_default()
-
-	-- Build a clean, non-chained input mapping:
-	--   cmd list 1 -> arcade P1 physical controller
-	--   cmd list 2 -> challenger physical controller
-	-- Keep the rest as a swap-based permutation (no dual-feeding / chaining).
-	local function swapCmd(a, b)
-		if a == b then return end
-		local ra = getRemapInput(a)
-		local rb = getRemapInput(b)
-		remapInput(a, rb)
-		remapInput(b, ra)
-	end
-	-- Put arcade P1 controller on cmd 1.
-	swapCmd(1, arcadeP1Controller)
-	-- Find which cmd currently owns challengerController and swap it onto cmd 2.
-	local holder = 2
-	for i = 1, gameOption('Config.Players') do
-		if getRemapInput(i) == challengerController then
-			holder = i
-			break
-		end
-	end
-	swapCmd(2, holder)
-	-- Keep challenger flag (>0) so versus() enters challenger mode
-	start.challenger = challengerCmd
-
+	main.sideSelectDone = true
 	main.t_itemname.versus()
-
-	start.f_selectReset(false)
-	if not start.f_selectScreen() then
-		start.exit = true
-		start.challenger = 0
-		main.f_restoreInput()
-		return false
-	end
-	local ok = launchFight{challenger = true}
-	local challengerSelectState = {
-		p = main.f_tableCopy(start.p),
-		c = main.f_tableCopy(start.c),
-	}
-	local challengerWinner = getWinnerTeam()
-
-	start.challenger = 0
-	if not ok or challengerWinner < 1 or challengerWinner > 2 or start.exit or esc() then
-		main.f_restoreInput()
-		return false
-	end
-	-- Winner of the challenger match becomes the new arcade P1 owner.
-	local resumeController = arcadeP1Controller
-	if challengerWinner == 2 then
-		resumeController = challengerController
-	end
-
-	-- Rebuild arcade mode with the winner's controller mapped to P1.
-	main.teamarcade = resume.teamarcade
-	main.f_default()
-	setLastInputController(resumeController)
-	main.t_itemname.arcade()
+	local joined = inputClaim(device, challenger)
+	inputCommit()
 	main.f_saveBaseRemapInput()
-
-	-- Restore interrupted arcade progress before going back to select screen.
-	applyWinnerSelectMemory(resume, challengerWinner, challengerSelectState)
-	start.p = main.f_tableCopy(resume.p)
-	start.c = main.f_tableCopy(resume.c)
+	start.f_selectReset(false, true)
+	start.p[incumbent] = main.f_tableCopy(resume.p[incumbent])
+	start.p[incumbent].teamEnd, start.p[incumbent].selEnd = true, true
+	main.lockedSelection[incumbent] = true
+	main.lockedTeamMode = true
+	main.stageMenu = false
+	main.orderSelect = {false, false}
+	for _, field in ipairs({'teamMode', 'numChars', 'numSimul', 'numTag', 'numTurns'}) do
+		start.p[challenger][field] = resume.p[incumbent][field]
+	end
+	start.p[challenger].teamEnd, start.p[challenger].selEnd = true, false
+	start.p[challenger].t_selCmd = {{cmd = challenger, player = challenger, selectState = 0}}
+	local winner = incumbent
+	local selected, cursors = main.f_tableCopy(resume.p), main.f_tableCopy(resume.c)
+	if joined and start.f_selectScreen() then
+		selected, cursors = main.f_tableCopy(start.p), main.f_tableCopy(start.c)
+		repeat
+			start.p = main.f_tableCopy(selected)
+			setMatchNo(resume.matchNo)
+			local ok = launchFight{challenger = true, stageNo = resume.pendingFight.stageNo, continue = false}
+			winner = getWinnerTeam()
+			if not ok or winner < 0 or start.exit or esc() then
+				start.exit, start.challenger = true, 0
+				return false
+			end
+		until winner == 1 or winner == 2
+	else
+		-- Cancelling a challenge exits the mode, not the interrupted arcade fight.
+		start.exit, start.challenger = true, 0
+		return false
+	end
+	start.escFlag = false
+	start.challenger = device
+	main.f_default()
+	main.teamarcade = resume.teamarcade
+	main.t_itemname.arcade()
+	main.sideSelectDone = true
+	start.f_setRunSide(winner)
+	inputKeepSide(winner)
+	inputCommit()
+	main.f_saveBaseRemapInput()
+	start.p = {{}, {}}
+	start.p[winner] = selected[winner]
+	start.p[3 - winner] = main.f_tableCopy(resume.p[3 - incumbent])
+	start.c = cursors
+	for side = 1, 2 do
+		for member, char in ipairs(start.p[side].t_selected) do char.pn = side + (member - 1) * 2 end
+	end
 	start.t_roster = main.f_tableCopy(resume.roster)
 	main.t_availableChars = main.f_tableCopy(resume.availableChars)
 	setGameStatsJson(resume.gameStatsJson)
 	setMatchNo(resume.matchNo)
 	start.matchPersistenceStatsIdx = resume.matchPersistenceStatsIdx or 0
-	setConsecutiveWins(1, resume.p1ConsecutiveWins)
-	setConsecutiveWins(2, resume.p2ConsecutiveWins)
-	start.reset = false
-	start.exit = false
-
-	-- Preserve the interrupted opponent. P1 is cleared for re-selection,
-	-- but P2 stays selected so resuming does not roll a new random opponent.
-	local p2 = main.f_tableCopy(start.p[2])
-	start.f_selectReset(false, true)
-	start.p[2] = p2 
-	start.reset = false
-
-	if not start.f_selectScreen() then
-		start.exit = true
-		return false
+	local wins = resume.p2ConsecutiveWins
+	if incumbent == 1 then
+		wins = resume.p1ConsecutiveWins
 	end
-
-	-- Resume the exact interrupted arcade fight using the original caller args.
-	resume.pendingFight.p2char = {}
+	setConsecutiveWins(winner, wins)
+	setConsecutiveWins(3 - winner, 0)
+	start.reset, start.exit, start.challenger = false, false, 0
+	hook.run("start.f_selectChallenger.resume", resume, winner, {p = selected, c = cursors})
+	resume.pendingFight.p1char, resume.pendingFight.p2char = {}, {}
+	resume.pendingFight.p1numchars, resume.pendingFight.p1teammode = start.p[winner].numChars, start.p[winner].teamMode
 	return launchFight(resume.pendingFight)
 end
 
@@ -2187,19 +2308,19 @@ function launchFight(data)
 	local t = {}
 	if continued() then -- on rematch all arguments are ignored and values are restored from last match
 		t = main.f_tableCopy(start.launchFightSav)
-		start.p[2].t_selTemp = {} -- in case it's not cleaned already (preserved p2 side during select screen)
+		start.p[main.opponentSide].t_selTemp = {} -- in case it's not cleaned already (preserved p2 side during select screen)
 	else -- otherwise take all arguments and settings into account
 		-- lets modules adjust launchFight arguments before they are used
 		hook.run("launchFight.data", data)
-		t.p1numchars = start.p[1].numChars
-		t.p1teammode = start.p[1].teamMode
-		t.p2numchars = start.p[2].numChars
-		t.p2teammode = start.p[2].teamMode
+		t.p1numchars = start.p[main.runSide].numChars
+		t.p1teammode = start.p[main.runSide].teamMode
+		t.p2numchars = start.p[main.opponentSide].numChars
+		t.p2teammode = start.p[main.opponentSide].teamMode
 		t.challenger = main.f_arg(data.challenger, false)
 		t.continue = main.f_arg(data.continue, main.motif.continuescreen)
 		t.quickcontinue = main.f_arg(data.quickcontinue, defaultQuickContinue())
 		t.order = data.order or 1
-		t.orderselect = {main.f_arg(data.p1orderselect, main.orderSelect[1]), main.f_arg(data.p2orderselect, main.orderSelect[2])}
+		t.orderselect = {[main.runSide] = main.f_arg(data.p1orderselect, main.orderSelect[main.runSide]), [main.opponentSide] = main.f_arg(data.p2orderselect, main.orderSelect[main.opponentSide])}
 		t.p1char = data.p1char or {}
 		t.p1pal = data.p1pal
 		t.p1rounds = data.p1rounds or nil
@@ -2219,18 +2340,18 @@ function launchFight(data)
 		t.stageNo = start.f_getStageRef(t.stage)
 		t.stageAssigned = data.stageNo ~= nil or t.stage ~= ''
 		t.stageNo = data.stageNo or start.f_getStageRef(t.stage)
-		start.p[1].numChars = data.p1numchars or math.max(start.p[1].numChars, #t.p1char)
-		start.p[1].teamMode = start.f_stringToTeamMode(data.p1teammode) or start.p[1].teamMode
-		start.p[2].numChars = data.p2numchars or math.max(start.p[2].numChars, #t.p2char)
-		start.p[2].teamMode = start.f_stringToTeamMode(data.p2teammode) or start.p[2].teamMode
+		start.p[main.runSide].numChars = data.p1numchars or math.max(start.p[main.runSide].numChars, #t.p1char)
+		start.p[main.runSide].teamMode = start.f_stringToTeamMode(data.p1teammode) or start.p[main.runSide].teamMode
+		start.p[main.opponentSide].numChars = data.p2numchars or math.max(start.p[main.opponentSide].numChars, #t.p2char)
+		start.p[main.opponentSide].teamMode = start.f_stringToTeamMode(data.p2teammode) or start.p[main.opponentSide].teamMode
 		t.p1numchars = start.f_matchPersistence()
 		-- add P1 chars forced via function arguments (ignore char param restrictions)
 		local reset = false
 		local cnt = 0
 		for _, v in main.f_sortKeys(t.p1char) do
 			if not reset then
-				start.p[1].t_selected = {}
-				start.p[1].t_selTemp = {}
+				start.p[main.runSide].t_selected = {}
+				start.p[main.runSide].t_selTemp = {}
 				reset = true
 			end
 			cnt = cnt + 1
@@ -2239,16 +2360,16 @@ function launchFight(data)
 			if type(pal) == 'table' then
 				pal = pal[cnt]
 			end
-			table.insert(start.p[1].t_selected, {
+			table.insert(start.p[main.runSide].t_selected, {
 				ref = ref,
 				pal = pal or start.f_selectPal(ref),
-				pn = start.f_getPlayerNo(1, #start.p[1].t_selected + 1),
+				pn = start.f_getPlayerNo(main.runSide, #start.p[main.runSide].t_selected + 1),
 				--cursor = {},
 			})
-			hook.run("start.launchFight.selected", 1, #start.p[1].t_selected, start.p[1].t_selected[#start.p[1].t_selected], start.p[1], t)
+			hook.run("start.launchFight.selected", main.runSide, #start.p[main.runSide].t_selected, start.p[main.runSide].t_selected[#start.p[main.runSide].t_selected], start.p[main.runSide], t)
 			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 		end
-		if #start.p[1].t_selected == 0 then
+		if #start.p[main.runSide].t_selected == 0 then
 			panicError("\n" .. "launchFight(): no valid P1 characters\n")
 			start.exit = true
 			return false -- return to main menu
@@ -2263,18 +2384,18 @@ function launchFight(data)
 			if type(pal) == 'table' then
 				pal = pal[cnt]
 			end
-			table.insert(start.p[2].t_selected, {
+			table.insert(start.p[main.opponentSide].t_selected, {
 				ref = ref,
 				pal = pal or start.f_selectPal(ref),
-				pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
+				pn = start.f_getPlayerNo(main.opponentSide, #start.p[main.opponentSide].t_selected + 1),
 				--cursor = {},
 			})
-			hook.run("start.launchFight.selected", 2, #start.p[2].t_selected, start.p[2].t_selected[#start.p[2].t_selected], start.p[2], t)
+			hook.run("start.launchFight.selected", main.opponentSide, #start.p[main.opponentSide].t_selected, start.p[main.opponentSide].t_selected[#start.p[main.opponentSide].t_selected], start.p[main.opponentSide], t)
 			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 			if not onlyme then onlyme = start.f_getCharData(ref).single end
 		end
 		-- add remaining P2 chars of particular order if there are still free slots in the selected team mode
-		if main.cpuSide[2] and #start.p[2].t_selected < start.p[2].numChars and not onlyme then
+		if main.cpuSide[main.opponentSide] and #start.p[main.opponentSide].t_selected < start.p[main.opponentSide].numChars and not onlyme then
 			-- get list of available chars
 			local t_chars = main.f_tableCopy(main.t_availableChars)
 			-- remove chars temporary excluded from this match
@@ -2282,7 +2403,7 @@ function launchFight(data)
 				t_chars = start.f_excludeChar(t_chars, start.f_getCharRef(v))
 			end
 			-- remove chars with 'single' param if some characters are forced into team
-			if #start.p[2].t_selected > 0 then
+			if #start.p[main.opponentSide].t_selected > 0 then
 				for _, v in ipairs(t_chars[t.order]) do
 					if start.f_getCharData(v).single then
 						t_chars = start.f_excludeChar(t_chars, v)
@@ -2292,7 +2413,7 @@ function launchFight(data)
 			-- fill free slots
 			local t_remaining = main.f_tableCopy(t_chars)
 			local t_tmp = {}
-			for i = #start.p[2].t_selected, start.p[2].numChars - 1 do
+			for i = #start.p[main.opponentSide].t_selected, start.p[main.opponentSide].numChars - 1 do
 				if t_chars[t.order] ~= nil and #t_chars[t.order] > 0 then
 					local rand = math.random(1, #t_chars[t.order])
 					local ref = t_chars[t.order][rand]
@@ -2307,38 +2428,38 @@ function launchFight(data)
 				end
 			end
 			-- not enough unique characters of particular order, take into account only if skiporder parameter = false
-			while not t.skiporder and #t_tmp + #start.p[2].t_selected < start.p[2].numChars and not onlyme and t_remaining[t.order] ~= nil and #t_remaining[t.order] > 0 do
+			while not t.skiporder and #t_tmp + #start.p[main.opponentSide].t_selected < start.p[main.opponentSide].numChars and not onlyme and t_remaining[t.order] ~= nil and #t_remaining[t.order] > 0 do
 				table.insert(t_tmp, t_remaining[t.order][math.random(1, #t_remaining[t.order])])
 			end
 			-- append remaining characters
 			for _, v in ipairs(t_tmp) do
-				table.insert(start.p[2].t_selected, {
+				table.insert(start.p[main.opponentSide].t_selected, {
 					ref = v,
 					pal = start.f_selectPal(v),
-					pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
+					pn = start.f_getPlayerNo(main.opponentSide, #start.p[main.opponentSide].t_selected + 1),
 					--cursor = {},
 				})
-				hook.run("start.launchFight.selected", 2, #start.p[2].t_selected, start.p[2].t_selected[#start.p[2].t_selected], start.p[2], t)
+				hook.run("start.launchFight.selected", main.opponentSide, #start.p[main.opponentSide].t_selected, start.p[main.opponentSide].t_selected[#start.p[main.opponentSide].t_selected], start.p[main.opponentSide], t)
 				main.t_availableChars = start.f_excludeChar(main.t_availableChars, v)
 			end
 			-- team conversion if 'single' param is set on randomly added chars
-			if onlyme and #start.p[2].t_selected > 1 then
+			if onlyme and #start.p[main.opponentSide].t_selected > 1 then
 				panicError("Unexpected launchFight state.\nPlease write down everything that lead to this error and report it to K4thos.\n")
-				--[[for i = 1, #start.p[2].t_selected do
-					if not start.f_getCharData(start.p[2].t_selected[i].ref).single then
-						table.insert(main.t_availableChars[t.order], start.p[2].t_selected[i].ref)
-						table.remove(start.p[2].t_selected, k)
+				--[[for i = 1, #start.p[main.opponentSide].t_selected do
+					if not start.f_getCharData(start.p[main.opponentSide].t_selected[i].ref).single then
+						table.insert(main.t_availableChars[t.order], start.p[main.opponentSide].t_selected[i].ref)
+						table.remove(start.p[main.opponentSide].t_selected, k)
 					end
 				end]]
 			end
 		end
 		if onlyme then
-			start.p[2].numChars = #start.p[2].t_selected
+			start.p[main.opponentSide].numChars = #start.p[main.opponentSide].t_selected
 		end
 		-- skip match if needed
-		if #start.p[2].t_selected < start.p[2].numChars then
-			start.p[2].t_selected = {}
-			start.p[2].t_selTemp = {}
+		if #start.p[main.opponentSide].t_selected < start.p[main.opponentSide].numChars then
+			start.p[main.opponentSide].t_selected = {}
+			start.p[main.opponentSide].t_selTemp = {}
 			printConsole("launchFight(): not enough P2 characters, skipping execution")
 			setMatchNo(matchNo() + 1)
 			return true --continue lua code execution
@@ -2347,12 +2468,14 @@ function launchFight(data)
 	clearSelected()
 	local ok = false
 	local loopCount = 0
+	local repeatFight = false
+	local selectOrder = false
 	while true do
 		-- fight initialization
-		setTeamMode(1, start.p[1].teamMode, start.p[1].numChars)
-		setTeamMode(2, start.p[2].teamMode, start.p[2].numChars)
+		setTeamMode(main.runSide, start.p[main.runSide].teamMode, start.p[main.runSide].numChars)
+		setTeamMode(main.opponentSide, start.p[main.opponentSide].teamMode, start.p[main.opponentSide].numChars)
 		start.f_remapAI(t.ai)
-		start.f_setRounds(t.roundtime, {t.p1rounds, t.p2rounds})
+		start.f_setRounds(t.roundtime, {[main.runSide] = t.p1rounds, [main.opponentSide] = t.p2rounds})
 		t.stageNo = start.f_setStage(t.stageNo, t.stageAssigned or continued() or loopCount > 0)
 		local challengerResume = nil
 		if not t.challenger then
@@ -2376,7 +2499,13 @@ function launchFight(data)
 		local loadStartParams = main.f_tableCopy(t)
 		loadStartParams.winscreen = winscreen
 
-		if not start.f_selectVersus(t.vsscreen, t.orderselect, loadStartParams) then break end
+		if repeatFight then
+			start.f_unloadSelected()
+		else
+			local order = selectOrder and {true, true} or main.f_tableCopy(t.orderselect)
+			if not start.f_selectVersus(selectOrder or t.vsscreen, order, loadStartParams) then break end
+		end
+		start.f_remapCoopOrder()
 		-- If VS started background loading, do not restart the loader here.
 		if gameOption('Config.VsScreenLoading') and start.bgLoadStarted then
 			clearAllSound()
@@ -2385,12 +2514,21 @@ function launchFight(data)
 		end
 		start.f_game(common)
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
-		if start.exit or start.characterchange then
+		if start.exit or start.characterchange or start.stageselect then
 			if start.characterchange then
 				start.f_selectReset(false)
 			end
 			start.characterchange = false
 			break
+		elseif start.rematch or start.orderselect then
+			repeatFight = start.rematch
+			selectOrder = start.orderselect
+			start.rematch = false
+			start.orderselect = false
+			if getWinnerTeam() >= 0 then
+				setMatchNo(matchNo() + 1)
+			end
+			clearSelected()
 		-- here comes a new challenger
 		elseif start.challenger > 0 then
 			if t.challenger then -- end function called by f_arcadeChallenger() regardless of outcome
@@ -2406,13 +2544,13 @@ function launchFight(data)
 			end
 			break
 		-- player lost in modes that ends after 1 lose
-		elseif getWinnerTeam() ~= 1 and main.elimination then
+		elseif getWinnerTeam() ~= main.runSide and main.elimination then
 			setMatchNo(-1)
 			break
 		-- player won or continuing is disabled
-		elseif getWinnerTeam() == 1 or not t.continue then
-			start.p[2].t_selected = {}
-			start.p[2].t_selTemp = {}
+		elseif getWinnerTeam() == main.runSide or not t.continue then
+			start.p[main.opponentSide].t_selected = {}
+			start.p[main.opponentSide].t_selTemp = {}
 			setMatchNo(matchNo() + 1)
 			ok = true -- continue lua code execution
 			break
@@ -2427,11 +2565,11 @@ function launchFight(data)
 					v.selectState = 0
 				end
 			end
-			start.p[1].t_selected = {}
-			start.p[1].t_selTemp = {}
-			start.p[1].selEnd = false
+			start.p[main.runSide].t_selected = {}
+			start.p[main.runSide].t_selTemp = {}
+			start.p[main.runSide].selEnd = false
 			start.launchFightSav = main.f_tableCopy(t)
-			--start.p[2].t_selTemp = {} -- uncomment to disable enemy team showing up in select screen
+			-- start.p[main.opponentSide].t_selTemp = {} -- uncomment to disable enemy team showing up in select screen
 			selScreenEnd = false
 			return
 		end
@@ -2439,10 +2577,12 @@ function launchFight(data)
 		loopCount = loopCount + 1
 	end
 	-- restore original values
-	start.p[1].numChars = t.p1numchars
-	start.p[1].teamMode = t.p1teammode
-	start.p[2].numChars = t.p2numchars
-	start.p[2].teamMode = t.p2teammode
+	start.p[main.runSide].numChars = t.p1numchars
+	start.p[main.runSide].teamMode = t.p1teammode
+	start.p[main.opponentSide].numChars = t.p2numchars
+	start.p[main.opponentSide].teamMode = t.p2teammode
+	-- VS and loading can exit before game() restores the menu inputs.
+	main.f_restoreInput()
 	return ok
 end
 
@@ -2465,7 +2605,7 @@ local function refreshActiveFacePortraits()
 	for side = 1, 2 do
 		for k, v in ipairs(start.p[side].t_selCmd) do
 			local member = main.f_tableLength(start.p[side].t_selected) + k
-			if main.coop and (side == 1 or gameMode('versuscoop')) then
+			if start.f_coopSide(side) then
 				member = k
 			end
 			local st = start.p[side].t_selTemp[member]
@@ -2510,6 +2650,8 @@ function start.f_updateDrawList()
 				local charData = start.f_selGrid(cellIndex)
 				local function getTransforms(base)
 					return {
+						cell        = cellIndex,
+						layerno     = base.layerno,
 						facing      = getCellFacing(base.facing, c, r),
 						scale       = getCellTransform(c, r, "scale", base.scale),
 						xshear      = getCellTransform(c, r, "xshear", base.xshear),
@@ -2598,7 +2740,7 @@ local function tickScreenDelay(side)
 	if canSkip then
 		local owners = {}
 		local seen = {}
-		if main.coop and (side == 1 or gameMode('versuscoop')) then
+		if start.f_coopSide(side) then
 			for _, v in ipairs(start.p[side].t_selCmd) do
 				if v.cmd ~= nil and not seen[v.cmd] then
 					table.insert(owners, v.cmd)
@@ -2611,7 +2753,7 @@ local function tickScreenDelay(side)
 				table.insert(owners, cmd)
 			end
 		end
-		if #owners > 0 and getInput(owners, motif.select_info.done.key) then
+		if #owners > 0 and getAction(owners, motif.select_info.done.action) then
 			start.p[side].screenDelay = 0
 			return true
 		end
@@ -2659,8 +2801,11 @@ local function resetSelectMember(side, member, ref)
 end
 
 local function cancelSelectMember(side, cmdIndex)
+	if main.lockedSelection[side] then
+		return false
+	end
 	local p = start.p[side]
-	local separateControls = main.coop and (side == 1 or gameMode('versuscoop'))
+	local separateControls = start.f_coopSide(side)
 	local selected = main.f_tableLength(p.t_selected)
 	local v = p.t_selCmd[cmdIndex]
 	local member = separateControls and cmdIndex or selected + cmdIndex
@@ -2697,12 +2842,12 @@ local function cancelSelectMember(side, cmdIndex)
 end
 
 local function cancelPreviousSide(side)
-	if side ~= 2 or not main.cpuSide[2] or not start.p[1].selEnd then
+	if side ~= main.opponentSide or not main.cpuSide[main.opponentSide] or not start.p[main.runSide].selEnd then
 		return false
 	end
-	local cmdIndex = main.coop and #start.p[1].t_selected or 1
-	if cancelSelectMember(1, cmdIndex) then
-		local p = start.p[2]
+	local cmdIndex = start.f_coopSide(main.runSide) and #start.p[main.runSide].t_selected or 1
+	if cancelSelectMember(main.runSide, cmdIndex) then
+		local p = start.p[main.opponentSide]
 		p.teamEnd = true
 		p.selEnd = true
 		p.t_selCmd, p.t_selTemp, p.t_cursor = {}, {}, {}
@@ -2713,6 +2858,136 @@ local function cancelPreviousSide(side)
 end
 
 start.needUpdateDrawList = false
+
+-- Whether the player's cursor is on a cell holding multiple slot characters.
+function start.f_slotCell(player)
+	local cursor = player ~= nil and start.c[player] or nil
+	if cursor == nil or cursor.cell == nil then
+		return false
+	end
+	local grid = main.t_selGrid[cursor.cell + 1]
+	return grid ~= nil and #grid.chars > 1
+end
+
+-- Pending local selections, shared by the hint and the mouse.
+function start.f_selectChoices()
+	local choices = {}
+	for side, p in ipairs(start.p) do
+		if not p.teamEnd then
+			table.insert(choices, {cmd = start.f_menuCmd(side), context = 'team', side = side})
+		elseif not p.selEnd then
+			for k, selection in ipairs(p.t_selCmd) do
+				local active = not start.f_coopSide(side)
+					or not motif.select_info.coopqueue or k == #p.t_selected + 1
+				if active and selection.selectState < 3 then
+					local context = selection.selectState == 1 and 'palette' or 'default'
+					if context == 'default' and start.f_slotCell(selection.player) then
+						context = 'slot'
+					end
+					table.insert(choices, {cmd = selection.cmd, context = context, side = side, player = selection.player})
+				end
+			end
+		end
+	end
+	return choices
+end
+
+-- Mouse selection follows the grid's skip and duplicate rules.
+function start.f_mouseCellAvailable(cell, side)
+	if cell < 1 or cell > #main.t_selGrid then return false end
+	local x = (cell - 1) % motif.select_info.columns + 1
+	local y = math.floor((cell - 1) / motif.select_info.columns) + 1
+	local grid = start.t_grid[y] and start.t_grid[y][x]
+	local data = start.f_selGrid(cell)
+	return grid ~= nil and grid.skip ~= 1 and data.char ~= nil and data.hidden ~= 1 and data.hidden ~= 2
+		and (gameOption('Options.Team.Duplicates') or data.char == 'randomselect' or not t_reservedChars[side][data.char_ref])
+end
+
+-- Selection screens share the same named target API as ordinary menus.
+function start.f_selectMouse(choice, items)
+	if choice == nil or fadeActive() or choice.disconnected and not netPlay() then return end
+	local localMouse = not choice.disconnected and choice == start.mouseChoice and mouseActive()
+	local kind = choice.context == 'slot' and 'default' or choice.context
+	local context = 'select:' .. choice.side .. ':' .. (choice.player or 0) .. ':' .. kind
+	start.mouseScreens = start.mouseScreens or {}
+	local screen = main.f_mouseReset(start.mouseScreens[choice.cmd], context)
+	start.mouseScreens[choice.cmd] = screen
+	local done = motif.select_info.palette.action
+	if kind == 'team' then
+		done = motif.select_info['p' .. choice.side].teammenu.done.action
+		local numSimul, numTag, numTurns = start.f_teamLimits(choice.side)
+		local limits = {simul = numSimul, turns = numTurns, tag = numTag}
+		local fields = {simul = 'numSimul', turns = 'numTurns', tag = 'numTag'}
+		for i, row in ipairs(items) do
+			main.f_mouseAdd(screen, 'team:' .. i, {kind = 'team', item = i})
+			local field, range = fields[row.itemname], limits[row.itemname]
+			if field ~= nil then
+				for count = range[1], range[2] do
+					main.f_mouseAdd(screen, 'team:' .. i .. ':count:' .. count, {
+						kind = 'team', item = i, field = field, count = count,
+					})
+				end
+			end
+		end
+		local hit = start.mouseTeamTarget
+		if localMouse and hit ~= nil and hit.side == choice.side then
+			local name = 'team:' .. hit.item .. (hit.count and ':count:' .. hit.count or '')
+			if screen.targets[name] ~= nil then main.f_mouseHit(screen, name, true) end
+		end
+	elseif kind ~= 'palette' then
+		for cell = 1, #main.t_selGrid do
+			if start.f_mouseCellAvailable(cell, choice.side) then
+				main.f_mouseAdd(screen, 'cell:' .. cell, {kind = 'cell', cell = cell})
+			end
+		end
+		for _, art in ipairs(start.mouseCells or {}) do
+			local name = 'cell:' .. art.cell
+			if localMouse and screen.targets[name] ~= nil then
+				main.f_mouseHit(screen, name, mouseOver(art), art.layerno)
+			end
+		end
+	end
+	hook.run('start.select.mouse', screen, choice, items)
+	local target, moved, player = main.f_mouseSync(screen, choice.cmd)
+	if player == 0 then return end
+	if target ~= nil and target.kind ~= 'team' and target.kind ~= 'cell' then
+		if mouseTake(target.click or done, player) then
+			if target.action ~= nil then mousePress(player, target.action) end
+			if target.onClick ~= nil then target.onClick(player) end
+		end
+		return
+	end
+	if kind == 'palette' then return end
+	if kind == 'team' then
+		local p = start.p[choice.side]
+		local teammenu = motif.select_info['p' .. choice.side].teammenu
+		if target ~= nil and target.item == p.teamMenu and target.field == nil then return end
+		local clicked = mouseTake(done, player)
+		if target == nil then return end
+		if target.item ~= p.teamMenu and (clicked or moved) then
+			p.teamMenu = target.item
+			sndPlay(motif.Snd, teammenu.move.snd[1], teammenu.move.snd[2])
+		elseif target.item == p.teamMenu and target.field ~= nil and clicked and p[target.field] ~= target.count then
+			p[target.field] = target.count
+			sndPlay(motif.Snd, teammenu.value.snd[1], teammenu.value.snd[2])
+		end
+		return
+	end
+	local cursor = start.c[choice.player]
+	local x, y
+	if target ~= nil then
+		x = (target.cell - 1) % motif.select_info.columns
+		y = math.floor((target.cell - 1) / motif.select_info.columns)
+	end
+	if cursor.selX == x and cursor.selY == y then return end
+	local clicked = mouseTake(done, player)
+	if target ~= nil and (clicked or moved) then
+		cursor.selX, cursor.selY = x, y
+		local snd = start.f_getCursorData(choice.player).cursor.move.snd
+		sndPlay(motif.Snd, snd[1], snd[2])
+	end
+end
+
 function start.f_selectScreen()
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true
@@ -2720,11 +2995,13 @@ function start.f_selectScreen()
 	bgReset(motif.selectbgdef.BGDef)
 	fadeInInit(motif.select_info.fadein.FadeData)
 	local fadeOutStarted = false
-	local function exitSelectScreen()
+	-- back is true for cancel, false for Esc and exit.
+	local function exitSelectScreen(back)
 		sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 		fadeOutInit(motif.select_info.fadeout.FadeData)
 		fadeOutStarted = true
 		start.escFlag = true
+		start.selectBack = back
 	end
 	playBgm({source = "motif.select", interrupt = true})
 	start.f_resetTempData(motif.select_info, 'face')
@@ -2733,6 +3010,7 @@ function start.f_selectScreen()
 	local stageActiveState = false
 	timerSelect = 0
 	start.escFlag = false
+	start.selectBack = false
 	local t_teamMenu = {{}, {}}
 	local blinkCount = 0
 	local counter = 0 - motif.select_info.fadein.time
@@ -2781,6 +3059,15 @@ function start.f_selectScreen()
 				})
 			end
 		end
+		-- A single participant on a co-op side picks one character in Single mode.
+		-- Larger sides keep their independent Simul/Tag choice and exact joined count.
+		if main.sideSelectDone and start.f_coopSide(side) and #main.sideDevices[side] == 1 then
+			t_teamMenu[side] = {{
+				itemname = 'single',
+				displayname = params.single or motif.select_info.teammenu.itemname.default.single,
+				mode = 0,
+			}}
+		end
 		hook.run("start.selectScreen.teamMenu", side, t_teamMenu[side], params, itemname_order)
 	end
 
@@ -2791,6 +3078,30 @@ function start.f_selectScreen()
 	start.needUpdateDrawList = false
 
 	while not selScreenEnd do
+		local choices = start.f_selectChoices()
+		start.mouseChoice = start.f_pendingHint(choices)
+		-- Pointing at a local player's team menu makes that player the one in use.
+		start.mouseTeamSides = {}
+		for _, choice in ipairs(choices) do
+			if choice.context == 'team' and choice.device ~= 0 and not choice.disconnected then
+				start.mouseTeamSides[choice.side] = true
+				if mouseActive() and start.mouseTeamTarget ~= nil and start.mouseTeamTarget.side == choice.side then
+					start.mouseChoice = choice
+				end
+			end
+		end
+		-- The mouse acts for the device in use, so make the hinted player's device that one.
+		if start.mouseChoice ~= nil and start.mouseChoice.device ~= 0 then
+			inputSetGlyphDevice(start.mouseChoice.device)
+		end
+		local seen = {}
+		for _, choice in ipairs(choices) do
+			if not seen[choice.cmd] and (netPlay() or choice == start.mouseChoice) then
+				start.f_selectMouse(choice, t_teamMenu[choice.side])
+				seen[choice.cmd] = true
+			end
+		end
+		start.mouseTeamTarget = nil
 		main.f_preloadTick(4)
 		refreshActiveFacePortraits()
 		counter = counter + 1
@@ -2814,6 +3125,7 @@ function start.f_selectScreen()
 		for _, item in ipairs(staticDrawList) do
 			animUpdate(item.anim)
 		end
+		start.mouseCells = staticDrawList
 		batchDraw(staticDrawList)
 		--team and select menu
 		if blinkCount < motif.select_info.p2.cursor.switchtime then
@@ -2830,7 +3142,7 @@ function start.f_selectScreen()
 				for k, v in ipairs(start.p[side].t_selCmd) do
 					local member = main.f_tableLength(start.p[side].t_selected) + k
 					local activeMember = true
-					if main.coop and (side == 1 or gameMode('versuscoop')) then
+					if start.f_coopSide(side) then
 						member = k
 						if motif.select_info.coopqueue then
 							activeMember = (k == main.f_tableLength(start.p[side].t_selected) + 1)
@@ -2840,14 +3152,14 @@ function start.f_selectScreen()
 					local drawUpdateFlag
 					if activeMember then
 						v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
-						if not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key) then
+						if not start.p[side].inPalMenu and getAction(v.cmd, motif.select_info.cancel.action) then
 							local selected = main.f_tableLength(start.p[side].t_selected)
 							if cancelSelectMember(side, k) then
 								timerSelect = motif.select_info.timer.displaytime
 								sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 								activeMember = false
 							elseif selected == 0 then
-								if teamMenuSelectable(t_teamMenu[side]) then
+								if not main.lockedTeamMode and teamMenuSelectable(t_teamMenu[side]) then
 									start.p[side].teamEnd = false
 									start.p[side].t_selCmd, start.p[side].t_selTemp, start.p[side].t_cursor = {}, {}, {}
 									start.p[side].screenDelay = 0
@@ -2857,7 +3169,7 @@ function start.f_selectScreen()
 									timerSelect = motif.select_info.timer.displaytime
 									sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 								else
-									exitSelectScreen()
+									exitSelectScreen(true)
 								end
 								activeMember = false
 							end
@@ -2884,7 +3196,7 @@ function start.f_selectScreen()
 							end
 						end
 						local cursorState = 'active'
-						if v.selectState > 0 and motif.select_info.paletteselect > 0 then
+						if v.selectState > 0 and motif.select_info.palette.select > 0 then
 							local cursorData = motif.select_info['p' .. side].cursor
 							if cursorData.preview and cursorData.preview.default and 
 							(cursorData.preview.default.anim ~= -1 or cursorData.preview.default.spr[1] ~= -1) then
@@ -2920,7 +3232,7 @@ function start.f_selectScreen()
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
 						local shouldDraw = false
-						if main.coop or persist then
+						if start.f_coopSide(side) or persist then
 							shouldDraw = true
 						end
 						if start.p[side].selEnd and k == totalSelected then
@@ -2942,7 +3254,7 @@ function start.f_selectScreen()
 			end
 			if start.p[side].inPalMenu then
 				local palActive = false
-				if motif.select_info.paletteselect > 0 then
+				if motif.select_info.palette.select > 0 then
 					for _, sv in ipairs(start.p[side].t_selCmd) do
 						if sv.selectState == 1 then
 							palActive = true
@@ -2955,15 +3267,15 @@ function start.f_selectScreen()
 				end
 			end
 		end
-		--Esc always exits; cancel goes back one step after character selection is complete
-		if not start.escFlag and esc() then
+		-- Esc and exit always leave; cancel goes back one step after character selection is complete
+		if not start.escFlag and (esc() or getAction(-1, motif.select_info.exit.action)) then
 			exitSelectScreen()
 		elseif not start.escFlag and not fadeOutStarted
 			and not (start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd) then
 			for side = 2, 1, -1 do
 				if start.p[side].selEnd and start.p[side].teamEnd then
 					for k, v in ipairs(start.p[side].t_selCmd) do
-						if getInput(v.cmd, motif.select_info.cancel.key) and cancelSelectMember(side, k) then
+						if getAction(v.cmd, motif.select_info.cancel.action) and cancelSelectMember(side, k) then
 							timerSelect = motif.select_info.timer.displaytime
 							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 							break
@@ -2973,7 +3285,7 @@ function start.f_selectScreen()
 			end
 		elseif not start.escFlag and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			local cancelHandled = false
-			if main.stageMenu and stageEnd and getInput(-1, motif.select_info.cancel.key) then
+			if main.stageMenu and stageEnd and getAction(-1, motif.select_info.cancel.action) then
 				stageEnd = false
 				stageTextData = motif.select_info.stage.active.TextSpriteData
 				timerSelect = motif.select_info.timer.displaytime
@@ -2982,7 +3294,7 @@ function start.f_selectScreen()
 			else
 				for side = 2, 1, -1 do
 					for k, v in ipairs(start.p[side].t_selCmd) do
-						if getInput(v.cmd, motif.select_info.cancel.key) then
+						if not main.lockedSelection[side] and getAction(v.cmd, motif.select_info.cancel.action) then
 							if cancelSelectMember(side, k) or cancelPreviousSide(side) then
 								timerSelect = motif.select_info.timer.displaytime
 								if main.stageMenu then
@@ -3070,7 +3382,7 @@ function start.f_selectScreen()
 					main.f_animPosDraw(anim, x, y)
 				end
 				if not stageEnd then
-					local confirmPressed = slotSelected or (not slotHandled and getInput(-1, motif.select_info.done.key))
+					local confirmPressed = slotSelected or (not slotHandled and getAction(-1, motif.select_info.done.action))
 					local canConfirmStage = ((confirmPressed and not screenDelayInterrupted) or timerSelect == -1) and #main.t_selectableStages > 0
 					if canConfirmStage then
 						local preloadReady = true
@@ -3133,6 +3445,23 @@ function start.f_selectScreen()
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.BGDef, 1)
+		local choices = start.f_selectChoices()
+		if start.p[1].teamEnd and start.p[2].teamEnd and start.p[1].selEnd and start.p[2].selEnd then
+			local hintContext = 'done'
+			if main.stageMenu and not stageEnd then
+				hintContext = 'stage'
+			end
+			main.f_hintDraw(motif.select_info.hint, hintContext)
+		else
+			local choice = start.f_pendingHint(choices)
+			if choice ~= nil then
+				if choice.disconnected then
+					main.f_hintDraw(motif.select_info.hint, 'disconnected')
+				else
+					main.f_hintDraw(motif.select_info.hint, choice.context, nil, choice.device, choice.side)
+				end
+			end
+		end
 		--frame transition
 		if not fadeActive() and (fadeOutStarted or start.escFlag) then
 			selScreenEnd = true
@@ -3149,7 +3478,24 @@ end
 local t_teamActiveCount = {0, 0}
 local t_teamActiveState = {false, false}
 
+-- Simul, tag and turns size limits. In co-op every player on the side is in the team.
+function start.f_teamLimits(side)
+	if main.sideSelectDone and start.f_coopSide(side) then
+		local count = #main.sideDevices[side]
+		return {count, count}, {count, count}, {count, count}
+	elseif start.f_coopSide(side) then
+		return main.numSimul, main.numTag, main.numSimul
+	end
+	return main.numSimul, main.numTag, main.numTurns
+end
+
 function start.f_teamMenu(side, t)
+	local numSimul, numTag, numTurns = start.f_teamLimits(side)
+	if numSimul ~= main.numSimul then
+		start.p[side].numSimul, start.p[side].numTag, start.p[side].numTurns = numSimul[1], numTag[1], numTurns[1]
+	elseif numTurns ~= main.numTurns then
+		start.p[side].numTurns = math.max(numTurns[1], math.min(numTurns[2], start.p[side].numTurns))
+	end
 	if #t == 0 then
 		start.p[side].teamEnd = true
 		-- Team menu has no renderable entries (e.g. itemname_order hides them).
@@ -3176,9 +3522,9 @@ function start.f_teamMenu(side, t)
 	else
 		--Commands
 		local t_cmd = {}
-		if main.coop then
+		if main.coop and not main.sideSelectDone then
 			for i = 1, gameOption('Config.Players') do
-				if not gameMode('versuscoop') or (i - 1) % 2 + 1 == side then
+				if not start.f_versusCoop() or (i - 1) % 2 + 1 == side then
 					table.insert(t_cmd, i)
 				end
 			end
@@ -3189,7 +3535,7 @@ function start.f_teamMenu(side, t)
 		if start.p[side].teamMenu > #t then
 			start.p[side].teamMenu = 1
 		end
-		if #t > 1 and getInput(t_cmd, motif.select_info['p' .. side].teammenu.previous.key) then
+		if #t > 1 and getAction(t_cmd, motif.select_info['p' .. side].teammenu.previous.action) then
 			if start.p[side].teamMenu > 1 then
 				sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.move.snd[1], motif.select_info['p' .. side].teammenu.move.snd[2])
 				start.p[side].teamMenu = start.p[side].teamMenu - 1
@@ -3197,7 +3543,7 @@ function start.f_teamMenu(side, t)
 				sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.move.snd[1], motif.select_info['p' .. side].teammenu.move.snd[2])
 				start.p[side].teamMenu = #t
 			end
-		elseif #t > 1 and getInput(t_cmd, motif.select_info['p' .. side].teammenu.next.key) then
+		elseif #t > 1 and getAction(t_cmd, motif.select_info['p' .. side].teammenu.next.action) then
 			if start.p[side].teamMenu < #t then
 				sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.move.snd[1], motif.select_info['p' .. side].teammenu.move.snd[2])
 				start.p[side].teamMenu = start.p[side].teamMenu + 1
@@ -3210,37 +3556,37 @@ function start.f_teamMenu(side, t)
 			if handled then
 				-- handled by external module
 			elseif t[start.p[side].teamMenu].itemname == 'simul' then
-				if getInput(t_cmd, motif.select_info['p' .. side].teammenu.subtract.key) then
-					if start.p[side].numSimul > main.numSimul[1] then
+				if getAction(t_cmd, motif.select_info['p' .. side].teammenu.subtract.action) then
+					if start.p[side].numSimul > numSimul[1] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numSimul = start.p[side].numSimul - 1
 					end
-				elseif getInput(t_cmd, motif.select_info['p' .. side].teammenu.add.key) then
-					if start.p[side].numSimul < main.numSimul[2] then
+				elseif getAction(t_cmd, motif.select_info['p' .. side].teammenu.add.action) then
+					if start.p[side].numSimul < numSimul[2] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numSimul = start.p[side].numSimul + 1
 					end
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'turns' then
-				if getInput(t_cmd, motif.select_info['p' .. side].teammenu.subtract.key) then
-					if start.p[side].numTurns > main.numTurns[1] then
+				if getAction(t_cmd, motif.select_info['p' .. side].teammenu.subtract.action) then
+					if start.p[side].numTurns > numTurns[1] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTurns = start.p[side].numTurns - 1
 					end
-				elseif getInput(t_cmd, motif.select_info['p' .. side].teammenu.add.key) then
-					if start.p[side].numTurns < main.numTurns[2] then
+				elseif getAction(t_cmd, motif.select_info['p' .. side].teammenu.add.action) then
+					if start.p[side].numTurns < numTurns[2] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTurns = start.p[side].numTurns + 1
 					end
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'tag' then
-				if getInput(t_cmd, motif.select_info['p' .. side].teammenu.subtract.key) then
-					if start.p[side].numTag > main.numTag[1] then
+				if getAction(t_cmd, motif.select_info['p' .. side].teammenu.subtract.action) then
+					if start.p[side].numTag > numTag[1] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTag = start.p[side].numTag - 1
 					end
-				elseif getInput(t_cmd, motif.select_info['p' .. side].teammenu.add.key) then
-					if start.p[side].numTag < main.numTag[2] then
+				elseif getAction(t_cmd, motif.select_info['p' .. side].teammenu.add.action) then
+					if start.p[side].numTag < numTag[2] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTag = start.p[side].numTag + 1
 					end
@@ -3248,7 +3594,7 @@ function start.f_teamMenu(side, t)
 			end
 		end
 		--Cancel is only a hard exit on the first team's root menu.
-		if not start.escFlag and getInput(t_cmd, motif.select_info['p' .. side].teammenu.cancel.key) then
+		if not start.escFlag and getAction(t_cmd, motif.select_info['p' .. side].teammenu.cancel.action) then
 			local backed = cancelPreviousSide(side)
 			sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 			if backed then
@@ -3256,12 +3602,13 @@ function start.f_teamMenu(side, t)
 			else
 				fadeOutInit(motif.select_info.fadeout.FadeData)
 				start.escFlag = true
+				start.selectBack = true
 			end
 		end
 		--Draw team background
 		main.f_animPosDraw(motif.select_info['p' .. side].teammenu.bg.default.AnimData)
 		--Draw team title
-		if side == 2 and main.cpuSide[2] then
+		if side == main.opponentSide and main.cpuSide[side] then
 			main.f_animPosDraw(motif.select_info['p' .. side].teammenu.enemytitle.AnimData)
 			textImgDraw(motif.select_info['p' .. side].teammenu.enemytitle.TextSpriteData)
 		else
@@ -3280,12 +3627,17 @@ function start.f_teamMenu(side, t)
 		local spacingX, spacingY = itemCfg.spacing[1], itemCfg.spacing[2]
 		local uppercase = itemCfg.uppercase
 		local gm = gameMode()
+		-- Only team menus of local players read the mouse.
+		local mouseEnabled = not fadeActive() and start.mouseTeamSides ~= nil and start.mouseTeamSides[side]
+		local mouseTarget = nil
+		local mouseBackgrounds = {}
 		for i = 1, #t do
 			local x = (i - 1) * spacingX
 			local y = (i - 1) * spacingY
 			local itemname = t[i].itemname
 			local itemText = main.f_itemnameUpper(t[i].displayname, uppercase)
 			local textData = itemCfg.TextSpriteData
+			local bgTable = teammenu.bg
 			--Draw team items
 			if i == start.p[side].teamMenu then
 				if t_teamActiveCount[side] < itemCfg.active.switchtime then --delay change
@@ -3298,24 +3650,20 @@ function start.f_teamMenu(side, t)
 					end
 					t_teamActiveCount[side] = 0
 				end
-				--Draw team active item background
-				if teammenu.active.bg[gm .. '-' .. itemname] ~= nil then
-					main.f_animPosDraw(teammenu.active.bg[gm .. '-' .. itemname].AnimData)
-				elseif teammenu.active.bg[itemname] ~= nil then
-					main.f_animPosDraw(teammenu.active.bg[itemname].AnimData)
-				end
+				bgTable = teammenu.active.bg
 				--Draw team active item font
 				if t_teamActiveState[side] then
 					textData = itemCfg.active2.TextSpriteData
 				else
 					textData = itemCfg.active.TextSpriteData
 				end
-			else
-				--Draw team not active item background
-				if teammenu.bg[gm .. '-' .. itemname] ~= nil then
-					main.f_animPosDraw(teammenu.bg[gm .. '-' .. itemname].AnimData)
-				elseif teammenu.bg[itemname] ~= nil then
-					main.f_animPosDraw(teammenu.bg[itemname].AnimData)
+			end
+			--Draw the item background, including any game-mode-specific override.
+			local params = bgTable[gm .. '-' .. itemname] or bgTable[itemname]
+			if params ~= nil then
+				local drawn = main.f_animPosDraw(params.AnimData, nil, nil, nil, mouseEnabled)
+				if drawn ~= nil then
+					table.insert(mouseBackgrounds, {item = i, anim = drawn, layerno = params.layerno})
 				end
 			end
 			--Draw item font
@@ -3323,43 +3671,46 @@ function start.f_teamMenu(side, t)
 			textImgAddPos(textData, x, y)
 			textImgSetText(textData, itemText)
 			textImgDraw(textData)
-			--Draw team icons
+			-- Text and count icons are hit first; backgrounds are a fallback.
+			if mouseEnabled and mouseTarget == nil and mouseOver(textData) then
+				mouseTarget = {item = i}
+			end
+			--Draw team icons; clicking an icon picks both the mode and its count.
+			local field, limits
 			if itemname == 'simul' then
-				for j = 1, main.numSimul[2] do
-					local vx = x + (j - 1) * valueCfg.spacing[1]
-					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numSimul then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
-					end
-				end
+				field, limits = 'numSimul', numSimul
 			elseif itemname == 'turns' then
-				for j = 1, main.numTurns[2] do
-					local vx = x + (j - 1) * valueCfg.spacing[1]
-					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numTurns then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
-					end
-				end
+				field, limits = 'numTurns', numTurns
 			elseif itemname == 'tag' then
-				for j = 1, main.numTag[2] do
+				field, limits = 'numTag', numTag
+			end
+			if field ~= nil then
+				for j = 1, limits[2] do
 					local vx = x + (j - 1) * valueCfg.spacing[1]
 					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numTag then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
+					local icon = j <= start.p[side][field] and valueCfg.icon.AnimData or valueCfg.empty.icon.AnimData
+					main.f_animPosDraw(icon, vx, vy)
+					if mouseEnabled and j >= limits[1] and mouseTarget == nil and mouseOver(icon) then
+						mouseTarget = {item = i, field = field, count = j}
 					end
 				end
 			else
 				hook.runFirst("start.f_teamMenu.drawItemValue", side, t, i, x, y, valueCfg)
 			end
 		end
+		-- What the pointer is over, for start.f_selectMouse next frame.
+		if mouseEnabled then
+			if mouseTarget == nil then
+				local item = main.f_menuMouseBg(mouseBackgrounds)
+				mouseTarget = item and {item = item}
+			end
+			if mouseTarget ~= nil then
+				mouseTarget.side = side
+				start.mouseTeamTarget = mouseTarget
+			end
+		end
 		--Confirmed team selection
-		if getInput(t_cmd, motif.select_info['p' .. side].teammenu.done.key) or timerSelect == -1 then
+		if getAction(t_cmd, motif.select_info['p' .. side].teammenu.done.action) or timerSelect == -1 then
 			timerSelect = motif.select_info.timer.displaytime
 			start.p[1].screenDelay, start.p[2].screenDelay = 0, 0
 			sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.done.snd[1], motif.select_info['p' .. side].teammenu.done.snd[2])
@@ -3391,16 +3742,22 @@ function start.f_teamMenu(side, t)
 	end
 	--t_selCmd table appending once team mode selection is finished
 	if start.p[side].teamEnd then
-		if main.coop and (side == 1 or gameMode('versuscoop')) then
+		if main.sideSelectDone and start.f_coopSide(side) then
+			for i = 1, #main.sideDevices[side] do
+				local slot = side + (i - 1) * 2
+				table.insert(start.p[side].t_selCmd, {cmd = slot, player = start.f_getPlayerNo(side, i), selectState = 0})
+			end
+		elseif start.f_coopSide(side) then
+			-- Online menus keep their original command slots until the fight starts.
 			for i = 1, start.p[side].numChars do
-				if gameMode('versuscoop') then
+				if start.f_versusCoop() then
 					if side == 1 then
-						table.insert(start.p[side].t_selCmd, {cmd = getRemapInput(i * 2 - 1), player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
+						table.insert(start.p[side].t_selCmd, {cmd = i * 2 - 1, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 					else
-						table.insert(start.p[side].t_selCmd, {cmd = getRemapInput(i * 2), player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
+						table.insert(start.p[side].t_selCmd, {cmd = i * 2, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 					end
 				else
-					table.insert(start.p[1].t_selCmd, {cmd = getRemapInput(i), player = start.f_getPlayerNo(side, #start.p[1].t_selCmd + 1), selectState = 0})
+					table.insert(start.p[side].t_selCmd, {cmd = i, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 				end
 			end
 		else
@@ -3550,7 +3907,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 
 	-- accept selection
 	local autoConfirm = #validPals <= 1
-	if autoConfirm or getInput(cmd, motif.select_info['p' .. side].palmenu.done.key) or timerSelect == -1 then
+	if autoConfirm or getAction(cmd, motif.select_info['p' .. side].palmenu.done.action) or timerSelect == -1 then
 		local pal = (curIdx == maxIdx) and (start.c[player].randPalPreview or start.f_randomPal(charRef, validPals)) or validPals[curIdx]
 		st.pal, st.currentIdx = pal, curIdx
 
@@ -3559,7 +3916,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		local done_spr = pCfg.face.done.spr
 		local preview_anim = pCfg.palmenu.preview.anim
 		if done_anim ~= preview_anim or done_spr[1] ~= -1 then
-			if (st.face_anim ~= done_anim or done_spr[1] ~= -1) and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
+			if (st.face_anim ~= done_anim or done_spr[1] ~= -1) and ((start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 				local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, false, st.face_data)
 				if a then
 					st.face_data = start.f_loadPalettes(a, charRef, pal)
@@ -3573,7 +3930,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		local done2 = pCfg.face2.done
 		local preview2 = pCfg.palmenu.preview2
 		local hasPreview2 = preview2.anim ~= -1 or preview2.spr[1] ~= -1
-		local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+		local canShow2 = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 		if canShow2 and (done2.anim ~= -1 or done2.spr[1] ~= -1)
 			and (st.face2_anim ~= done2.anim or done2.spr[1] ~= -1 or hasPreview2) then
 			local a = start.f_animGet(start.c[player].selRef, side, member, done2, pCfg.face2, false, st.face2_data)
@@ -3590,7 +3947,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 			sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.done.snd[1], motif.select_info['p' .. side].palmenu.done.snd[2])
 		end
 	 -- next palette
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.next.key) then
+	elseif getAction(cmd, motif.select_info['p' .. side].palmenu.next.action) then
 		curIdx = (curIdx == maxIdx) and 1 or curIdx + 1
 		st.currentIdx = curIdx
 		if curIdx < maxIdx then
@@ -3598,7 +3955,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		end
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.value.snd[1], motif.select_info['p' .. side].palmenu.value.snd[2])
 	-- previous palette
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.previous.key) then
+	elseif getAction(cmd, motif.select_info['p' .. side].palmenu.previous.action) then
 		curIdx = (curIdx == 1) and maxIdx or curIdx - 1
 		st.currentIdx = curIdx
 		if curIdx < maxIdx then
@@ -3606,13 +3963,13 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		end
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.value.snd[1], motif.select_info['p' .. side].palmenu.value.snd[2])
 	-- cancel
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.cancel.key) then
+	elseif getAction(cmd, motif.select_info['p' .. side].palmenu.cancel.action) then
 		resetSelectMember(side, member, charRef)
 		selectState = 0
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.cancel.snd[1], motif.select_info['p' .. side].palmenu.cancel.snd[2])
 	end
 	-- random hotkey
-	if getInput(cmd, motif.select_info['p' .. side].palmenu.random.key) then
+	if getAction(cmd, motif.select_info['p' .. side].palmenu.random.action) then
 		curIdx, st.currentIdx = maxIdx, maxIdx
 	end
 	-- random preview update
@@ -3791,14 +4148,14 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 				end
 				if canConfirm then
-					if motif.select_info.paletteselect ~= 0 then
+					if motif.select_info.palette.select ~= 0 then
 						timerSelect = motif.select_info.timer.displaytime
 					end
 					sndPlay(motif.Snd, start.f_getCursorData(player).cursor.done.default.snd[1], start.f_getCursorData(player).cursor.done.default.snd[2])
-					if motif.select_info.paletteselect == 0 then
+					if motif.select_info.palette.select == 0 then
 						start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
 					end
-					if motif.select_info.paletteselect > 0 then
+					if motif.select_info.palette.select > 0 then
 						resetCursorData(player, 'done')
 					end
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
@@ -3825,12 +4182,12 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local palmenu_preview_spr = pCfg.palmenu.preview.spr
 					local face_anim = start.p[side].t_selTemp[member].face_anim
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
-					local canShow = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
-					local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow2 = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					local playPreviewSound = false
 					-- primary face "done" / preview
 					if canShow then
-						if motif.select_info.paletteselect == 0 then
+						if motif.select_info.palette.select == 0 then
 							if (face_anim ~= done_anim or done_spr[1] ~= -1) and (done_anim ~= -1 or done_spr[1] ~= -1) then
 								setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
 							end
@@ -3862,9 +4219,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local pal = start.p[side].t_selTemp[member].pal
 					local finalPal
 
-					if motif.select_info.paletteselect == 1 then
+					if motif.select_info.palette.select == 1 then
 						finalPal = 1
-					elseif motif.select_info.paletteselect == 2 then
+					elseif motif.select_info.palette.select == 2 then
 						finalPal = pal
 					else
 						finalPal = start.f_keyPalMap(charRef, pal)
@@ -3873,7 +4230,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					-- resolve visual palette conflict
 					finalPal = resolvePalConflict(side, charRef, finalPal)
 
-					if motif.select_info.paletteselect > 0 then
+					if motif.select_info.palette.select > 0 then
 						start.p[side].t_selTemp[member].pal = finalPal
 					end
 
@@ -3896,7 +4253,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 		--selection menu
 		elseif selectState == 1 then
-			if motif.select_info.paletteselect and motif.select_info.paletteselect > 0 then
+			if motif.select_info.palette.select > 0 then
 				selectState = start.f_palMenu(side, cmd, player, member, selectState)
 			else
 				selectState = 3
@@ -3906,7 +4263,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			local valid = {1,2,3}
 			local finalPal
 			for _, v in ipairs(valid) do
-				if motif.select_info.paletteselect == v then
+				if motif.select_info.palette.select == v then
 					finalPal = start.p[side].t_selTemp[member].pal
 					start.p[side].inPalMenu = false
 					break
@@ -3918,7 +4275,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
 				pal = finalPal,
-				pn = start.f_getPlayerNo(side, member),
+				pn = start.f_coopSide(side) and player or start.f_getPlayerNo(side, member),
 				cursor = {start.c[player].selX, start.c[player].selY},
 			}
 			main.f_preloadSetCharHighlight(player, nil)
@@ -3938,18 +4295,18 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 			start.p[side].t_cursor[member] = {x = start.c[player].selX, y = start.c[player].selY}
 			if main.f_tableLength(start.p[side].t_selected) == start.p[side].numChars then --if all characters have been chosen
-				if side == 1 and main.cpuSide[2] and start.reset then --if player1 is allowed to select p2 characters
-					start.p[2].selEnd = not main.selectMenu[2]
-					start.p[2].t_selCmd = {}
+				if side == main.runSide and main.cpuSide[main.opponentSide] and start.reset then -- if player1 is allowed to select p2 characters
+					start.p[main.opponentSide].selEnd = not main.selectMenu[main.opponentSide]
+					start.p[main.opponentSide].t_selCmd = {}
 					if timerSelect == -1 then
-						start.p[2].teamMode = start.p[1].teamMode
-						start.p[2].numChars = start.p[1].numChars
-						start.c[2].cell = start.c[1].cell
-						start.c[2].selX = start.c[1].selX
-						start.c[2].selY = start.c[1].selY
-						start.p[2].teamEnd = false
+						start.p[main.opponentSide].teamMode = start.p[main.runSide].teamMode
+						start.p[main.opponentSide].numChars = start.p[main.runSide].numChars
+						start.c[main.opponentSide].cell = start.c[main.runSide].cell
+						start.c[main.opponentSide].selX = start.c[main.runSide].selX
+						start.c[main.opponentSide].selY = start.c[main.runSide].selY
+						start.p[main.opponentSide].teamEnd = false
 					else
-						start.p[2].teamEnd = false
+						start.p[main.opponentSide].teamEnd = false
 					end
 				end
 				start.p[side].selEnd = true
@@ -3969,7 +4326,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			if not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd then
 				timerSelect = motif.select_info.timer.displaytime
 			end
-			if main.coop and (side == 1 or gameMode('versuscoop')) then --remaining members are controlled by different players
+			if start.f_coopSide(side) then -- remaining members are controlled by different players
 				selectState = 4
 			elseif not start.p[side].selEnd then --next member controlled by this player should become selectable
 				selectState = 0
@@ -4003,7 +4360,7 @@ function start.f_stageSlotSelected(group)
 	end
 	if #group.available > 1 then
 		for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
-			if #entry[1].key > 0 and getInput(-1, entry[1].key) then
+			if #entry[1].action > 0 and getAction(-1, entry[1].action) then
 				group.slot = (group.slot - 1 + entry[2]) % #group.available + 1
 				sndPlay(motif.Snd, motif.select_info.stage.swap.snd[1], motif.select_info.stage.swap.snd[2])
 				return false, true
@@ -4033,21 +4390,21 @@ function start.f_stageMenu()
 		stageListNo = r.init
 	end
 
-	if getInput(-1, motif.select_info.stage.previous.key) then
+	if getAction(-1, motif.select_info.stage.previous.action) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		stageListNo = stageListNo - 1
 		if stageListNo < stageListMinIdx then stageListNo = stageListMaxIdx end
-	elseif getInput(-1, motif.select_info.stage.next.key) then
+	elseif getAction(-1, motif.select_info.stage.next.action) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		stageListNo = stageListNo + 1
 		if stageListNo > stageListMaxIdx then stageListNo = stageListMinIdx end
-	elseif getInput(-1, motif.select_info.stage.skip.previous.key) then
+	elseif getAction(-1, motif.select_info.stage.skip.previous.action) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		for i = 1, 10 do
 			stageListNo = stageListNo - 1
 			if stageListNo < stageListMinIdx then stageListNo = stageListMaxIdx end
 		end
-	elseif getInput(-1, motif.select_info.stage.skip.next.key) then
+	elseif getAction(-1, motif.select_info.stage.skip.next.action) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		for i = 1, 10 do
 			stageListNo = stageListNo + 1
@@ -4090,6 +4447,7 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("quickcontinue", main.f_arg(t.quickcontinue, defaultQuickContinue()))
 	addParam("vsscreen", main.f_arg(t.vsscreen, main.motif.vsscreen))
 	addParam("victoryscreen", main.f_arg(t.victoryscreen, main.motif.victoryscreen))
+	addParam("versusresults", main.versusResults)
 	addParam("winscreen", main.f_arg(t.winscreen, main.motif.winscreen))
 	addParam("order", t.order)
 	addParam("stage", t.stage)
@@ -4105,8 +4463,13 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("charparam.time", main.charparam.time)
 	addParam("p1.turnsoffset", start.p[1].turnsOffset or 0)
 	addParam("p2.turnsoffset", start.p[2].turnsOffset or 0)
-	-- Survival: first opponent of the next match, loaded during this one
-	local nextMatch = main.elimination and main.makeRoster and not start.customArcadePath and start.t_roster and start.t_roster[matchNo() + 1]
+	-- Co-op Turns members are played by the players who picked them.
+	for side = 1, 2 do
+		local coop = main.coop and not main.cpuSide[side] and start.p[side].teamMode == 2
+		addParam("p" .. side .. ".coopturns", coop and #start.p[side].t_selCmd > 1)
+	end
+	-- Survival: first opponent of the next match, loaded during this one. The engine preloads into the P2 side only
+	local nextMatch = main.opponentSide == 2 and main.elimination and main.makeRoster and not start.customArcadePath and start.t_roster and start.t_roster[matchNo() + 1]
 	if nextMatch and nextMatch[1] ~= -1 then
 		addParam("p2.nextchar", nextMatch[1])
 	end
@@ -4148,6 +4511,18 @@ function start.f_buildOverrideParams(side, member, v)
 	return table.concat(parts, ", ")
 end
 
+-- VS screen slots of a side. Every co-op player on it can pick the order.
+local function versusCmds(side)
+	if not main.coop or main.cpuSide[side] then
+		return side
+	end
+	local t = {}
+	for i = 1, math.max(1, #start.p[side].t_selCmd) do
+		table.insert(t, side + (i - 1) * 2)
+	end
+	return t
+end
+
 function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	start.t_orderRemap = {{}, {}}
 	start.bgLoadStarted = false
@@ -4173,7 +4548,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 	end
 	-- skip versus screen if vs screen is disabled or p2 side char has vsscreen select.def flag set to 0
-	for _, v in ipairs(start.p[2].t_selected) do
+	for _, v in ipairs(start.p[main.opponentSide].t_selected) do
 		if start.f_getCharData(v.ref).vsscreen == 0 then
 			active = false
 			break
@@ -4251,7 +4626,38 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			t_icon[side] = nil
 		end
 	end
+	start.mouseOrderTargets = {}
+	local orderScreens = {}
 	while true do
+		-- A click on a member drawn last frame presses that member's order action.
+		-- The last drawn target is on top.
+		local orderTarget = start.mouseOrderTargets[#start.mouseOrderTargets]
+		for side = 1, 2 do
+			if not main.cpuSide[side] then
+				local screen = main.f_mouseReset(orderScreens[side], 'order:' .. side)
+				orderScreens[side] = screen
+				for member in ipairs(start.p[side].t_selected) do
+					main.f_mouseAdd(screen, 'member:' .. member, member)
+				end
+				if orderTarget ~= nil and orderTarget.side == side then
+					main.f_mouseHit(screen, 'member:' .. orderTarget.member, true)
+				end
+				-- Each co-op player has a separate mouse channel, just like their buttons.
+				local commands = versusCmds(side)
+				if type(commands) ~= 'table' then commands = {commands} end
+				for _, cmd in ipairs(commands) do
+					local member, _, player = main.f_mouseSync(screen, cmd)
+					local selected = start.p[side].t_selected[member]
+					if not done and not fadeActive() and player ~= 0 and selected ~= nil and not selected.loading and t_orderSelect[side] then
+						local pCfg = f_getMotifP(motif.vs_screen, 2 * (member - 1) + side, side)
+						if #pCfg.action > 0 and mouseTake(motif.vs_screen.done.action, player) then
+							mousePress(cmd, pCfg.action)
+						end
+					end
+				end
+			end
+		end
+		start.mouseOrderTargets = {}
 		main.f_preloadTick(4)
 		local snd = false
 		-- CPU order select: randomize first, then selectChar() using randomized slot order
@@ -4276,7 +4682,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 		-- for each team side member
 		for side = 1, 2 do
-			if not done and t_orderSelect[side] and not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+			if not done and t_orderSelect[side] and not main.cpuSide[side] and getAction(versusCmds(side), motif.vs_screen.skip.action) then
 				finishOrderSelection(side)
 				if not snd then
 					sndPlay(motif.Snd, motif.vs_screen['p' .. side].value.snd[1], motif.vs_screen['p' .. side].value.snd[2])
@@ -4307,7 +4713,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 							snd = true
 						end
 					-- CPU / no-key / auto-confirm path
-					elseif not t_orderSelect[side] or main.cpuSide[side] or (#pCfg.key == 0 and #t_order[side] == k - 1) then
+					elseif not t_orderSelect[side] or main.cpuSide[side] or (#pCfg.action == 0 and #t_order[side] == k - 1) then
 						t_order[side][#t_order[side] + 1] = k
 						local slot = #t_order[side]
 						if bgLoading and not v.selected then
@@ -4318,7 +4724,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 						if #start.p[side].t_selected == #t_order[side] then
 							t_icon[side] = nil
 						end
-					elseif getInput(side, pCfg.key) or (#start.p[side].t_selected == #t_order[side] + 1) then
+					elseif getAction(versusCmds(side), pCfg.action) or (#start.p[side].t_selected == #t_order[side] + 1) then
 						t_order[side][#t_order[side] + 1] = k
 						local slot = #t_order[side]
 						if not v.selected then
@@ -4388,19 +4794,16 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 				for i = 1, math.min(#start.p[side].t_selected, motif.vs_screen['p' .. side].num) do
 					local pn = 2 * (i - 1) + side
 					local pCfg = f_getMotifP(motif.vs_screen, pn, side)
+					local icon = pCfg.value.icon.AnimData
 					if i > #t_order[side] and #start.p[side].t_selected > #t_order[side] then
-						main.f_animPosDraw(
-							pCfg.value.empty.icon.AnimData,
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
-						)
-					else
-						main.f_animPosDraw(
-							pCfg.value.icon.AnimData,
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
-						)
+						icon = pCfg.value.empty.icon.AnimData
 					end
+					main.f_animPosDraw(
+						icon,
+						(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
+						(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
+					)
+					addMouseOrderTarget(motif.vs_screen, side, i, icon)
 				end
 			end
 		end
@@ -4458,7 +4861,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen.timer)
 		end
 		-- done key
-		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
+		if done and not doneKeyReady and not getAction(-1, motif.vs_screen.done.action) then
 			doneKeyReady = true
 		end
 		-- Background loading status
@@ -4466,10 +4869,10 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		if bgLoading and loadStarted then
 			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
 			for side = 1, 2 do
-				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+				if not main.cpuSide[side] and getAction(versusCmds(side), motif.vs_screen.skip.action) then
 					wantSkip = true
 				end
-				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
+				if done and doneKeyReady and getAction(versusCmds(side), motif.vs_screen.done.action) then
 					wantDone = true
 				end
 			end
@@ -4489,14 +4892,65 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.BGDef, 1)
+		local hint = motif.vs_screen.hint
+		local hintContext = 'default'
+		local buttons = {}
+		local device = nil
+		local orderSide = nil
+		-- A human side whose controller is unplugged gets the disconnected hint on any versus screen.
+		-- Co-op sides check every member.
+		local disconnected = false
+		for side = 1, 2 do
+			if not main.cpuSide[side] then
+				for member = 1, #start.p[side].t_selected do
+					if inputPlayerDisconnected(2 * (member - 1) + side) then
+						disconnected = true
+					end
+				end
+			end
+		end
+		if disconnected then
+			hintContext = 'disconnected'
+		elseif not done then
+			local choices = {}
+			for side = 1, 2 do
+				if t_orderSelect[side] and not main.cpuSide[side] and #start.p[side].t_selected - #t_order[side] > 1 then
+					table.insert(choices, {cmd = side, side = side})
+				end
+			end
+			local choice = start.f_pendingHint(choices)
+			if choice ~= nil then
+				local side = choice.side
+				device = choice.device
+				hintContext = 'order'
+				orderSide = side
+				-- Show every available order button, or the click that picks a member.
+				local seen, keys = {}, {}
+				for member = 1, #start.p[side].t_selected do
+					local pCfg = f_getMotifP(motif.vs_screen, 2 * (member - 1) + side, side)
+					for _, key in ipairs(pCfg.action) do
+						if not seen[key] then
+							seen[key] = true
+							table.insert(keys, key)
+						end
+					end
+				end
+				if mouseActive() then
+					table.insert(buttons, '<action:done>')
+				elseif #keys > 0 then
+					table.insert(buttons, '<control:' .. table.concat(keys, ',') .. '>')
+				end
+			end
+		end
+		main.f_hintDraw(hint, hintContext, {s = table.concat(buttons)}, device, orderSide)
 		-- hook
 		hook.run("start.f_selectVersus")
 		--draw fadein / fadeout
 		for side = 1, 2 do
 			if not fadeOutStarted and (
 				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
-				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
-				or (readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
+				or (readyToLeave and (not main.cpuSide[side] and (getAction(versusCmds(side), motif.vs_screen.skip.action) or wantSkip)))
+				or (readyToLeave and (done and doneKeyReady and (getAction(versusCmds(side), motif.vs_screen.done.action) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				wantSkip = false
@@ -4505,7 +4959,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			end
 		end
 		--frame transition
-		if not escFlag and (esc() or getInput(-1, motif.vs_screen.cancel.key)) then
+		if not escFlag and (esc() or getAction(-1, motif.vs_screen.cancel.action)) then
 			esc(false)
 			if bgLoading and loadStarted then
 				loadCancel()
@@ -4524,7 +4978,33 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 		refresh()
 	end
+	start.mouseOrderTargets = nil
 	esc(escFlag) --force Esc detection
+	if not escFlag then
+		-- MemberNo in match stats refers to fight order. Keep the persistent roster
+		-- in that same order for life/var carry-over and the defeated Turns prefix.
+		for side = 1, 2 do
+			local selected, portraits, cursors, commands = {}, {}, {}, {}
+			local coop = start.f_coopSide(side)
+			for slot, member in ipairs(start.t_orderRemap[side]) do
+				selected[slot] = start.p[side].t_selected[member]
+				portraits[slot] = start.p[side].t_selTemp[member]
+				cursors[slot] = start.p[side].t_cursor[member]
+				if coop then
+					-- Backtracking from Stage Select must keep each character's
+					-- selection controls attached to the same owner.
+					commands[slot] = start.p[side].t_selCmd[member]
+				end
+				start.t_orderRemap[side][slot] = slot
+			end
+			start.p[side].t_selected = selected
+			start.p[side].t_selTemp = portraits
+			start.p[side].t_cursor = cursors
+			if coop then
+				start.p[side].t_selCmd = commands
+			end
+		end
+	end
 	return not escFlag
 end
 
@@ -4597,6 +5077,608 @@ function start.f_selectLoading(arg)
 		end
 	end
 	return true
+end
+
+--;===========================================================
+--; SIDE SELECTION
+--;===========================================================
+-- Mode                    Players   Auto-assignment   Continue when
+-------------------------- --------- ----------------- -------------------
+-- Arcade / Training       1         Left              Ready
+-- Team Arcade             1+        Left              Ready
+-- Survival / Time Attack  1+        Left              Ready
+-- Team / Survival Co-op   2+        Same side         Team ready
+-- Versus                  2         Opposite sides    Both ready
+-- Team Versus             2+        Opposite sides    Both ready
+-- Versus Co-op            2+        Balance sides     Both teams ready
+-- Quick Match             1+        Same side         Ready
+-- Watch                   0         Skipped           Side select skipped
+-- Netplay Modes           2 online  Session-assigned  Side select skipped
+-------------------------- --------- ----------------- -------------------
+-- Notes: Manual side choice where allowed. Co-op can finish early
+-- or automatically when no more players can join.
+-- Team Arcade, Team Versus, Survival, Time Attack and Quick Match have optional
+-- co-op: side select lets more players join a side, each playing a team member.
+-- Auto-assignment keeps one player per side there.
+
+-- Ready players lead in confirmation order; other players keep their join order.
+function start.f_sideInputOrder(a, b)
+	if a.ready ~= b.ready then
+		return a.ready
+	end
+	if a.ready then
+		return a.readyOrder < b.readyOrder
+	end
+	return a.order < b.order
+end
+
+-- Returns the devices on a side, in the order they joined.
+function start.f_sideDevices(side)
+	local ret = {}
+	for _, device in ipairs(inputGetDevices()) do
+		if device.primary and device.participant > 0 and device.side == side then
+			table.insert(ret, device)
+		end
+	end
+	table.sort(ret, start.f_sideInputOrder)
+	return ret
+end
+
+-- Sets the side running the mode. Mode settings stored per side (CPU side, select menu,
+-- forced chars, fight screen options) are swapped when it moves to the other side.
+function start.f_setRunSide(side)
+	if side ~= main.runSide then
+		for _, field in ipairs({'cpuSide', 'selectMenu', 'forceChar', 'teamMenu', 'orderSelect'}) do
+			main[field][1], main[field][2] = main[field][2], main[field][1]
+		end
+		for _, field in ipairs({'ailevel', 'score', 'wincount'}) do
+			local left, right = 'p1' .. field, 'p2' .. field
+			main.fightscreen[left], main.fightscreen[right] = main.fightscreen[right], main.fightscreen[left]
+		end
+	end
+	main.runSide, main.opponentSide = side, 3 - side
+	setRunSide(side)
+	if gameMode('training') then
+		setHomeTeam(side)
+	elseif main.cpuSide[main.opponentSide] then
+		setHomeTeam(main.opponentSide)
+	end
+end
+
+local t_sideColumns = {'p1', 'unassigned', 'p2'}
+
+-- Every row style of a column; p1/p2 also carry the done (ready) states.
+function start.f_sideSelectStyles(column)
+	local t = {column, column.active}
+	if column.done ~= nil then
+		table.insert(t, column.done)
+		table.insert(t, column.done.active)
+	end
+	return t
+end
+
+function start.f_sideSelectReset()
+	local sec = motif.side_select_info
+	bgReset(motif.sideselectbgdef.BGDef)
+	animReset(sec.title.AnimData)
+	for _, name in ipairs(t_sideColumns) do
+		animReset(sec.title[name].AnimData)
+		for _, style in ipairs(start.f_sideSelectStyles(sec.item[name])) do
+			for _, bg in pairs(style.bg) do
+				animReset(bg.AnimData)
+			end
+		end
+		animReset(sec.item[name].arrow.left.AnimData)
+		animReset(sec.item[name].arrow.right.AnimData)
+	end
+end
+
+-- Row text for a keyboard or gamepad row (keyboard.text / gamepad.text, else text) with
+-- %name and %setup replaced.
+function start.f_sideSelectFormat(style, kind, values)
+	local template = style.text[kind] or style.text.default or ''
+	local text = (template:gsub('\\n', '\n'):gsub('%%(%a+)', function(token)
+		return values[token]
+	end))
+	local lines = {}
+	for line in (text .. '\n'):gmatch('(.-)\n') do
+		if line:match('%S') ~= nil then
+			table.insert(lines, line)
+		end
+	end
+	return table.concat(lines, '\n')
+end
+
+-- Row bg for a controller type: bg.keyboard / bg.gamepad, else the plain bg.
+function start.f_sideSelectBg(style, kind)
+	if style.bg == nil then
+		return nil
+	end
+	return style.bg[kind] or style.bg.default
+end
+
+function start.f_sideSelectText(style, value, x, y, device, kind)
+	-- Draw the row bg below the text. It is drawn per row but animated once per frame.
+	local bg = start.f_sideSelectBg(style, kind)
+	if bg ~= nil then
+		animReset(bg.AnimData, {'pos'})
+		if x ~= nil then
+			animAddPos(bg.AnimData, x, y)
+		end
+		animDraw(bg.AnimData)
+	end
+	-- Titles carry a decorative anim; item rows are plain text.
+	if style.AnimData ~= nil then
+		animReset(style.AnimData, {'pos'})
+	end
+	textImgReset(style.TextSpriteData)
+	textImgSetGlyphDevice(style.TextSpriteData, device or 0)
+	textImgSetText(style.TextSpriteData, tostring(value):gsub('\\n', '\n'))
+	if x ~= nil then
+		if style.AnimData ~= nil then
+			animAddPos(style.AnimData, x, y)
+		end
+		textImgAddPos(style.TextSpriteData, x, y)
+	end
+	if style.AnimData ~= nil then
+		animDraw(style.AnimData)
+	end
+	textImgDraw(style.TextSpriteData)
+end
+
+function start.f_sideSelectBegin(title)
+	local sec, bg = motif.side_select_info, motif.sideselectbgdef
+	clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+	bgDraw(bg.BGDef, 0)
+	rectDraw(sec.overlay.RectData)
+	start.f_sideSelectText(sec.title, title or sec.title.text, sec.pos[1], sec.pos[2])
+	return sec
+end
+
+function start.f_sideSelectEnd()
+	-- Shared item animations advance once per frame, regardless of the number of rows.
+	local sec = motif.side_select_info
+	animUpdate(sec.title.AnimData)
+	for _, name in ipairs(t_sideColumns) do
+		animUpdate(sec.title[name].AnimData)
+		for _, style in ipairs(start.f_sideSelectStyles(sec.item[name])) do
+			for _, bg in pairs(style.bg) do
+				animUpdate(bg.AnimData)
+			end
+		end
+		animUpdate(sec.item[name].arrow.left.AnimData)
+		animUpdate(sec.item[name].arrow.right.AnimData)
+	end
+	bgDraw(motif.sideselectbgdef.BGDef, 1)
+	main.f_hintDraw(sec.hint)
+	refresh()
+end
+
+-- True for co-op that keeps Single on every human side, so a side can still have one player.
+function start.f_optionalCoop()
+	if not main.coop then
+		return false
+	end
+	for side = 1, 2 do
+		if not main.cpuSide[side] and not main.teamMenu[side].single then
+			return false
+		end
+	end
+	return true
+end
+
+-- Runs the side select screen. Returns false if the player backs out.
+function start.f_sideSelect()
+	if not inputIsLocal() then
+		return true
+	end
+	local sec = motif.side_select_info
+	local initiator = inputBegin()
+	main.sideSelectDone = true
+	main.sideDevices = {{}, {}}
+	-- Watch immediately prepares two CPU sides with an observer for selection.
+	if main.cpuSide[1] and main.cpuSide[2] and inputClaim(initiator, 1) then
+		inputCommit()
+		main.f_saveBaseRemapInput()
+		return true
+	end
+	local versus = not main.cpuSide[1] and not main.cpuSide[2]
+	-- Training can reserve the opposite side for manual dummy control without
+	-- requiring a second player or giving them the dummy's character selection.
+	local training = gameMode('training')
+	-- Human positions come from the mode setup, independently of character team sizes.
+	local maxPlayers = gameOption('Config.Players')
+	local minPerSide, maxPerSide = 1, 1
+	if main.coop then
+		minPerSide = maxPlayers
+		for side = 1, 2 do
+			if not main.cpuSide[side] and main.selectMenu[side] then
+				for mode, size in pairs({simul = main.numSimul, tag = main.numTag}) do
+					if main.teamMenu[side][mode] then
+						minPerSide = math.min(minPerSide, size[1])
+						maxPerSide = math.max(maxPerSide, size[2])
+					end
+				end
+				-- A selectable Single team allows solo play even when co-op is enabled.
+				if main.teamMenu[side].single then
+					minPerSide = 1
+				end
+			end
+		end
+		maxPerSide = math.min(maxPerSide, maxPlayers)
+	end
+	if not sec.enabled then
+		-- Every human-controlled side requires its own participant.
+		local minimum = minPerSide * (versus and 2 or 1)
+		local maximum = maxPerSide
+		-- Optional co-op needs side selection to opt in extra players. With that
+		-- screen disabled, keep one human participant per side and normal team menus.
+		if start.f_optionalCoop() then
+			maximum = 1
+		end
+		if not inputAutoAssign(initiator, minimum, maximum, versus or training) then
+			inputResetForMenus()
+			main.f_warning(motif.warning_info.text.text.inputcount, motif[main.group], motif[main.background])
+			return false
+		end
+		start.f_setRunSide(1)
+		for side = 1, 2 do
+			main.sideDevices[side] = start.f_sideDevices(side)
+			if versus then
+				main.cpuSide[side] = #main.sideDevices[side] == 0
+			end
+		end
+		if versus and main.cpuSide[main.opponentSide] then
+			setHomeTeam(main.opponentSide)
+		end
+		inputCommit()
+		main.f_saveBaseRemapInput()
+		return true
+	end
+	local done = nil -- nil: choosing, true: continue, false: cancel
+	local function exitSideSelect()
+		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+		done = false
+		fadeOutInit(sec.fadeout.FadeData)
+	end
+	local function cycleSetup(device, direction)
+		if inputCycleSetup(device.id, direction) then
+			sndPlay(motif.Snd, sec.move.snd[1], sec.move.snd[2])
+		end
+	end
+	local firstSide = nil -- side picked by the player who opened the mode (or the first one to join)
+	-- The device used last, kept visible when the list scrolls. The mouse acts for it,
+	-- starting with the device that opened the mode.
+	local focus = initiator
+	inputSetGlyphDevice(initiator)
+	local mouseHover = nil -- row device or column side under the pointer last frame
+	local top = {1, 1, 1} -- first visible row in each column
+	-- returns true if the device is allowed to move to newSide (1 = team 1, 2 = team 2, 0 = unassigned)
+	local function canJoinSide(device, newSide, counts)
+		if newSide == 0 then
+			return true
+		end
+		if not device.connected or device.conflict or counts[newSide] >= maxPerSide then
+			return false
+		end
+		-- players on both sides, not counting this device
+		local others = counts[1] + counts[2]
+		if device.side > 0 then
+			others = others - 1
+		end
+		if others >= maxPlayers then
+			return false
+		end
+		-- A mode with one human side keeps all participants together. Training
+		-- additionally allows an optional controller on the dummy's side.
+		-- A click can move a device straight to the other side, so don't count it there.
+		local opposite = counts[3 - newSide]
+		if device.side == 3 - newSide then
+			opposite = opposite - 1
+		end
+		if not versus and not training and opposite > 0 then
+			return false
+		end
+		return true
+	end
+	-- Side reached by a left (-1) or right (1) step: towards that team, or back to unassigned.
+	local function sideStep(side, step)
+		if step < 0 then
+			return side == 2 and 0 or 1
+		end
+		return side == 1 and 0 or 2
+	end
+	-- True if a left (-1) or right (1) step can move the device, so its arrow is shown.
+	local function canStep(device, step, counts)
+		local newSide = sideStep(device.side, step)
+		return newSide ~= device.side and canJoinSide(device, newSide, counts)
+	end
+	-- Only devices that have a side or can still join are listed.
+	local function canSelect(device, counts)
+		return device.side > 0 or canJoinSide(device, 1, counts) or canJoinSide(device, 2, counts)
+	end
+	start.f_sideSelectReset()
+	fadeInInit(motif.side_select_info.fadein.FadeData)
+	esc(false)
+	while true do
+		if done ~= nil and not fadeActive() then
+			if done then
+				inputCommit()
+				main.f_saveBaseRemapInput()
+			else
+				inputResetForMenus()
+			end
+			esc(false)
+			return done, true
+		end
+		if done == nil and esc() then
+			esc(false)
+			exitSideSelect()
+		end
+		-- While choosing, unplugging a controller releases its side. Once confirmed,
+		-- keep the assignment through fade-out so reconnecting restores its controls.
+		if done == nil then
+			for _, device in ipairs(inputGetDevices()) do
+				if not device.connected and device.participant > 0 then
+					inputClaim(device.id, 0)
+				end
+			end
+		end
+		local finish = false
+		local ready = false
+		local confirmed = false
+		local counts = {#start.f_sideDevices(1), #start.f_sideDevices(2)}
+		-- Pointing at another device's row makes it active, a click on the active row is its
+		-- done action. A click elsewhere in a column moves the active device to that side.
+		local mouseSide = nil
+		if done == nil and not fadeActive() then
+			local device = mouseHover and mouseHover.device
+			local clicked = (mouseHover == nil or device ~= inputGetGlyphDevice()) and mouseTake(sec.done.action)
+			if device ~= nil and device ~= inputGetGlyphDevice() and (clicked or mouseMoved()) then
+				inputSetGlyphDevice(device)
+				focus = device
+				sndPlay(motif.Snd, sec.move.snd[1], sec.move.snd[2])
+			elseif clicked and mouseHover ~= nil then
+				mouseSide = mouseHover.side
+			end
+		end
+		if done == nil and not fadeActive() then
+			for _, device in ipairs(inputGetDevices()) do
+				if device.connected and canSelect(device, counts) then
+					for _, key in ipairs({sec.setup.previous.action, sec.setup.next.action, sec.setup.edit.action, sec.side.previous.action, sec.side.next.action, sec.done.action, sec.cancel.action, sec.exit.action}) do
+						if inputDeviceAction(device.id, key) then
+							focus = device.id
+						end
+					end
+					-- left/right moves one step towards that side, menu goes back to unassigned
+					local newSide = nil
+					if mouseSide ~= nil and device.id == inputGetGlyphDevice() then
+						newSide = mouseSide
+						focus = device.id
+					elseif inputDeviceAction(device.id, sec.side.previous.action) then
+						newSide = sideStep(device.side, -1)
+					elseif inputDeviceAction(device.id, sec.side.next.action) then
+						newSide = sideStep(device.side, 1)
+					elseif inputDeviceAction(device.id, sec.exit.action) then
+						exitSideSelect()
+						break
+					elseif inputDeviceAction(device.id, sec.cancel.action) then
+						-- cancel on a device without a side leaves the screen
+						if device.side == 0 then
+							exitSideSelect()
+							break
+						end
+						newSide = 0
+					end
+					if newSide ~= nil then
+						if newSide ~= device.side and canJoinSide(device, newSide, counts) and inputClaim(device.id, newSide) then
+							sndPlay(motif.Snd, sec.move.snd[1], sec.move.snd[2])
+							if newSide > 0 and (firstSide == nil or device.id == initiator) then
+								firstSide = newSide
+							end
+						end
+					elseif inputDeviceAction(device.id, sec.setup.edit.action) then
+						inputSetReady(device.id, false)
+						sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+						options.f_setupEditor(device)
+						start.f_sideSelectReset()
+						break
+					elseif inputDeviceAction(device.id, sec.setup.previous.action) then
+						cycleSetup(device, -1)
+					elseif inputDeviceAction(device.id, sec.setup.next.action) then
+						cycleSetup(device, 1)
+					elseif inputDeviceAction(device.id, sec.done.action) then
+						if device.side == 0 then
+							-- In two-human-side modes, default to the less populated side.
+							-- Ties go left; manual choices go through canJoinSide.
+							local preferred = (versus and counts[2] < counts[1]) and 2 or 1
+							for _, side in ipairs({preferred, 3 - preferred}) do
+								if canJoinSide(device, side, counts) and inputClaim(device.id, side) then
+									device.side = side
+									if firstSide == nil or device.id == initiator then
+										firstSide = side
+									end
+									break
+								end
+							end
+						end
+						if device.side == 0 then
+							-- No side can take this device; its missing arrows already show that.
+						elseif device.ready then
+							finish = true
+						else
+							inputSetReady(device.id, true)
+							confirmed = true
+							sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+						end
+					end
+					counts = {#start.f_sideDevices(1), #start.f_sideDevices(2)}
+				end
+			end
+			-- Check capacity before readiness: an undersized co-op team can proceed
+			-- once every available participant has joined and confirmed.
+			local canJoin, allReady = false, true
+			for _, device in ipairs(inputGetDevices()) do
+				if device.side > 0 then
+					if not device.connected or not device.ready then
+						allReady = false
+					end
+				elseif canSelect(device, counts) then
+					canJoin = true
+				end
+			end
+			local minimum = minPerSide
+			if main.coop and not canJoin then
+				-- A depleted co-op lobby still needs two humans on one side, or
+				-- one on each side in human-vs-human co-op.
+				minimum = math.min(minimum, versus and 1 or 2)
+			end
+			if versus then
+				-- Neither human-controlled side may silently become a CPU opponent.
+				ready = counts[1] >= minimum and counts[2] >= minimum
+			else
+				ready = counts[1] >= minimum or counts[2] >= minimum
+			end
+			ready = ready and allReady
+			-- Start when nobody else can join. With enough players, all ready, confirming again starts early.
+			if done == nil and ready and (finish or not canJoin) then
+				-- the side running the mode: firstSide if both sides have players, otherwise the side with players
+				local runSide = 1
+				if counts[1] > 0 and counts[2] > 0 and firstSide ~= nil then
+					runSide = firstSide
+				elseif counts[2] > 0 then
+					runSide = 2
+				end
+				start.f_setRunSide(runSide)
+				if versus then
+					main.cpuSide = {counts[1] == 0, counts[2] == 0}
+					if main.cpuSide[main.opponentSide] then
+						setHomeTeam(main.opponentSide)
+					end
+				end
+				main.sideDevices[1] = start.f_sideDevices(1)
+				main.sideDevices[2] = start.f_sideDevices(2)
+				if not confirmed then
+					sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+				end
+				done = true
+				fadeOutInit(motif.side_select_info.fadeout.FadeData)
+			end
+		end
+		-- draw
+		local s = start.f_sideSelectBegin()
+		-- columns: 1 = team 1, 2 = unassigned, 3 = team 2
+		local columns = {{}, {}, {}}
+		local active = inputGetGlyphDevice()
+		for _, device in ipairs(inputGetDevices()) do
+			if canSelect(device, counts) then
+				local col = 2
+				if device.side == 1 then
+					col = 1
+				elseif device.side == 2 then
+					col = 3
+				end
+				table.insert(columns[col], device)
+			end
+		end
+		-- Use the same order for the column and the gameplay slots.
+		for _, col in ipairs({1, 3}) do
+			table.sort(columns[col], start.f_sideInputOrder)
+		end
+		for _, name in ipairs(t_sideColumns) do
+			start.f_sideSelectText(s.title[name], s.title[name].text, s.pos[1], s.pos[2])
+		end
+		mouseHover = nil
+		local visible = math.max(1, s.window.visibleitems)
+		for col, list in ipairs(columns) do
+			-- don't scroll past the end of the list
+			local lastTop = math.max(1, #list - visible + 1)
+			if top[col] > lastTop then
+				top[col] = lastTop
+			end
+			-- scroll so the device used last stays visible
+			for i, device in ipairs(list) do
+				if device.id == focus then
+					if i < top[col] then
+						top[col] = i
+					elseif i > top[col] + visible - 1 then
+						top[col] = i - visible + 1
+					end
+				end
+			end
+			for i = top[col], math.min(#list, top[col] + visible - 1) do
+				local device = list[i]
+				local column = s.item[t_sideColumns[col]]
+				-- Pick the row style for this state, see [Side Select Info] in defaultMotif.ini.
+				local style = column
+				if col == 2 then
+					if device.id == active then
+						style = column.active
+					end
+				elseif device.ready then
+					style = column.done
+					if device.id == active then
+						style = column.done.active
+					end
+				else
+					style = column.active
+				end
+				local name = start.f_sideSelectFormat(style, device.kind, {name = device.name, setup = device.setupName})
+				local x = s.pos[1] + s.item.offset[1] + (i - top[col]) * s.item.spacing[1]
+				local y = s.pos[2] + s.item.offset[2] + (i - top[col]) * s.item.spacing[2]
+				start.f_sideSelectText(style, name, x, y, device.id, device.kind)
+				-- Arrows show the steps this device can take. Clicking one moves the active device.
+				for _, arrow in ipairs({{'left', -1}, {'right', 1}}) do
+					local anim = column.arrow[arrow[1]].AnimData
+					if done == nil and canStep(device, arrow[2], counts) then
+						animReset(anim, {'pos'})
+						animAddPos(anim, x, y)
+						animDraw(anim)
+						if mouseHover == nil and device.id == active and mouseOver(anim) then
+							mouseHover = {side = sideStep(device.side, arrow[2])}
+						end
+					end
+				end
+				local bg = start.f_sideSelectBg(style, device.kind)
+				if mouseHover == nil and (mouseOver(style.TextSpriteData) or bg ~= nil and mouseOver(bg.AnimData)) then
+					mouseHover = {device = device.id}
+				end
+			end
+		end
+		if mouseHover == nil then
+			-- Split the screen between the column titles, scaled the same way the screen is drawn.
+			local function coordScale(lc)
+				local scale = math.min(lc[1] / 320, lc[2] / 240)
+				return scale, -math.floor(math.floor(lc[1] / scale - 320) / 2)
+			end
+			local lc = motif.info.localcoord
+			local scale, offset = coordScale(lc)
+			local centers, tops = {}, {}
+			for col, name in ipairs(t_sideColumns) do
+				local title = s.title[name]
+				local titleScale, titleOffset = coordScale(title.localcoord)
+				centers[col] = ((s.pos[1] + title.offset[1]) / titleScale + titleOffset - offset) * scale
+				tops[col] = (s.pos[2] + title.offset[2] - s.item.spacing[2] / 2) / titleScale * scale
+			end
+			for col = 1, 3 do
+				local left = col == 1 and 0 or (centers[col - 1] + centers[col]) / 2
+				local right = col == 3 and lc[1] or (centers[col] + centers[col + 1]) / 2
+				if mouseOver(left, tops[col], right, lc[2], lc[1], lc[2]) then
+					mouseHover = {side = col == 1 and 1 or col == 3 and 2 or 0}
+					break
+				end
+			end
+		end
+		-- A side with no device shows its base style.
+		for side, name in ipairs({'p1', 'p2'}) do
+			if counts[side] == 0 then
+				local style = s.item[name]
+				start.f_sideSelectText(style, start.f_sideSelectFormat(style, nil, {}),
+					s.pos[1] + s.item.offset[1], s.pos[2] + s.item.offset[2])
+			end
+		end
+		start.f_sideSelectEnd()
+	end
 end
 
 return start
