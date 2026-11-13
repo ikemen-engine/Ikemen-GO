@@ -17,7 +17,7 @@ require (
 	github.com/qmuntal/gltf v0.24.2
 	github.com/sqweek/dialog v0.0.0-20220809060634-e981b270ebbf
 	github.com/tidwall/gjson v1.20.2
-	github.com/tidwall/sjson v1.2.5
+	github.com/tidwall/sjson v1.2.9
 	github.com/veandco/go-sdl2 v0.5.0-alpha.7.0.20250220045537-7f43f67a3a12
 	github.com/yuin/gopher-lua v1.1.0
 	golang.org/x/exp v0.0.0-20220609121020-a51bd0440498
