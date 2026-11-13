@@ -325,26 +325,6 @@ func (nc *NetConnection) Stop() (err error) {
 	return nil
 }
 
-func (nc *NetConnection) GetHostGuestRemap() (host, guest int) {
-	host, guest = -1, -1
-	for i, c := range sys.aiLevel {
-		if c == 0 {
-			if host < 0 {
-				host = i
-			} else if guest < 0 {
-				guest = i
-			}
-		}
-	}
-	if host < 0 {
-		host = 0
-	}
-	if guest < 0 {
-		guest = (host + 1) % len(nc.buf)
-	}
-	return
-}
-
 func (nc *NetConnection) Accept(port int) error {
 	ln, err := net.Listen("tcp", net.JoinHostPort("", Itoa(port)))
 	if err != nil {
@@ -360,7 +340,9 @@ func (nc *NetConnection) Accept(port int) error {
 	nc.ln = tcpLn
 	nc.host = true
 	nc.conn = nil // Make sure this is a new connection
-	nc.locIn, nc.remIn = nc.GetHostGuestRemap()
+	// Channel 0 is the host and channel 1 the guest, as in rollback/replays.
+	// Character ownership is selected separately through inputRemap.
+	nc.locIn, nc.remIn = 0, 1
 
 	lnLocal := nc.ln
 	SafeGo(func() {
@@ -406,7 +388,7 @@ func (nc *NetConnection) Accept(port int) error {
 func (nc *NetConnection) Connect(server string, port int) {
 	nc.host = false
 	nc.conn = nil // Make sure this is a new connection
-	nc.remIn, nc.locIn = nc.GetHostGuestRemap()
+	nc.remIn, nc.locIn = 0, 1
 
 	SafeGo(func() {
 		d := net.Dialer{Timeout: 1 * time.Second}
