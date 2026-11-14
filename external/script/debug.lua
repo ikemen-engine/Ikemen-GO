@@ -220,7 +220,7 @@ end
 function stateInfo()
 	return string.format(
 		'State No: %d (P%d); CTRL: %s; Type: %s; MoveType: %s; Physics: %s; Time: %d',
-		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time()-1
+		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time() - 1
 	)
 end
 

@@ -4,7 +4,7 @@ local start = {}
 start.p = {{}, {}}
 --cell data storage
 start.c = {}
-for i = 1, --[[gameOption('Config.Players')]]8 do
+for i = 1, --[[gameOption('Config.Players')]] 8 do
 	table.insert(start.c, {selX = 0, selY = 0, cell = -1, randCnt = 0, randRef = nil})
 end
 --globally accessible temp data
@@ -79,7 +79,7 @@ function start.f_rosterMaxMatches(baseMode)
 	local function add(prefix, name)
 		if name == nil or name == '' then
 			return
- 		end
+		end
 		if prefix ~= nil and prefix ~= '' then
 			table.insert(candidates, prefix .. '_' .. name .. 'maxmatches')
 		else
@@ -378,15 +378,15 @@ end
 -- Fold matches up to 'upto' (inclusive)
 function start.f_accStats(upto)
 	local ret = {
-		win = {0,0}, lose = {0,0},
-		time = { total = 0, matches = {} },
-		score = { total = {0,0}, matches = {} },
-		consecutive = {0,0},
+		win = {0, 0}, lose = {0, 0},
+		time = {total = 0, matches = {}},
+		score = {total = {0, 0}, matches = {}},
+		consecutive = {0, 0},
 	}
 	local gameStats = getGameStats()
 	local matches = (gameStats and gameStats.Matches) or {}
 	local n = math.min(upto or #matches, #matches)
-	local streak = {0,0}
+	local streak = {0, 0}
 	for i = 1, n do
 		local m = matches[i] or {}
 		ret.time.total = ret.time.total + (m.MatchTime or 0)
@@ -398,17 +398,21 @@ function start.f_accStats(upto)
 		if m.Rounds then
 			for j, r in ipairs(m.Rounds) do
 				tr[j] = r.Timer or 0
-				sr[j] = { [1] = (r.Score and r.Score[1]) or 0, [2] = (r.Score and r.Score[2]) or 0 }
+				sr[j] = {[1] = (r.Score and r.Score[1]) or 0, [2] = (r.Score and r.Score[2]) or 0}
 			end
 		end
 		table.insert(ret.time.matches, tr)
 		table.insert(ret.score.matches, sr)
 		if m.WinSide == 1 then
-			ret.win[1] = ret.win[1] + 1; ret.lose[2] = ret.lose[2] + 1
-			streak[1] = streak[1] + 1; streak[2] = 0
+			ret.win[1] = ret.win[1] + 1
+			ret.lose[2] = ret.lose[2] + 1
+			streak[1] = streak[1] + 1
+			streak[2] = 0
 		elseif m.WinSide == 2 then
-			ret.win[2] = ret.win[2] + 1; ret.lose[1] = ret.lose[1] + 1
-			streak[2] = streak[2] + 1; streak[1] = 0
+			ret.win[2] = ret.win[2] + 1
+			ret.lose[1] = ret.lose[1] + 1
+			streak[2] = streak[2] + 1
+			streak[1] = 0
 		end
 		for s = 1, 2 do
 			if streak[s] > ret.consecutive[s] then ret.consecutive[s] = streak[s] end
@@ -685,7 +689,7 @@ end
 function start.f_resetTempData(t, subname)
 	-- reset AnimData
 	local seenTables = {}
-	local seenAnim   = {}
+	local seenAnim = {}
 	local function walk(t)
 		if type(t) ~= "table" or seenTables[t] then return end
 		seenTables[t] = true
@@ -1209,12 +1213,12 @@ function getCellTransform(col, row, paramName, default)
 				return val
 			end
 		elseif type(val) == "string" then
-			if val ~= "" then 
-				return val 
+			if val ~= "" then
+				return val
 			end
 		elseif type(val) == "number" then
-			if val ~= 0 then 
-				return val 
+			if val ~= 0 then
+				return val
 			end
 		end
 	end
@@ -1228,11 +1232,11 @@ function start.f_drawCursor(pn, x, y, param, done)
 	local store = done and cursorDone or cursorActive
 	store[pn] = store[pn] or {}
 	local cd = store[pn]
-	cd.currentPos  = cd.currentPos  or {0, 0}
-	cd.targetPos   = cd.targetPos   or {0, 0}
-	cd.startPos    = cd.startPos    or {0, 0}
+	cd.currentPos = cd.currentPos or {0, 0}
+	cd.targetPos = cd.targetPos or {0, 0}
+	cd.startPos = cd.startPos or {0, 0}
 	cd.slideOffset = cd.slideOffset or {0, 0}
-	cd.init        = cd.init or false
+	cd.init = cd.init or false
 	if not done then
 		cd.snap = cd.snap or false -- only used by active cursors
 	end
@@ -1248,9 +1252,9 @@ function start.f_drawCursor(pn, x, y, param, done)
 	if not cd.init or done or cd.snap then
 		for i = 1, 2 do
 			cd.currentPos[i] = (i == 1) and baseX or baseY
-			cd.targetPos[i]  = cd.currentPos[i]
-			cd.startPos[i]   = cd.currentPos[i]
-			cd.slideOffset[i]= 0
+			cd.targetPos[i] = cd.currentPos[i]
+			cd.startPos[i] = cd.currentPos[i]
+			cd.slideOffset[i] = 0
 		end
 		cd.init, cd.snap = true, false
 	-- new cell selected: recalc tween offsets
@@ -1274,7 +1278,7 @@ function start.f_drawCursor(pn, x, y, param, done)
 		local dx = cd.targetPos[1] - cd.startPos[1]
 		local dy = cd.targetPos[2] - cd.startPos[2]
 		if math.abs(dx) > motif.select_info.cell.size[1] * (motif.select_info.columns - 1) or math.abs(dy) > motif.select_info.cell.size[2] * (motif.select_info.rows - 1) then
-		cd.slideOffset[1], cd.slideOffset[2] = 0, 0	
+			cd.slideOffset[1], cd.slideOffset[2] = 0, 0
 		end
 	end
 	-- update final cursor position
@@ -1564,7 +1568,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 		end
 	end
 	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
-	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect'),false
+	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect'), false
 end
 
 --generate start.t_grid table, assign row and cell to main.t_selChars
@@ -2134,7 +2138,7 @@ function start.f_selectChallenger(resume)
 	-- but P2 stays selected so resuming does not roll a new random opponent.
 	local p2 = main.f_tableCopy(start.p[2])
 	start.f_selectReset(false, true)
-	start.p[2] = p2 
+	start.p[2] = p2
 	start.reset = false
 
 	if not start.f_selectScreen() then
@@ -2510,13 +2514,13 @@ function start.f_updateDrawList()
 				local charData = start.f_selGrid(cellIndex)
 				local function getTransforms(base)
 					return {
-						facing      = getCellFacing(base.facing, c, r),
-						scale       = getCellTransform(c, r, "scale", base.scale),
-						xshear      = getCellTransform(c, r, "xshear", base.xshear),
-						angle       = getCellTransform(c, r, "angle", base.angle),
-						xangle      = getCellTransform(c, r, "xangle", base.xangle),
-						yangle      = getCellTransform(c, r, "yangle", base.yangle),
-						projection  = getCellTransform(c, r, "projection", base.projection),
+						facing = getCellFacing(base.facing, c, r),
+						scale = getCellTransform(c, r, "scale", base.scale),
+						xshear = getCellTransform(c, r, "xshear", base.xshear),
+						angle = getCellTransform(c, r, "angle", base.angle),
+						xangle = getCellTransform(c, r, "xangle", base.xangle),
+						yangle = getCellTransform(c, r, "yangle", base.yangle),
+						projection = getCellTransform(c, r, "projection", base.projection),
 						focallength = getCellTransform(c, r, "focallength", base.focallength)
 					}
 				end
@@ -2765,9 +2769,9 @@ function start.f_selectScreen()
 		-- map itemname -> mode (kept from old defaults)
 		local modeByName = {
 			single = 0,
-			simul  = 1,
-			turns  = 2,
-			tag    = 3,
+			simul = 1,
+			turns = 2,
+			tag = 3,
 		}
 		-- itemname_order lists exactly what to render, in the correct order
 		for _, name in ipairs(itemname_order) do
@@ -2775,9 +2779,9 @@ function start.f_selectScreen()
 			local mode = modeByName[itemname]
 			if mode ~= nil and main.teamMenu[side][itemname] then
 				table.insert(t_teamMenu[side], {
-					itemname    = itemname,
+					itemname = itemname,
 					displayname = params[itemname],
-					mode        = mode,
+					mode = mode,
 				})
 			end
 		end
@@ -2809,7 +2813,7 @@ function start.f_selectScreen()
 		--draw cell art
 		if start.needUpdateDrawList then
 			staticDrawList = start.f_updateDrawList()
-			start.needUpdateDrawList = false 
+			start.needUpdateDrawList = false
 		end
 		for _, item in ipairs(staticDrawList) do
 			animUpdate(item.anim)
@@ -2870,7 +2874,7 @@ function start.f_selectScreen()
 					if activeMember then
 						if side == 2 and motif.select_info.p2.cursor.blink then
 							local sameCell = false
-							for _, v2 in ipairs(start.p[1].t_selCmd) do							
+							for _, v2 in ipairs(start.p[1].t_selCmd) do
 								if start.c[v.player].cell == start.c[v2.player].cell and v.selectState == 0 and v2.selectState == 0 then
 									if blinkCount == 0 then
 										start.c[v.player].blink = not start.c[v.player].blink
@@ -2886,9 +2890,9 @@ function start.f_selectScreen()
 						local cursorState = 'active'
 						if v.selectState > 0 and motif.select_info.paletteselect > 0 then
 							local cursorData = motif.select_info['p' .. side].cursor
-							if cursorData.preview and cursorData.preview.default and 
-							(cursorData.preview.default.anim ~= -1 or cursorData.preview.default.spr[1] ~= -1) then
-							--cursorState when palmenu is active
+							if cursorData.preview and cursorData.preview.default and
+								(cursorData.preview.default.anim ~= -1 or cursorData.preview.default.spr[1] ~= -1) then
+								--cursorState when palmenu is active
 								cursorState = 'preview'
 							else
 								cursorState = 'done'
@@ -3438,7 +3442,7 @@ end
 --===========================================================
 -- Draw Palette Menu
 --===========================================================
-function start.f_palMenuDraw(side, member, curIdx, validIdx ,maxIdx)
+function start.f_palMenuDraw(side, member, curIdx, validIdx, maxIdx)
 	local charData = start.f_getCharData(start.p[side].t_selTemp[member].ref)
 	if not charData or not charData.pal then return end
 	local pn = 2 * (member - 1) + side
@@ -3539,7 +3543,10 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		local curPal = st.pal or valid[1]
 		st.currentIdx = 1
 		for i, p in ipairs(valid) do
-			if p == curPal then st.currentIdx = i; break end
+			if p == curPal then
+				st.currentIdx = i
+				break
+			end
 		end
 	end
 
@@ -3589,7 +3596,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		if not autoConfirm then
 			sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.done.snd[1], motif.select_info['p' .. side].palmenu.done.snd[2])
 		end
-	 -- next palette
+	-- next palette
 	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.next.key) then
 		curIdx = (curIdx == maxIdx) and 1 or curIdx + 1
 		st.currentIdx = curIdx
@@ -3700,7 +3707,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				})
 			else
 				local updateAnim = false
-				local slotSelected,slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				local slotSelected, slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
 				local timerExpired = motif.select_info.timer.count ~= -1 and timerSelect == -1
 				needUpdateDrawList = slotChanged
 				local velCopy = false
@@ -3903,7 +3910,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 		--confirm selection
 		elseif selectState == 3 then
-			local valid = {1,2,3}
+			local valid = {1, 2, 3}
 			local finalPal
 			for _, v in ipairs(valid) do
 				if motif.select_info.paletteselect == v then
@@ -4017,9 +4024,9 @@ function start.f_stageMenu()
 	local n = stageListNo
 	local previousRef = start.f_stageMenuRef()
 	local randomMode = {
-		[0] = { init = 1, min = 1 }, -- disabled
-		[1] = { init = 0, min = 0 }, -- default
-		[2] = { init = 1, min = 0 }, -- random at the 'end'
+		[0] = {init = 1, min = 1}, -- disabled
+		[1] = {init = 0, min = 0}, -- default
+		[2] = {init = 1, min = 0}, -- random at the 'end'
 	}
 
 	local r = randomMode[motif.select_info.stage.randomselect] or randomMode[1]
@@ -4207,7 +4214,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	local readyToLeave = not bgLoading
 	local wantSkip = false
 	local wantDone = false
-	
+
 	-- Reset stage portrait animation if it was already seen when entering the VS screen
 	resetStagePortraitAnim(selStageNo, 'vs_anim_data')
 
@@ -4494,9 +4501,9 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		--draw fadein / fadeout
 		for side = 1, 2 do
 			if not fadeOutStarted and (
-				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
-				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
-				or (readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
+					(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
+					or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
+					or (readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				wantSkip = false

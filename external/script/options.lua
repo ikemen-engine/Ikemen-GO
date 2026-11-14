@@ -135,7 +135,7 @@ options.t_itemname = {
 			modifyGameOption('Options.Tag.Min', 2)
 			modifyGameOption('Options.Tag.Max', 4)
 			modifyGameOption('Options.Tag.Match.Wins', 2)
-			modifyGameOption('Options.Tag.LoseOnKO', false)	
+			modifyGameOption('Options.Tag.LoseOnKO', false)
 			modifyGameOption('Options.Tag.TimeScaling', 1)
 			modifyGameOption('Options.Turns.Min', 2)
 			modifyGameOption('Options.Turns.Max', 4)
@@ -216,9 +216,9 @@ options.t_itemname = {
 			modifyGameOption('Sound.WavVolume', 80)
 			modifyGameOption('Sound.BGMVolume', 80)
 			--modifyGameOption('Sound.MaxBGMVolume', 100)
-			modifyGameOption('Sound.AudioDucking', false)	
-			--modifyGameOption('Sound.BGMRAMBuffer', true)	
-			--modifyGameOption('Sound.AudioResampleQuality', 4)	
+			modifyGameOption('Sound.AudioDucking', false)
+			--modifyGameOption('Sound.BGMRAMBuffer', true)
+			--modifyGameOption('Sound.AudioResampleQuality', 4)
 			modifyGameOption('Arcade.AI.RandomColor', false)
 			modifyGameOption('Arcade.AI.SurvivalColor', true)
 			modifyGameOption('Arcade.AI.Ramping', true)
@@ -438,7 +438,7 @@ options.t_itemname = {
 				modifyGameOption('Options.QuickContinue', false)
 			else
 				modifyGameOption('Options.QuickContinue', true)
-				end
+			end
 			t.items[item].vardisplay = options.t_vardisplay['quickcontinue']()
 			options.modified = true
 		end
@@ -508,7 +508,7 @@ options.t_itemname = {
 				modifyGameOption('Options.Team.Duplicates', false)
 			else
 				modifyGameOption('Options.Team.Duplicates', true)
-				end
+			end
 			t.items[item].vardisplay = options.t_vardisplay['teamduplicates']()
 			options.modified = true
 		end
@@ -2011,7 +2011,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 	-- Dynamically add/remove the "Rumble" option based on type
 	if motif.option_info.keymenu.itemname.rumble ~= nil then
 		if cfgType ~= 'Joystick' then
-			for k,v in ipairs(t) do
+			for k, v in ipairs(t) do
 				if t[k].itemname == 'rumble' then
 					table.remove(t, k)
 					break
@@ -2019,7 +2019,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 			end
 		else
 			local found = false
-			for k,v in ipairs(t) do
+			for k, v in ipairs(t) do
 				if t[k].itemname == 'rumble' then
 					found = true
 					break
@@ -2304,11 +2304,11 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		for i = 1, #t do
 			local base = t[i]
 			local row = {
-				itemname    = base.itemname,
+				itemname = base.itemname,
 				displayname = base.displayname,
-				paramname   = base.paramname,
-				selected    = base.selected,
-				vardisplay  = base['vardisplay' .. pn],
+				paramname = base.paramname,
+				selected = base.selected,
+				vardisplay = base['vardisplay' .. pn],
 				infodisplay = base.infodisplay,
 			}
 			-- contextual labels
@@ -2341,7 +2341,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		end
 		return list
 	end
-	local leftItems  = buildPaneItems(1)
+	local leftItems = buildPaneItems(1)
 	local rightItems = buildPaneItems(2)
 	-- left pane (active highlight only if side == 1)
 	main.f_menuCommonDraw(

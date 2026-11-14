@@ -84,7 +84,7 @@ function main.f_printTable(t, toFile)
 			print_t_cache[tostring(t)] = true
 			if type(t) == 'table' then
 				for pos, val in pairs(t) do
-					local k = (type(pos) == 'string') and ('[' .. string.format('%q', pos) .. ']') or  ('[' .. tostring(pos) .. ']')
+					local k = (type(pos) == 'string') and ('[' .. string.format('%q', pos) .. ']') or ('[' .. tostring(pos) .. ']')
 					if type(val) == 'table' then
 						txt = txt .. indent .. k .. ' => ' .. tostring(val) .. ' {' .. '\n'
 						sub_print_t(val, indent .. string.rep(' ', string.len(k) + 6))
@@ -92,7 +92,7 @@ function main.f_printTable(t, toFile)
 					elseif type(val) == 'string' then
 						txt = txt .. indent .. k .. ' => "' .. val .. '"' .. '\n'
 					else
-						txt = txt .. indent .. k .. ' => ' .. tostring(val) ..'\n'
+						txt = txt .. indent .. k .. ' => ' .. tostring(val) .. '\n'
 					end
 				end
 			else
@@ -210,7 +210,7 @@ end
 if getCommandLineValue("-width") ~= nil then
 	modifyGameOption('Video.GameWidth', getCommandLineValue("-width"))
 end
-if getCommandLineValue("-height") ~= nil then 
+if getCommandLineValue("-height") ~= nil then
 	modifyGameOption('Video.GameHeight', getCommandLineValue("-height"))
 end
 if getCommandLineValue("-tcpport") ~= nil then
@@ -368,7 +368,7 @@ function main.f_appendItemname(menu, parent, name, src, before)
 			return false
 		end
 		local pat = '_' .. main.f_escapePattern(name) .. '$'
-		local stack = { t }
+		local stack = {t}
 		while #stack > 0 do
 			local cur = stack[#stack]
 			stack[#stack] = nil
@@ -850,7 +850,7 @@ function main.f_preloadTick(limit)
 				if state == 'ready' then
 					--print("Char preload ready ref=" .. tostring(ch.char_ref) .. " row=" .. tostring(row))
 					main.f_syncCharPaletteData(ch.char_ref)
-				-- elseif state == 'error' then
+					-- elseif state == 'error' then
 					-- print("Char preload error ref=" .. tostring(ch.char_ref) .. " row=" .. tostring(row) .. ": " .. tostring(err))
 				end
 			end
@@ -871,7 +871,7 @@ function main.f_preloadTick(limit)
 				main.preload.stageState[stageNo] = state
 				if state == 'ready' then
 					--print("Stage preload ready stage=" .. tostring(stageNo))
-				-- elseif state == 'error' then
+					-- elseif state == 'error' then
 					-- print("Stage preload error stage=" .. tostring(stageNo) .. ": " .. tostring(err))
 				end
 			end
@@ -1640,7 +1640,7 @@ for line in content:gmatch('[^\r\n]+') do
 		if lanChars then
 			row = 0
 			section = 1
-		else 
+		else
 			section = -1
 		end
 	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
@@ -1650,7 +1650,7 @@ for line in content:gmatch('[^\r\n]+') do
 		if lanStages then
 			row = 0
 			section = 2
-		else 
+		else
 			section = -1
 		end
 	elseif lineCase:match('^%s*%[%s*options%s*%]') then
@@ -1867,14 +1867,20 @@ function main.f_updateSelectableStages()
 	for i, group in ipairs(main.t_stageSlots) do
 		group.slot = 1
 		for j, ref in ipairs(group.available) do
-			if ref == selected[i] then group.slot = j; break end
+			if ref == selected[i] then
+				group.slot = j
+				break
+			end
 		end
 	end
 	-- Shuffle bags contain indices into the flat pool, so invalidate the menu
 	-- bag when unlocking or hiding stages changes that pool
 	local changed = #previousPool ~= #main.t_selectableStages
 	for i, ref in ipairs(main.t_selectableStages) do
-		if previousPool[i] ~= ref then changed = true; break end
+		if previousPool[i] ~= ref then
+			changed = true
+			break
+		end
 	end
 	if changed and start ~= nil and start.shuffleStages ~= nil then
 		start.shuffleStages.stageMenu = nil
@@ -1989,7 +1995,10 @@ local function isValidIp(address)
 			local parts, bad = 0, false
 			for h in address:gmatch('[^:]+') do
 				parts = parts + 1
-				if #h > 4 then bad = true break end
+				if #h > 4 then
+					bad = true
+					break
+				end
 			end
 			return not bad and ((dbl == 1 and parts < 8) or (dbl == 0 and parts == 8))
 		end
@@ -3911,8 +3920,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	if m.boxbg.visible then
 		local x1 = offx + m.pos[1] + m.boxcursor.coords[1]
 		local y1 = offy + m.pos[2] + m.boxcursor.coords[2]
-		local w  = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
-		local h  = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
+		local w = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
+		local h = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
 			+ (math.min(#t, visible) - 1) * m.item.spacing[2]
 		rectSetWindow(m.boxbg.RectData, x1, y1, x1 + w, y1 + h)
 		rectUpdate(m.boxbg.RectData)
@@ -3951,7 +3960,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		local bgTable = isActive and m.item.active.bg or m.item.bg
 		local params = bgTable[itemData.paramname] or bgTable.default
 		-- draw background
-		local bgPosX = offx 
+		local bgPosX = offx
 		local bgPosY = offy
 		if bgTable.default.spacing[1] ~= 0 or bgTable.default.spacing[2] ~= 0 then
 			bgPosX = bgPosX + (i - 1) * bgTable.default.spacing[1]
@@ -4013,8 +4022,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	--initialize storage for boxcursor per section if missing
 	if not sec.boxCursorData then
 		sec.boxCursorData = {
-			offsetY = 0, 
-			snap = 0, 
+			offsetY = 0,
+			snap = 0,
 			init = false
 		}
 	end
@@ -4040,8 +4049,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	if m.boxcursor.visible and not fadeActive() and not forceInactive then
 		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (cursorPosY - 1) * m.item.spacing[1]
 		local y1 = sec.boxCursorData.offsetY
-		local w  = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
-		local h  = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
+		local w = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
+		local h = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
 		rectSetWindow(m.boxcursor.RectData, x1, y1, x1 + w, y1 + h)
 		rectUpdate(m.boxcursor.RectData)
 		rectDraw(m.boxcursor.RectData)
@@ -4123,7 +4132,7 @@ function main.f_drawTimer(timer, params)
 		active = false
 		timer = -1
 		textImgReset(params.TextSpriteData)
-		textImgSetText(params.TextSpriteData, string.format(params.text, 0))		
+		textImgSetText(params.TextSpriteData, string.format(params.text, 0))
 	elseif timer ~= -1 then
 		timer = timer + 1
 		textImgReset(params.TextSpriteData)

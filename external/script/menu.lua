@@ -720,8 +720,8 @@ end
 --;===========================================================
 function colorFromHex(h)
 	h = tostring(h)
-	if h:sub(0, 1) =="#" then h = h:sub(2, -1) end
-	if h:sub(0, 2) =="0x" then h = h:sub(3, -1) end
+	if h:sub(0, 1) == "#" then h = h:sub(2, -1) end
+	if h:sub(0, 2) == "0x" then h = h:sub(3, -1) end
 	local r = tonumber(h:sub(1, 2), 16) or 255
 	local g = tonumber(h:sub(3, 4), 16) or 255
 	local b = tonumber(h:sub(5, 6), 16) or 255
