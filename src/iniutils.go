@@ -1116,8 +1116,15 @@ func assignField(structPtr interface{}, parts []queryPart, value interface{}, ba
 				case "char", "stage":
 					switch fieldType.Name {
 					case "Anim":
-						if fieldVal.Kind() == reflect.Int32 {
-							av := int32(fieldVal.Int())
+						// Single anim or anim list
+						var anims []int32
+						switch fieldVal.Kind() {
+						case reflect.Int32:
+							anims = []int32{int32(fieldVal.Int())}
+						case reflect.Slice:
+							anims, _ = fieldVal.Interface().([]int32)
+						}
+						for _, av := range anims {
 							if av >= 0 {
 								if preload == "char" {
 									sys.sel.charAnimPreload[av] = true
@@ -1127,18 +1134,20 @@ func assignField(structPtr interface{}, parts []queryPart, value interface{}, ba
 							}
 						}
 					case "Spr":
-						// Expect a [2]int32 array
-						if fieldVal.Kind() == reflect.Array && fieldVal.Len() == 2 {
-							// Read both elements as int32
-							a0 := uint16(fieldVal.Index(0).Int())
-							a1 := uint16(fieldVal.Index(1).Int())
-							if a0 >= 0 && a1 >= 0 {
-								key := [2]uint16{a0, a1}
-								if preload == "char" {
-									sys.sel.charSpritePreload[key] = true
-								} else {
-									sys.sel.stageSpritePreload[key] = true
-								}
+						// Single group, index pair or a list of pairs
+						var sprs []int32
+						switch fieldVal.Kind() {
+						case reflect.Array, reflect.Slice:
+							for i := 0; i < fieldVal.Len(); i++ {
+								sprs = append(sprs, int32(fieldVal.Index(i).Int()))
+							}
+						}
+						for _, p := range sprList(sprs) {
+							key := [2]uint16{uint16(p[0]), uint16(p[1])}
+							if preload == "char" {
+								sys.sel.charSpritePreload[key] = true
+							} else {
+								sys.sel.stageSpritePreload[key] = true
 							}
 						}
 					}
