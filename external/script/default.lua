@@ -9,8 +9,8 @@ if main.storyboard.intro and matchNo() == 1 and not continued() then
 end
 
 for i = matchNo(), #start.t_roster do
-	if start.t_roster[i][1] == -1 then --infinite matches flag detected
-		return --restart lua script after appending new entries
+	if start.t_roster[i][1] == -1 then -- infinite matches flag detected
+		return -- restart lua script after appending new entries
 	end
 	local t_p2char = {}
 	for _, v in ipairs(start.t_roster[i]) do

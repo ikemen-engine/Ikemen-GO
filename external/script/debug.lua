@@ -1,7 +1,7 @@
 --;===========================================================
 --; DEBUG HOTKEYS
 --;===========================================================
---key, ctrl, alt, shift, pause, debug key, function
+-- key, ctrl, alt, shift, pause, debug key, function
 addHotkey('c', true, false, false, true, false, 'toggleClsnDisplay()')
 addHotkey('d', true, false, false, true, false, 'toggleDebugDisplay(nil, false)')
 addHotkey('d', true, false, true, true, false, 'toggleDebugDisplay(nil, true)')
@@ -220,7 +220,7 @@ end
 function stateInfo()
 	return string.format(
 		'State No: %d (P%d); CTRL: %s; Type: %s; MoveType: %s; Physics: %s; Time: %d',
-		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time()-1
+		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time() - 1
 	)
 end
 
