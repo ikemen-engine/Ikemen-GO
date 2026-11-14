@@ -1522,6 +1522,12 @@ local function slotCycle(cell, dir)
 	return false
 end
 
+local function updateGridSlot(cell, x, y)
+	local entry = start.f_selGrid(cell)
+	local box = start.t_grid[y + 1][x + 1]
+	box.char, box.char_ref, box.hidden, box.skip = entry.char, entry.char_ref, entry.hidden, entry.skip
+end
+
 --return true if slot is selected, update start.t_grid
 function start.f_slotSelected(cell, side, cmd, player, x, y)
 	if cmd == nil then
@@ -1556,10 +1562,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			end
 		end
 		if pressed then
-			start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
-			start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
-			start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
-			start.t_grid[y + 1][x + 1].skip = start.f_selGrid(cell).skip
+		updateGridSlot(cell, x, y)
 			return selected, (grid.slot ~= original_slot)
 		end
 	end
@@ -2586,12 +2589,12 @@ function start.f_updateDrawList()
 	return drawList
 end
 
-local function tickScreenDelay(side)
+local function tickScreenDelay(side, demo)
 	if start.p[side].screenDelay <= 0 then
 		return false
 	end
 	local selectComplete = start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd
-	local canSkip = not start.p[side].inPalMenu and (
+	local canSkip = not demo and not start.p[side].inPalMenu and (
 		not start.p[side].selEnd
 		or (selectComplete and (not main.stageMenu or stageEnd))
 	)
@@ -2713,7 +2716,143 @@ local function cancelPreviousSide(side)
 end
 
 start.needUpdateDrawList = false
-function start.f_selectScreen()
+-- Follow visible cells backwards from the target so the cursor can reach it
+-- in a few moves even when the configured starting cell is far away
+local function demoCursorPath(target, startCell, visible)
+	local columns, rows = motif.select_info.columns, motif.select_info.rows
+	local cells, depth, nextCell = {target}, {[target] = 0}, {}
+	local directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}
+	local origin = target
+	local maxMoves = math.random(3, 5)
+	local i = 1
+	while i <= #cells do
+		local cell = cells[i]
+		if cell == startCell and cell ~= target then
+			origin = cell
+			break
+		end
+		if depth[cell] > depth[origin] then
+			origin = cell
+		end
+		if depth[cell] < maxMoves then
+			local x, y = (cell - 1) % columns, math.floor((cell - 1) / columns)
+			for _, dir in ipairs(directions) do
+				local nx, ny = x + dir[1], y + dir[2]
+				while nx >= 0 and nx < columns and ny >= 0 and ny < rows do
+					local neighbor = ny * columns + nx + 1
+					if visible[neighbor] then
+						if depth[neighbor] == nil then
+							depth[neighbor], nextCell[neighbor] = depth[cell] + 1, cell
+							table.insert(cells, neighbor)
+						end
+						break
+					end
+					nx, ny = nx + dir[1], ny + dir[2]
+				end
+			end
+		end
+		i = i + 1
+	end
+	local path = {origin}
+	while nextCell[origin] do
+		origin = nextCell[origin]
+		table.insert(path, origin)
+	end
+	return path
+end
+
+function start.f_demoSelect(picks, palState)
+	local cfg = motif.select_info
+	local visible, destinations = {}, {}
+	local randomCell
+	for cell = 1, cfg.rows * cfg.columns do
+		local grid = main.t_selGrid[cell]
+		local x, y = (cell - 1) % cfg.columns, math.floor((cell - 1) / cfg.columns)
+		if grid and start.t_grid[y + 1][x + 1].skip ~= 1 then
+			local current = start.f_selGrid(cell)
+			if current.char == 'randomselect' or current.hidden == 3 then
+				randomCell = randomCell or cell
+			elseif current.char_ref ~= nil and current.hidden == 0 then
+				visible[cell] = true
+			end
+			for slot in ipairs(grid.chars) do
+				local entry = start.f_selGrid(cell, slot)
+				if entry.char_ref ~= nil and entry.hidden == 0 and entry.skip ~= 1 and entry.char ~= 'randomselect' then
+					if destinations[entry.char_ref] == nil or slot == grid.slot then
+						destinations[entry.char_ref] = {cell = cell, slot = slot}
+					end
+				end
+			end
+		end
+	end
+	local demo = {slots = {}}
+	for side, pick in ipairs(picks) do
+		local destination = destinations[pick.ref] or {cell = randomCell}
+		if destination.cell == nil then
+			-- The draw can include a char without a visible cell or a random cell
+			return true
+		end
+		local cursor = start.c[side]
+		local startCell = cursor.selY * cfg.columns + cursor.selX + 1
+		demo[side] = {
+			pick = pick, palState = palState, slot = destination.slot,
+			path = demoCursorPath(destination.cell, startCell, visible),
+			step = 0, nextFrame = 0, confirmFrame = 0,
+		}
+	end
+	for side, pick in ipairs(picks) do
+		start.p[side].teamEnd = true
+		start.p[side].t_selCmd = {{player = side, selectState = 0}}
+		main.f_preloadBoostChar(pick.ref)
+	end
+	local demoTitle = motif.demo_mode.select.title
+	local title = cfg.title.TextSpriteData
+	if demoTitle and demoTitle ~= '' then
+		textImgSetText(title, demoTitle)
+	end
+	local proceed = start.f_selectScreen(demo)
+	if demoTitle and demoTitle ~= '' then
+		textImgReset(title, {'text'})
+	end
+	for cell, slot in pairs(demo.slots) do
+		main.t_selGrid[cell].slot = slot
+		updateGridSlot(cell, (cell - 1) % cfg.columns, math.floor((cell - 1) / cfg.columns))
+	end
+	for side = 1, 2 do
+		main.f_preloadSetCharHighlight(side, nil)
+	end
+	return proceed
+end
+
+local function stepDemoCursor(demo, player, frame)
+	local choice = demo[player]
+	choice.frame = frame
+	if choice.step < #choice.path and (choice.step == 0 or frame >= choice.nextFrame) then
+		choice.step = choice.step + 1
+		local cell = choice.path[choice.step]
+		local columns = motif.select_info.columns
+		local cursor = start.c[player]
+		cursor.selX, cursor.selY = (cell - 1) % columns, math.floor((cell - 1) / columns)
+		if choice.step > 1 then
+			local snd = start.f_getCursorData(player).cursor.move.snd
+			sndPlay(motif.Snd, snd[1], snd[2])
+		end
+		choice.nextFrame = math.max(frame, 0) + math.random(10, 16) + (choice.step == 1 and player * 6 or 0)
+		if choice.step == #choice.path then
+			choice.confirmFrame = math.max(frame, 0) + 24 + player * 6
+			local grid = main.t_selGrid[cell]
+			if choice.slot and grid.slot ~= choice.slot then
+				demo.slots[cell] = demo.slots[cell] or grid.slot
+				grid.slot = choice.slot
+				updateGridSlot(cell, cursor.selX, cursor.selY)
+				start.needUpdateDrawList = true
+			end
+		end
+	end
+	return choice
+end
+
+function start.f_selectScreen(demo)
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true
 	end
@@ -2838,9 +2977,10 @@ function start.f_selectScreen()
 					end
 					--member selection
 					local drawUpdateFlag
-					if activeMember then
-						v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
-						if not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key) then
+				if activeMember and (not demo or not start.escFlag) then
+					local choice = demo and stepDemoCursor(demo, v.player, counter)
+					v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState, choice)
+					if not demo and not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key) then
 							local selected = main.f_tableLength(start.p[side].t_selected)
 							if cancelSelectMember(side, k) then
 								timerSelect = motif.select_info.timer.displaytime
@@ -2937,7 +3077,7 @@ function start.f_selectScreen()
 				end
 			end
 			--delayed screen transition for the duration of face_done_anim or selection sound
-			if tickScreenDelay(side) then
+			if tickScreenDelay(side, demo) then
 				screenDelayInterrupted = true
 			end
 			if start.p[side].inPalMenu then
@@ -2956,9 +3096,9 @@ function start.f_selectScreen()
 			end
 		end
 		--Esc always exits; cancel goes back one step after character selection is complete
-		if not start.escFlag and esc() then
+		if not start.escFlag and (esc() or (demo and main.f_demoCancelled())) then
 			exitSelectScreen()
-		elseif not start.escFlag and not fadeOutStarted
+		elseif not demo and not start.escFlag and not fadeOutStarted
 			and not (start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd) then
 			for side = 2, 1, -1 do
 				if start.p[side].selEnd and start.p[side].teamEnd then
@@ -2971,7 +3111,7 @@ function start.f_selectScreen()
 					end
 				end
 			end
-		elseif not start.escFlag and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
+		elseif not demo and not start.escFlag and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			local cancelHandled = false
 			if main.stageMenu and stageEnd and getInput(-1, motif.select_info.cancel.key) then
 				stageEnd = false
@@ -3126,7 +3266,7 @@ function start.f_selectScreen()
 			textImgDraw(motif.select_info.record.TextSpriteData)
 		end
 		--draw timer
-		if motif.select_info.timer.count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) and counter >= 0 then
+		if not demo and motif.select_info.timer.count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) and counter >= 0 then
 			timerSelect = main.f_drawTimer(timerSelect, motif.select_info.timer)
 		end
 		-- hook
@@ -3518,7 +3658,7 @@ local function applyPalette(sel, palIndex)
 end
 
 -- palette select menu
-function start.f_palMenu(side, cmd, player, member, selectState)
+function start.f_palMenu(side, cmd, player, member, selectState, demo)
 	local st = start.p[side].t_selTemp[member]
 	local charRef = st.ref
 	local charData = start.f_getCharData(charRef)
@@ -3535,6 +3675,10 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 			seen[nextp], cur = true, nextp
 		end
 		st.validPals, st.validPalsCharRef = valid, charRef
+		if demo then
+			demo.nextPaletteFrame = nil
+			demo.pick.pal = validatePal(demo.pick.pal, charRef)
+		end
 		-- set current index to match current palette (or default to first)
 		local curPal = st.pal or valid[1]
 		st.currentIdx = 1
@@ -3547,11 +3691,36 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 	local curIdx = st.currentIdx or 1
 	local maxIdx = #validPals + 1
 	start.p[side].inPalMenu = true
+	local menu = motif.select_info['p' .. side].palmenu
+	local confirm, nextPalette
+	if demo then
+		if demo.nextPaletteFrame == nil then
+			local targetIdx = 1
+			for i, pal in ipairs(validPals) do
+				if pal == demo.pick.pal then
+					targetIdx = i
+					break
+				end
+			end
+			demo.paletteSteps = math.min(#validPals - 1, side)
+			curIdx = (targetIdx - demo.paletteSteps - 1) % #validPals + 1
+			st.currentIdx = curIdx
+			applyPalette(st, validPals[curIdx])
+			demo.nextPaletteFrame = demo.frame + 14
+		elseif demo.frame >= demo.nextPaletteFrame then
+			confirm = demo.paletteSteps == 0
+			nextPalette = not confirm
+			if nextPalette then
+				demo.paletteSteps = demo.paletteSteps - 1
+				demo.nextPaletteFrame = demo.frame + (demo.paletteSteps == 0 and 22 or 14)
+			end
+		end
+	end
 
 	-- accept selection
 	local autoConfirm = #validPals <= 1
-	if autoConfirm or getInput(cmd, motif.select_info['p' .. side].palmenu.done.key) or timerSelect == -1 then
-		local pal = (curIdx == maxIdx) and (start.c[player].randPalPreview or start.f_randomPal(charRef, validPals)) or validPals[curIdx]
+	if autoConfirm or confirm or (not demo and (getInput(cmd, menu.done.key) or timerSelect == -1)) then
+		local pal = demo and demo.pick.pal or ((curIdx == maxIdx) and (start.c[player].randPalPreview or start.f_randomPal(charRef, validPals)) or validPals[curIdx])
 		st.pal, st.currentIdx = pal, curIdx
 
 		-- done anim after pal confirmation - primary face
@@ -3587,32 +3756,33 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
 		-- Skip cursor sound for auto-confirmation, since we already played the select character confirmation sound
 		if not autoConfirm then
-			sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.done.snd[1], motif.select_info['p' .. side].palmenu.done.snd[2])
+			sndPlay(motif.Snd, menu.done.snd[1], menu.done.snd[2])
 		end
 	 -- next palette
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.next.key) then
-		curIdx = (curIdx == maxIdx) and 1 or curIdx + 1
+	elseif nextPalette or (not demo and getInput(cmd, menu.next.key)) then
+		local lastIdx = demo and #validPals or maxIdx
+		curIdx = (curIdx == lastIdx) and 1 or curIdx + 1
 		st.currentIdx = curIdx
 		if curIdx < maxIdx then
 			applyPalette(st, validPals[curIdx])
 		end
-		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.value.snd[1], motif.select_info['p' .. side].palmenu.value.snd[2])
+		sndPlay(motif.Snd, menu.value.snd[1], menu.value.snd[2])
 	-- previous palette
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.previous.key) then
+	elseif not demo and getInput(cmd, menu.previous.key) then
 		curIdx = (curIdx == 1) and maxIdx or curIdx - 1
 		st.currentIdx = curIdx
 		if curIdx < maxIdx then
 			applyPalette(st, validPals[curIdx])
 		end
-		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.value.snd[1], motif.select_info['p' .. side].palmenu.value.snd[2])
+		sndPlay(motif.Snd, menu.value.snd[1], menu.value.snd[2])
 	-- cancel
-	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.cancel.key) then
+	elseif not demo and getInput(cmd, menu.cancel.key) then
 		resetSelectMember(side, member, charRef)
 		selectState = 0
-		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.cancel.snd[1], motif.select_info['p' .. side].palmenu.cancel.snd[2])
+		sndPlay(motif.Snd, menu.cancel.snd[1], menu.cancel.snd[2])
 	end
 	-- random hotkey
-	if getInput(cmd, motif.select_info['p' .. side].palmenu.random.key) then
+	if not demo and getInput(cmd, menu.random.key) then
 		curIdx, st.currentIdx = maxIdx, maxIdx
 	end
 	-- random preview update
@@ -3625,7 +3795,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 			else
 				applyPalette(st, 1)
 			end
-			sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.value.snd[1], motif.select_info['p' .. side].palmenu.value.snd[2])
+			sndPlay(motif.Snd, menu.value.snd[1], menu.value.snd[2])
 		else
 			start.c[player].randPalCnt = start.c[player].randPalCnt - 1
 		end
@@ -3637,10 +3807,10 @@ end
 --;===========================================================
 --; SELECT MENU
 --;===========================================================
-function start.f_selectMenu(side, cmd, player, member, selectState)
+function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 	local needUpdateDrawList = false
 	--predefined selection
-	if main.forceChar[side] ~= nil then
+	if not demo and main.forceChar[side] ~= nil then
 		local t = {}
 		for _, v in ipairs(main.forceChar[side]) do
 			if t[v] == nil then
@@ -3662,7 +3832,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 		--cell not selected yet
 		if selectState == 0 then
 			--restore cursor coordinates
-			if restoreCursor then
+			if not demo and restoreCursor then
 				-- remove entries if stored cursors exceeds team size
 				if #start.p[side].t_cursor > start.p[side].numChars then
 					for i = #start.p[side].t_cursor, start.p[side].numChars + 1, -1 do
@@ -3681,9 +3851,12 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				end
 			end
 			--calculate current position
-			start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
+			if not demo then
+				start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
+			end
 			start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
-			start.c[player].selRef = start.f_selGrid(start.c[player].cell + 1).char_ref
+			local demoAtTarget = demo and demo.step == #demo.path
+			start.c[player].selRef = demoAtTarget and demo.pick.ref or start.f_selGrid(start.c[player].cell + 1).char_ref
 			main.f_preloadSetCharHighlight(player, start.c[player].selRef)
 			-- temp data not existing yet
 			if start.p[side].t_selTemp[member] == nil then
@@ -3701,7 +3874,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			else
 				local updateAnim = false
 				local slotSelected,slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
-				local timerExpired = motif.select_info.timer.count ~= -1 and timerSelect == -1
+				local timerExpired = not demo and motif.select_info.timer.count ~= -1 and timerSelect == -1
 				needUpdateDrawList = slotChanged
 				local velCopy = false
 				if slotChanged then
@@ -3728,7 +3901,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					updateAnim = true
 				end
 				-- cursor at randomselect cell
-				if start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3 then
+				if not demo and (start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3) then
 					local wasRandom = start.p[side].t_selTemp[member].inRandom
 					start.p[side].t_selTemp[member].inRandom = true
 					velCopy = wasRandom
@@ -3771,7 +3944,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2, nil, true, face2_data)
 				end
 				-- cell selected or select screen timer reached 0
-				local canConfirm = (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired
+				local demoConfirm = demoAtTarget and demo.frame >= demo.confirmFrame
+				local canConfirm = demoConfirm or (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired
 				if canConfirm then
 					local preloadReady = true
 					if start.c[player].selRef ~= nil then
@@ -3783,7 +3957,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 							main.f_materializeCharByRef(start.c[player].selRef)
 						end
 					end
-					if not preloadReady then
+					if not preloadReady and (not demo or demo.frame < demo.confirmFrame + 90) then
 						if slotSelected then
 							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 						end
@@ -3801,7 +3975,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					if motif.select_info.paletteselect > 0 then
 						resetCursorData(player, 'done')
 					end
-					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
+					start.p[side].t_selTemp[member].pal = not demo and main.f_btnPalNo(cmd) or 1
 					start.p[side].t_selTemp[member].inRandom = false
 					start.p[side].t_selTemp[member].slotConfirmed = true
 					if not gameOption('Options.Team.Duplicates') then
@@ -3862,7 +4036,10 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local pal = start.p[side].t_selTemp[member].pal
 					local finalPal
 
-					if motif.select_info.paletteselect == 1 then
+					if demo then
+						demo.pick.pal = main.f_getUniquePalette(charRef, demo.palState)
+						finalPal = motif.select_info.paletteselect > 0 and validatePal(1, charRef) or demo.pick.pal
+					elseif motif.select_info.paletteselect == 1 then
 						finalPal = 1
 					elseif motif.select_info.paletteselect == 2 then
 						finalPal = pal
@@ -3871,7 +4048,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 
 					-- resolve visual palette conflict
-					finalPal = resolvePalConflict(side, charRef, finalPal)
+					if not demo then
+						finalPal = resolvePalConflict(side, charRef, finalPal)
+					end
 
 					if motif.select_info.paletteselect > 0 then
 						start.p[side].t_selTemp[member].pal = finalPal
@@ -3897,7 +4076,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 		--selection menu
 		elseif selectState == 1 then
 			if motif.select_info.paletteselect and motif.select_info.paletteselect > 0 then
-				selectState = start.f_palMenu(side, cmd, player, member, selectState)
+				selectState = start.f_palMenu(side, cmd, player, member, selectState, demo)
 			else
 				selectState = 3
 			end
@@ -3912,8 +4091,13 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					break
 				end
 			end
-			finalPal = finalPal or start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal)
-			finalPal = resolvePalConflict(side, start.c[player].selRef, finalPal)
+			if demo then
+				finalPal = demo.pick.pal
+				start.p[side].screenDelay = math.max(start.p[side].screenDelay, 24)
+			else
+				finalPal = finalPal or start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal)
+				finalPal = resolvePalConflict(side, start.c[player].selRef, finalPal)
+			end
 			applyPalette(start.p[side].t_selTemp[member], finalPal)
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
@@ -3938,7 +4122,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 			start.p[side].t_cursor[member] = {x = start.c[player].selX, y = start.c[player].selY}
 			if main.f_tableLength(start.p[side].t_selected) == start.p[side].numChars then --if all characters have been chosen
-				if side == 1 and main.cpuSide[2] and start.reset then --if player1 is allowed to select p2 characters
+				if not demo and side == 1 and main.cpuSide[2] and start.reset then --if player1 is allowed to select p2 characters
 					start.p[2].selEnd = not main.selectMenu[2]
 					start.p[2].t_selCmd = {}
 					if timerSelect == -1 then
@@ -4148,7 +4332,7 @@ function start.f_buildOverrideParams(side, member, v)
 	return table.concat(parts, ", ")
 end
 
-function start.f_selectVersus(active, t_orderSelect, loadStartArg)
+function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled)
 	start.t_orderRemap = {{}, {}}
 	start.bgLoadStarted = false
 	for side = 1, 2 do
@@ -4458,7 +4642,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen.timer)
 		end
 		-- done key
-		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
+	if not demoCancelled and done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
 			doneKeyReady = true
 		end
 		-- Background loading status
@@ -4466,10 +4650,10 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		if bgLoading and loadStarted then
 			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
 			for side = 1, 2 do
-				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+			if not demoCancelled and not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
 					wantSkip = true
 				end
-				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
+			if not demoCancelled and done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
 					wantDone = true
 				end
 			end
@@ -4495,8 +4679,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		for side = 1, 2 do
 			if not fadeOutStarted and (
 				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
-				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
-				or (readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
+			or (not demoCancelled and readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
+			or (not demoCancelled and readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				wantSkip = false
@@ -4505,11 +4689,16 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			end
 		end
 		--frame transition
-		if not escFlag and (esc() or getInput(-1, motif.vs_screen.cancel.key)) then
+	local cancelPressed = not escFlag and (
+		(demoCancelled and demoCancelled()) or (not demoCancelled and (esc() or getInput(-1, motif.vs_screen.cancel.key)))
+	)
+	if cancelPressed then
 			esc(false)
 			if bgLoading and loadStarted then
 				loadCancel()
 				clearSelected()
+			loadStarted = false
+			start.bgLoadStarted = false
 			end
 			if main.replayActive then
 				start.exit = true
@@ -4518,7 +4707,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			fadeOutStarted = true
 			escFlag = true
 		end
-		if not fadeActive() and (fadeOutStarted or start.escFlag) then
+	if not fadeActive() and (fadeOutStarted or (not demoCancelled and start.escFlag)) then
 			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 			break --skip last frame rendering
 		end
