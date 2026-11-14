@@ -1566,7 +1566,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			end
 		end
 		if pressed then
-		updateGridSlot(cell, x, y)
+			updateGridSlot(cell, x, y)
 			return selected, (grid.slot ~= original_slot)
 		end
 	end
@@ -2981,10 +2981,10 @@ function start.f_selectScreen(demo)
 					end
 					-- member selection
 					local drawUpdateFlag
-				if activeMember and (not demo or not start.escFlag) then
-					local choice = demo and stepDemoCursor(demo, v.player, counter)
-					v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState, choice)
-					if not demo and not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key) then
+					if activeMember and (not demo or not start.escFlag) then
+						local choice = demo and stepDemoCursor(demo, v.player, counter)
+						v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState, choice)
+						if not demo and not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key) then
 							local selected = main.f_tableLength(start.p[side].t_selected)
 							if cancelSelectMember(side, k) then
 								timerSelect = motif.select_info.timer.displaytime
@@ -3859,7 +3859,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			end
 			-- calculate current position
 			if not demo then
-			start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
+				start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
 			end
 			start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
 			local demoAtTarget = demo and demo.step == #demo.path
@@ -4056,7 +4056,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 
 					-- resolve visual palette conflict
 					if not demo then
-					finalPal = resolvePalConflict(side, charRef, finalPal)
+						finalPal = resolvePalConflict(side, charRef, finalPal)
 					end
 
 					if motif.select_info.paletteselect > 0 then
@@ -4102,8 +4102,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 				finalPal = demo.pick.pal
 				start.p[side].screenDelay = math.max(start.p[side].screenDelay, 24)
 			else
-			finalPal = finalPal or start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal)
-			finalPal = resolvePalConflict(side, start.c[player].selRef, finalPal)
+				finalPal = finalPal or start.f_selectPal(start.c[player].selRef, start.p[side].t_selTemp[member].pal)
+				finalPal = resolvePalConflict(side, start.c[player].selRef, finalPal)
 			end
 			applyPalette(start.p[side].t_selTemp[member], finalPal)
 			start.p[side].t_selected[member] = {
@@ -4129,7 +4129,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			end
 			start.p[side].t_cursor[member] = {x = start.c[player].selX, y = start.c[player].selY}
 			if main.f_tableLength(start.p[side].t_selected) == start.p[side].numChars then -- if all characters have been chosen
-				if not demo and side == 1 and main.cpuSide[2] and start.reset then --if player1 is allowed to select p2 characters
+				if not demo and side == 1 and main.cpuSide[2] and start.reset then -- if player1 is allowed to select p2 characters
 					start.p[2].selEnd = not main.selectMenu[2]
 					start.p[2].t_selCmd = {}
 					if timerSelect == -1 then
@@ -4649,7 +4649,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen.timer)
 		end
 		-- done key
-	if not demoCancelled and done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
+		if not demoCancelled and done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
 			doneKeyReady = true
 		end
 		-- Background loading status
@@ -4657,10 +4657,10 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		if bgLoading and loadStarted then
 			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
 			for side = 1, 2 do
-			if not demoCancelled and not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+				if not demoCancelled and not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
 					wantSkip = true
 				end
-			if not demoCancelled and done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
+				if not demoCancelled and done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
 					wantDone = true
 				end
 			end
@@ -4686,8 +4686,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		for side = 1, 2 do
 			if not fadeOutStarted and (
 					(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
-			or (not demoCancelled and readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
-			or (not demoCancelled and readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
+					or (not demoCancelled and readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
+					or (not demoCancelled and readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				wantSkip = false
@@ -4696,16 +4696,16 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 			end
 		end
 		-- frame transition
-	local cancelPressed = not escFlag and (
-		(demoCancelled and demoCancelled()) or (not demoCancelled and (esc() or getInput(-1, motif.vs_screen.cancel.key)))
-	)
-	if cancelPressed then
+		local cancelPressed = not escFlag and (
+			(demoCancelled and demoCancelled()) or (not demoCancelled and (esc() or getInput(-1, motif.vs_screen.cancel.key)))
+		)
+		if cancelPressed then
 			esc(false)
 			if bgLoading and loadStarted then
 				loadCancel()
 				clearSelected()
-			loadStarted = false
-			start.bgLoadStarted = false
+				loadStarted = false
+				start.bgLoadStarted = false
 			end
 			if main.replayActive then
 				start.exit = true
@@ -4714,7 +4714,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 			fadeOutStarted = true
 			escFlag = true
 		end
-	if not fadeActive() and (fadeOutStarted or (not demoCancelled and start.escFlag)) then
+		if not fadeActive() and (fadeOutStarted or (not demoCancelled and start.escFlag)) then
 			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 			break -- skip last frame rendering
 		end

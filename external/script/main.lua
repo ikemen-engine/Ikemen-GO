@@ -3694,16 +3694,16 @@ function main.f_demoStart()
 	end
 	if proceed then
 		if demo.fight.stopbgm then
-		stopBgm()
-	end
-	hook.run("main.t_itemname", t, item)
+			stopBgm()
+		end
+		hook.run("main.t_itemname", t, item)
 		if not demo.vsscreen.enabled or not start.bgLoadStarted then
 			for side, pick in ipairs(picks) do
 				selectChar(side, pick.ref, pick.pal)
 			end
-	loadStart(start.f_buildLoadStartParams())
+			loadStart(start.f_buildLoadStartParams())
 		end
-	game()
+		game()
 	else
 		esc(false)
 	end
