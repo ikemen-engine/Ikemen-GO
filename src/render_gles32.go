@@ -964,9 +964,9 @@ func (r *Renderer_GLES32) Init() {
 	gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
 	if sys.msaa > 0 {
 		//gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
-		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, sys.msaa, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
+		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, sys.msaa, gl.DEPTH_COMPONENT32F, sys.scrrect[2], sys.scrrect[3])
 	} else {
-		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
+		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT32F, sys.scrrect[2], sys.scrrect[3])
 	}
 	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
 	if sys.msaa > 0 {
