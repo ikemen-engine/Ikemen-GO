@@ -10442,7 +10442,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 
 	tid, tidx := int32(-1), int(-1)
 	time := int32(1)
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case targetBind_id:
@@ -10452,11 +10452,11 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 		case targetBind_time:
 			time = exp[0].evalI(c)
 		case targetBind_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -10464,7 +10464,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 	})
 	tar := crun.getTarget(tid, tidx)
 	if len(tar) > 0 {
-		crun.targetBind(tar, time, x, y, z)
+		crun.targetBind(tar, time, pos)
 	}
 	return false
 }
@@ -10489,7 +10489,8 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 
 	tid, tidx := int32(-1), int(0)
-	time, x, y, z, hmf := int32(1), float32(0), float32(math.NaN()), float32(math.NaN()), HMF_F
+	time, hmf := int32(1), HMF_F
+	pos := [3]float32{0, float32(math.NaN()), float32(math.NaN())}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -10500,22 +10501,22 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 		case bindToTarget_time:
 			time = exp[0].evalI(c)
 		case bindToTarget_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
 					hmf = HMF(exp[2].evalI(c))
 				}
 			}
 		case bindToTarget_posz:
-			z = exp[0].evalF(c) * redirscale
+			pos[2] = exp[0].evalF(c) * redirscale
 		}
 		return true
 	})
 
 	tar := crun.getTarget(tid, tidx)
 	if len(tar) > 0 {
-		crun.bindToTarget(tar, time, x, y, z, hmf)
+		crun.bindToTarget(tar, time, pos, hmf)
 	}
 	return false
 }
@@ -12225,7 +12226,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	var time int32 = 1
 	var facing float32 = 0
 
@@ -12240,11 +12241,11 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 				facing = 1
 			}
 		case bindToParent_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -12256,11 +12257,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindTo.pos[0] = x
-	crun.bindTo.pos[1] = y
-	crun.bindTo.pos[2] = z
-	crun.bindTo.facing = facing
-	crun.setBindTo(p, time)
+	crun.setBindTo(p, time, facing, pos)
 	return false
 }
 
@@ -12273,7 +12270,7 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	var time int32 = 1
 	var facing float32 = 0
 
@@ -12288,11 +12285,11 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 				facing = 1
 			}
 		case bindToParent_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -12304,11 +12301,7 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindTo.pos[0] = x
-	crun.bindTo.pos[1] = y
-	crun.bindTo.pos[2] = z
-	crun.bindTo.facing = facing
-	crun.setBindTo(r, time)
+	crun.setBindTo(r, time, facing, pos)
 	return false
 }
 
@@ -12330,7 +12323,7 @@ func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
 
 	redirscale := c.localscl / crun.localscl
 	pid := int32(-1)
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	var time int32 = 1
 	var facing float32 = 0
 
@@ -12347,11 +12340,11 @@ func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
 				facing = 1
 			}
 		case bindToPlayer_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -12368,11 +12361,7 @@ func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindTo.pos[0] = x
-	crun.bindTo.pos[1] = y
-	crun.bindTo.pos[2] = z
-	crun.bindTo.facing = facing
-	crun.setBindTo(p, time)
+	crun.setBindTo(p, time, facing, pos)
 	return false
 }
 

@@ -3600,9 +3600,11 @@ const (
 	HMF_F
 )
 
-// A char follows at most one player, through bindTo. The last bind written wins
-// If that player has this char as a target, the bind is a grab. See targetBinder()
+// Each char follows at most one other player, through bindTo. Each new bind overwrites the last
+// If that player has this char as a target, the bind is considered a grab. See targetBinder()
 // Grabs have special properties like copying velocity, getHitVar(isbound), state 5050, etc
+// Mugen instead stores self binds on the bound player and target binds on the binder, so both can be active and several binders can hold one char
+// We keep only one because a char can't be in two places, and Mugen's overlapping binds already resolve to the last one applied anyway
 type CharBind struct {
 	id           int32
 	time         int32
@@ -8614,44 +8616,46 @@ func (c *Char) targetFacing(tar []int32, f int32) {
 	}
 }
 
-func (c *Char) targetBind(tar []int32, time int32, x, y, z float32) {
+func (c *Char) targetBind(tar []int32, time int32, pos [3]float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
-			c.bindOther(t, time, 0, x, y, z)
+			c.bindOther(t, time, 0, pos)
 		}
 	}
 }
 
-func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
+func (c *Char) bindToTarget(tar []int32, time int32, offset [3]float32, hmf HMF) {
 	if len(tar) > 0 {
 		if t := sys.playerID(tar[0]); t != nil {
 			// Add head/mid/foot offset
 			switch hmf {
 			case HMF_H:
-				x += t.size.head.pos[0] * (t.baselocalscl / c.localscl)
-				y += t.size.head.pos[1] * (t.baselocalscl / c.localscl)
+				offset[0] += t.size.head.pos[0] * (t.baselocalscl / c.localscl)
+				offset[1] += t.size.head.pos[1] * (t.baselocalscl / c.localscl)
 			case HMF_M:
-				x += t.size.mid.pos[0] * (t.baselocalscl / c.localscl)
-				y += t.size.mid.pos[1] * (t.baselocalscl / c.localscl)
+				offset[0] += t.size.mid.pos[0] * (t.baselocalscl / c.localscl)
+				offset[1] += t.size.mid.pos[1] * (t.baselocalscl / c.localscl)
 			case HMF_F:
 				// Do nothing. Feet are 0,0
 			}
 
-			if !math.IsNaN(float64(x)) {
-				c.setPosX(t.pos[0]*(t.localscl/c.localscl)+x*t.facing, true)
+			// Move the char to the target
+			if !math.IsNaN(float64(offset[0])) {
+				c.setPosX(t.pos[0]*(t.localscl/c.localscl)+offset[0]*t.facing, true)
 			}
-			if !math.IsNaN(float64(y)) {
-				c.setPosY(t.pos[1]*(t.localscl/c.localscl)+y, true)
+			if !math.IsNaN(float64(offset[1])) {
+				c.setPosY(t.pos[1]*(t.localscl/c.localscl)+offset[1], true)
 			}
-			if !math.IsNaN(float64(z)) {
-				c.setPosZ(t.pos[2]*(t.localscl/c.localscl)+z, true)
+			if !math.IsNaN(float64(offset[2])) {
+				c.setPosZ(t.pos[2]*(t.localscl/c.localscl)+offset[2], true)
 			}
 
-			// Binding to a target in reality also binds that target
-			c.targetBind(tar[:1], time,
-				c.facing*c.distX(t, c),
-				t.pos[1]*(t.localscl/c.localscl)-c.pos[1],
-				t.pos[2]*(t.localscl/c.localscl)-c.pos[2])
+			// Then bind the target like TargetBind would
+			c.targetBind(tar[:1], time, [3]float32{
+				c.facing * c.distX(t, c),
+				t.pos[1]*(t.localscl/c.localscl) - c.pos[1],
+				t.pos[2]*(t.localscl/c.localscl) - c.pos[2],
+			})
 		}
 	}
 }
@@ -10177,7 +10181,7 @@ func (c *Char) targetAddSctrl(id int32) {
 }
 
 // Me to other. Used by BindToParent, BindToRoot and BindToPlayer
-func (c *Char) setBindTo(to *Char, time int32) {
+func (c *Char) setBindTo(to *Char, time int32, facing float32, pos [3]float32) {
 	// Prevent mutual binding
 	to.unbindFrom(c.id)
 	if time == 0 {
@@ -10190,10 +10194,12 @@ func (c *Char) setBindTo(to *Char, time int32) {
 	}
 	c.bindTo.id = to.id
 	c.bindTo.time = time
+	c.bindTo.facing = facing
+	c.bindTo.pos = pos
 }
 
 // Bind another char to this one
-func (c *Char) bindOther(t *Char, time int32, facing, x, y, z float32) {
+func (c *Char) bindOther(t *Char, time int32, facing float32, pos [3]float32) {
 	// Prevent mutual binding
 	c.unbindFrom(t.id)
 	if time == 0 {
@@ -10208,7 +10214,7 @@ func (c *Char) bindOther(t *Char, time int32, facing, x, y, z float32) {
 	t.bindTo.facing = facing
 	// Convert the offsets to the bound char's local scale
 	ls := c.localscl / t.localscl
-	t.bindTo.pos = [3]float32{x * ls, y * ls, z * ls}
+	t.bindTo.pos = [3]float32{pos[0] * ls, pos[1] * ls, pos[2] * ls}
 }
 
 // Release every bind to this char
@@ -10268,11 +10274,10 @@ func (c *Char) bindOnAxis(i int) (*Char, *CharBind) {
 // Runs in the char's own update()
 func (c *Char) updateBindTo() {
 	bc := c.activeBinder()
-	// Binds freeze while this char is paused, like Mugen's self binds
-	// A binder still drags its paused targets in its own actionRun()
-	if bc == nil || c.pauseBool {
+	if bc == nil {
 		return
 	}
+	// Unlike Mugen, a paused char keeps following its anchor, so a bind that lasts through the pause doesn't snap afterwards
 	// No velocity copy here, like Mugen's self binds
 	c.applyBind(bc, &c.bindTo)
 }
@@ -12008,18 +12013,21 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 			// Snap time
 			if hd.snaptime != 0 && getter.hoverIdx < 0 {
 				nan := float32(math.NaN())
-				x, y, z := nan, nan, nan
+				snapPos := [3]float32{nan, nan, nan}
 				if !math.IsNaN(float64(snap[0])) {
-					x = hd.mindist[0]
+					snapPos[0] = hd.mindist[0]
 				}
 				if !math.IsNaN(float64(snap[1])) &&
 					(hitResult == 1 || getter.ss.stateType == ST_A) {
-					y = hd.mindist[1]
+					snapPos[1] = hd.mindist[1]
 				}
 				if !math.IsNaN(float64(snap[2])) {
-					z = hd.mindist[2]
+					snapPos[2] = hd.mindist[2]
 				}
-				c.bindOther(getter, hd.snaptime+Btoi(hd.snaptime > 0 && !getter.pause()), 0, x, y, z)
+				// Add 1 frame because the bind timer also ticks later this frame, after the hit
+				// That tick doesn't happen while the attacker is paused, so no extra frame then
+				snapTimeFix := Btoi(hd.snaptime > 0 && !c.pause())
+				c.bindOther(getter, hd.snaptime+snapTimeFix, 0, snapPos)
 			}
 			// Save other gethitvars that don't directly affect gameplay
 			ghv.ground_velocity[0] = hd.ground_velocity[0] * scaleratio * -byf
@@ -12838,7 +12846,7 @@ func (c *Char) actionRun() {
 				t.bindTo.clear()
 				continue
 			}
-			// Binds freeze during Pause/SuperPause, like Mugen
+			// Grabs freeze while the binder is paused, like Mugen
 			if !c.pauseBool {
 				t.followBinder(c, &t.bindTo)
 			}
@@ -13179,8 +13187,15 @@ func (c *Char) tick() {
 
 	// Step the bind timer
 	// Pause/SuperPause stops it, like Mugen. Hitpause does not
-	if c.bindTo.time > 0 && !c.pause() {
-		c.bindTo.time--
+	if c.bindTo.time > 0 {
+		if bt := c.targetBinder(); bt != nil {
+			// A grab timer pauses with the binder
+			if !bt.pause() {
+				c.bindTo.time--
+			}
+		} else if !c.pause() {
+			c.bindTo.time--
+		}
 	}
 	// A target keeps an ended bind one more frame so getHitVar(isbound) lingers. Other binds end immediately
 	// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
