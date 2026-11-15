@@ -320,6 +320,30 @@ func (input *Input) GetJoystickGUID(joy int) string {
 	return hex.EncodeToString((*[16]byte)(unsafe.Pointer(&guid))[:])
 }
 
+// TODO: remove after testing
+// SDL driver that opened a pad, read from its GUID.
+func (input *Input) GetJoystickBackend(joy int) string {
+	guid := input.GetJoystickGUID(joy)
+	if len(guid) != 32 {
+		return ""
+	}
+	switch guid[28:30] {
+	case "68":
+		return "hidapi"
+	case "72":
+		return "rawinput"
+	case "78":
+		return "xinput"
+	case "77":
+		return "wgi"
+	case "6d":
+		return "mfi"
+	case "76":
+		return "virtual"
+	}
+	return "platform"
+}
+
 // Keep serial and location separate so a port can distinguish pads with duplicate serials.
 func (input *Input) GetJoystickKey(joy int) string {
 	j := input.joystick(joy)

@@ -1847,7 +1847,8 @@ func (s *System) attachGamepad(joy int) {
 	if _, disabled := s.cmdFlags["-nojoy"]; disabled {
 		return
 	}
-	if input.joystick(joy) == nil {
+	pad := input.joystick(joy)
+	if pad == nil {
 		return
 	}
 	used := make(map[string]bool)
@@ -1897,6 +1898,10 @@ func (s *System) attachGamepad(joy int) {
 			s.clearCommandBuffers()
 		}
 	}
+	// TODO: remove after testing
+	LogMessage("Controller %d connected: name=%q backend=%s raw=%t guid=%s serial=%q path=%q key=%s mapping=%q",
+		joy, pad.Name(), input.GetJoystickBackend(joy), device.Raw, guid, pad.Serial(),
+		pad.Path(), key, s.inputCfg.mappingID(device))
 }
 
 // Marks a gamepad as disconnected. Its participant waits for a reconnect.
