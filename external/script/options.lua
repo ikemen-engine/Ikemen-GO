@@ -8,9 +8,9 @@ options.needReload = false
 -- return string depending on bool
 function options.f_boolDisplay(bool, t, f)
 	if bool == true then
-		return t or motif.option_info.menu.valuename.yes
+		return t or motif.option_info.menu.valuename.on
 	end
-	return f or motif.option_info.menu.valuename.no
+	return f or motif.option_info.menu.valuename.off
 end
 
 -- return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument
@@ -1467,37 +1467,37 @@ options.t_vardisplay = {
 		end
 	end,
 	['audioducking'] = function()
-		return options.f_boolDisplay(gameOption('Sound.AudioDucking'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Sound.AudioDucking'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['autoguard'] = function()
 		return options.f_boolDisplay(gameOption('Options.AutoGuard'))
 	end,
 	['vsscreenloading'] = function()
-		return options.f_boolDisplay(gameOption('Config.VsScreenLoading'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Config.VsScreenLoading'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['turnsloading'] = function()
-		return options.f_boolDisplay(gameOption('Config.TurnsLoading'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Config.TurnsLoading'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['bgmvolume'] = function()
 		return gameOption('Sound.BGMVolume') .. '%'
 	end,
 	['credits'] = function()
-		return options.f_definedDisplay(gameOption('Options.Credits'), {[0] = motif.option_info.menu.valuename.disabled}, gameOption('Options.Credits'))
+		return options.f_definedDisplay(gameOption('Options.Credits'), {[0] = motif.option_info.menu.valuename.off}, gameOption('Options.Credits'))
 	end,
 	['debugkeys'] = function()
-		return options.f_boolDisplay(gameOption('Debug.AllowDebugKeys'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Debug.AllowDebugKeys'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['debugmode'] = function()
-		return options.f_boolDisplay(gameOption('Debug.AllowDebugMode'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Debug.AllowDebugMode'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['difficulty'] = function()
 		return gameOption('Options.Difficulty')
 	end,
 	['enablemodel'] = function()
-		return options.f_definedDisplay(gameOption('Video.EnableModel'), {[true] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+		return options.f_definedDisplay(gameOption('Video.EnableModel'), {[true] = motif.option_info.menu.valuename.on}, motif.option_info.menu.valuename.off)
 	end,
 	['enablemodelshadow'] = function()
-		return options.f_definedDisplay(gameOption('Video.EnableModelShadow'), {[true] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+		return options.f_definedDisplay(gameOption('Video.EnableModelShadow'), {[true] = motif.option_info.menu.valuename.on}, motif.option_info.menu.valuename.off)
 	end,
 	['fullscreen'] = function()
 		return options.f_boolDisplay(gameOption('Video.Fullscreen'))
@@ -1509,7 +1509,7 @@ options.t_vardisplay = {
 		return options.f_boolDisplay(gameOption('Options.GuardBreak'))
 	end,
 	['keepaspect'] = function()
-		return options.f_boolDisplay(gameOption('Video.KeepAspect'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Video.KeepAspect'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['language'] = function()
 		sfs = motif.languages[gameOption('Config.Language')]
@@ -1549,7 +1549,7 @@ options.t_vardisplay = {
 		return gameOption('Options.Turns.Min')
 	end,
 	['msaa'] = function()
-		return options.f_definedDisplay(gameOption('Video.MSAA'), {[0] = motif.option_info.menu.valuename.disabled}, gameOption('Video.MSAA') .. 'x')
+		return options.f_definedDisplay(gameOption('Video.MSAA'), {[0] = motif.option_info.menu.valuename.off}, gameOption('Video.MSAA') .. 'x')
 	end,
 	['panningrange'] = function()
 		return gameOption('Sound.PanningRange') .. '%'
@@ -1594,13 +1594,13 @@ options.t_vardisplay = {
 		return gameOption('Sound.WavVolume') .. '%'
 	end,
 	['shaders'] = function()
-		return options.f_boolDisplay(#gameOption('Video.ExternalShaders') > 0, motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(#gameOption('Video.ExternalShaders') > 0, motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['singlevsteamlife'] = function()
 		return gameOption('Options.Team.SingleVsTeamLife') .. '%'
 	end,
 	['stereoeffects'] = function()
-		return options.f_boolDisplay(gameOption('Sound.StereoEffects'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+		return options.f_boolDisplay(gameOption('Sound.StereoEffects'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)
 	end,
 	['dizzy'] = function()
 		return options.f_boolDisplay(gameOption('Options.Dizzy'))
@@ -1621,7 +1621,7 @@ options.t_vardisplay = {
 		return gameOption('Options.Turns.Recovery.Bonus') .. '%'
 	end,
 	['vsync'] = function()
-		return options.f_definedDisplay(gameOption('Video.VSync'), {[1] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+		return options.f_definedDisplay(gameOption('Video.VSync'), {[1] = motif.option_info.menu.valuename.on}, motif.option_info.menu.valuename.off)
 	end,
 	['windowscalemode'] = function()
 		return options.f_boolDisplay(gameOption('Video.WindowScaleMode'), motif.option_info.menu.valuename.bilinear, motif.option_info.menu.valuename.nearest)
