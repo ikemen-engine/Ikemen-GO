@@ -4283,7 +4283,6 @@ func (di *MotifDialogue) parseLine(line string) DialogueParsedLine {
 		finalText.WriteString(substr)
 		offset += utf8.RuneCountInString(substr)
 	}
-	//fmt.Printf("[Dialogue] parseLine: side=%d text=%q tokens=%v\n", side, strings.TrimSpace(finalText.String()), tokensMap)
 	return DialogueParsedLine{
 		side:     side,
 		text:     strings.TrimSpace(finalText.String()),
@@ -4520,16 +4519,6 @@ func (di *MotifDialogue) init(m *Motif, matchEnd bool) {
 
 	di.initDefaults(m)
 
-	/*for i, line := range di.parsed {
-		fmt.Printf("\nLine %d, side=%d\nText: %q\nTokens:\n", i+1, line.side, line.text)
-		for textPos, tokens := range line.tokens {
-			for _, t := range tokens {
-				fmt.Printf("  atPos=%d  -> Param=%q Side=%d Redir=%q Pn=%d Value=%v\n",
-					textPos, t.param, t.side, t.redirection, t.pn, t.value)
-			}
-		}
-	}*/
-
 	di.active = true
 	di.initialized = true
 }
@@ -4755,7 +4744,6 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 		}
 		return true
 	case "name":
-		//fmt.Printf("[Dialogue] applyToken name: pn=%d side=%d redir=%q value=%v\n", token.pn, token.side, token.redirection, token.value)
 		// 1) If we have a valid player number, use that character's display name.
 		if token.pn != -1 && di.isValidPlayerNo(token.pn) {
 			name := sys.chars[token.pn-1][0].gi().displayname
@@ -4944,7 +4932,6 @@ func (di *MotifDialogue) step(m *Motif) {
 
 	// We have a valid line to render
 	currentLine := &di.parsed[di.textNum]
-	//fmt.Printf("[Dialogue] step: textNum=%d side=%d typedCnt=%d text=%q\n", di.textNum, currentLine.side, currentLine.typedCnt, currentLine.text)
 	di.activeSide = currentLine.side
 	prevLineFullyRendered := di.lineFullyRendered
 
@@ -6060,8 +6047,6 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 	quoteIndex := int(p.winquote)
 	playerQuotes := sys.cgi[p.playerNo].quotes
 
-	//fmt.Printf("[Victory] Winner team=%d playerNo=%d initialWinquote=%d\n", sys.winnerTeam(), p.playerNo, quoteIndex)
-
 	// Check if the quote index is out of range
 	if quoteIndex < 0 || quoteIndex >= MaxQuotes {
 		// Collect available quote indices
@@ -6082,7 +6067,6 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 	}
 
 	// Return the selected quote if valid, otherwise fall back to the default
-	//fmt.Printf("[Victory] Using quoteIndex=%d (MaxQuotes=%d). Fallback text present=%v\n", quoteIndex, MaxQuotes, m.VictoryScreen.WinQuote.Text != "")
 	if quoteIndex != -1 && len(playerQuotes) == MaxQuotes {
 		return playerQuotes[quoteIndex]
 	}
@@ -6096,12 +6080,10 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []victoryEntry {
 	winnerSide := int(sys.winnerTeam() - 1)
 	if maxNum <= 0 {
-		//fmt.Printf("[Victory] buildSideOrder side=%d allowKO=%v maxNum=%d winnerSide=%d -> SKIP (num=0)\n", side, allowKO, maxNum, winnerSide)
 		return nil
 	}
 	out := make([]victoryEntry, 0, maxNum)
 	usedMember := map[int]bool{}
-	//fmt.Printf("[Victory] buildSideOrder side=%d allowKO=%v maxNum=%d winnerSide=%d\n", side, allowKO, maxNum, winnerSide)
 
 	// Helper to push a loaded char
 	pushLoaded := func(c *Char) {
@@ -6120,7 +6102,6 @@ func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []vic
 			c:        c,
 		})
 		usedMember[mn] = true
-		//fmt.Printf("[Victory] -> pushLoaded: side=%d memberNo=%d cn=%d pal=%d alive=%v leader=%v\n", side, mn, int(c.selectNo), int(c.gi().palno), c.alive(), len(out) == 1)
 	}
 
 	// 1) Choose leader
@@ -6196,7 +6177,6 @@ func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []vic
 		}
 	}
 	if len(out) > maxNum {
-		//fmt.Printf("[Victory] Truncating out to %d (had %d)\n", maxNum, len(out))
 		out = out[:maxNum]
 	}
 	return out
@@ -6217,7 +6197,6 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 			dst.Name.TextSpriteData.text = name
 		}
 	}
-	//fmt.Printf("[Victory] applyEntry slot=%s side=%d memberNo=%d cn=%d pal=%d loaded=%v name=%q\n", slotName, e.side, e.memberNo, e.cn, e.pal, e.c != nil, dst.Name.TextSpriteData.text)
 	// Resolve SelectChar (for portraits)
 	sc := sys.sel.GetChar(e.cn)
 
@@ -6278,9 +6257,6 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 		dst.Face2.ApplyPal || e.c == nil,
 		e.pal, face2Brightness, e.c,
 	)
-	if dst.AnimData == nil && dst.Face2.AnimData == nil {
-		//fmt.Printf("[Victory] slot=%s -> WARNING: both main and face2 animations are nil\n", slotName)
-	}
 }
 
 func (vi *MotifVictory) isEnabled() bool {
@@ -6320,8 +6296,6 @@ func (vi *MotifVictory) init(m *Motif) {
 		}
 	}
 
-	//fmt.Printf("[Victory] init: enabled=%v winnerTeam=%d cpu.enabled=%v p1.num=%d p2.num=%d\n", m.VictoryScreen.Enabled, sys.winnerTeam(), m.VictoryScreen.Cpu.Enabled, m.VictoryScreen.P1.Num, m.VictoryScreen.P2.Num)
-
 	// Apply to motif slots: winners -> P1,P3,P5,P7 ; losers -> P2,P4,P6,P8
 	wSlots := []*PlayerVictoryProperties{&m.VictoryScreen.P1, &m.VictoryScreen.P3, &m.VictoryScreen.P5, &m.VictoryScreen.P7}
 	lSlots := []*PlayerVictoryProperties{&m.VictoryScreen.P2, &m.VictoryScreen.P4, &m.VictoryScreen.P6, &m.VictoryScreen.P8}
@@ -6349,8 +6323,6 @@ func (vi *MotifVictory) init(m *Motif) {
 		m.VictoryScreen.WinName.TextSpriteData.text = leader.gi().displayname
 	}
 	m.VictoryBgDef.BGDef.Reset()
-
-	//fmt.Printf("[Victory] init done. Winners=%d entries, Losers=%d entries. WinQuote=%q\n", len(wEntries), len(lEntries), vi.text)
 
 	if sys.winnerTeam() == 1 {
 		m.processStateTransitions(
@@ -6415,7 +6387,6 @@ func (vi *MotifVictory) step(m *Motif) {
 	cancelPressed := sys.esc || sys.uiRawInput(m.VictoryScreen.Cancel.Key, -1)
 	skipPressed := sys.uiRawInput(m.VictoryScreen.Skip.Key, -1)
 	prevLineFullyRendered := vi.lineFullyRendered
-	//fmt.Printf("[Victory] step: counter=%d time=%d endTimer=%d typedCnt=%d lineFullyRendered=%v cancel=%v skip=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, vi.typedCnt, vi.lineFullyRendered, cancelPressed, skipPressed)
 
 	m.VictoryScreen.P1.AnimData.Update(false)
 	m.VictoryScreen.P2.AnimData.Update(false)
@@ -6445,7 +6416,6 @@ func (vi *MotifVictory) step(m *Motif) {
 			vi.typedCnt = totalRunes
 			vi.lineFullyRendered = true
 			vi.charDelayCounter = 0
-			//fmt.Printf("[Victory] Skip pressed -> fast-forward winquote (totalRunes=%d)\n", totalRunes)
 		}
 
 		// While we haven't finished typing the quote, keep revealing characters
@@ -6484,7 +6454,6 @@ func (vi *MotifVictory) step(m *Motif) {
 		if userInterrupt || timeUp {
 			startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 			vi.endTimer = vi.counter + m.fadeOut.timeRemaining
-			//fmt.Printf("[Victory] Starting fadeout: counter=%d time=%d endTimer=%d userInterrupt=%v timeUp=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, userInterrupt, timeUp)
 		}
 	}
 
@@ -6609,8 +6578,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 	velocity [2]float32, maxDist [2]float32, accel [2]float32, friction [2]float32,
 	window [4]int32, x, y float32, applyPal bool, pal int, brightness int32, ownerC *Char) *Anim {
 
-	//fmt.Printf("[Victory] buildPortrait slot=%s scNil=%v animNo=%d spr=(%d,%d) pos=(%.1f,%.1f) scale=(%.3f,%.3f) localcoord=(%d,%d) window=(%d,%d,%d,%d) applyPal=%v pal=%d\n", slot, sc == nil, animNo, spr[0], spr[1], x, y, scale[0], scale[1], localcoord[0], localcoord[1], window[0], window[1], window[2], window[3], applyPal, pal)
-
 	a := NewAnim(nil, "")
 
 	var animCopy *Animation
@@ -6621,7 +6588,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 			// if the specific anim is missing, try default big portrait
 			if a, _ /*from*/ := tryGetPortrait(sc, ownerC, [][2]int32{{9000, 1} /*, {9000, 0}*/}); a != nil {
 				animCopy = a
-				//fmt.Printf("[Victory] slot=%s -> fallback from anim %d to %s\n", slot, animNo/*, from*/)
 			}
 		}
 	} else if sc != nil && spr[0] >= 0 {
@@ -6629,35 +6595,20 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 		want := [][2]int32{{spr[0], spr[1]}, {9000, 1} /*, {9000, 0}*/}
 		if a, _ /*from*/ := tryGetPortrait(sc, ownerC, want); a != nil {
 			animCopy = a
-		} else {
-			// Detailed failure logs for the first requested pair
-			if ownerC != nil && ownerC.playerNo >= 0 && ownerC.playerNo < len(sys.cgi) && sys.cgi[ownerC.playerNo].sff != nil {
-				if sys.cgi[ownerC.playerNo].sff.GetSprite(uint16(spr[0]), uint16(spr[1])) == nil {
-					//fmt.Printf("[Victory] slot=%s -> FAILED to build 1-frame anim: sprite not in SFF (spr=%d,%d)\n", slot, spr[0], spr[1])
-				}
-			} else {
-				//fmt.Printf("[Victory] slot=%s -> owner SFF is nil; cannot build 1-frame anim (spr=%d,%d)\n", slot, spr[0], spr[1])
-			}
 		}
 	}
 	if animCopy != nil {
 		a.anim = animCopy
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> animCopy=nil (animNo=%d spr=%d,%d). Check if your portraits are defined as an ANIM or plain SPR.\n", slot, animNo, spr[0], spr[1])
 	}
 	// Localcoord / window / layer / facing
 	//a.SetLocalcoord(float32(localcoord[0]), float32(localcoord[1]))
 	if localcoord[0] > 0 && localcoord[1] > 0 {
 		a.SetLocalcoord(float32(localcoord[0]), float32(localcoord[1]))
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> skip SetLocalcoord (0,0); using default engine localcoord\n", slot)
 	}
 	a.layerno = layerno
 	//a.SetWindow([4]float32{float32(window[0]), float32(window[1]), float32(window[2]), float32(window[3])})
 	if window[2] > window[0] && window[3] > window[1] {
 		a.SetWindow([4]float32{float32(window[0]), float32(window[1]), float32(window[2]), float32(window[3])})
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> skip SetWindow (no clipping)\n", slot)
 	}
 	// Position
 	a.SetPos(x, y)
@@ -6671,9 +6622,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 	}
 	a.SetScale(sx, sy)
 	a.facing = float32(facing)
-	if sx == 0 || sy == 0 {
-		//fmt.Printf("[Victory] slot=%s -> WARNING: zero scale sx=%.4f sy=%.4f (check portraitscale/localcoord)\n", slot, sx, sy)
-	}
 	// Transformations
 	a.xshear = xshear
 	a.rot.angle = angle
@@ -6718,7 +6666,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 				}
 			}
 		}
-		//fmt.Printf("[Victory] slot=%s -> applied palette %d\n", slot, pal)
 	}
 	// Apply pn.lose.brightness
 	if brightness > 0 && brightness < 256 && a.anim != nil && a.anim.sff != nil {
