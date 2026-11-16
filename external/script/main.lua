@@ -751,38 +751,85 @@ function main.f_preloadSetCharHighlight(player, ref)
 	end
 end
 
+-- Anims from an anim list, without -1 entries.
+local function f_animList(anims)
+	local t = {}
+	for _, a in ipairs(anims) do
+		if a >= 0 then
+			table.insert(t, a)
+		end
+	end
+	return t
+end
+
+-- Group, index pairs from a spr list. A trailing value without a pair is ignored.
+function main.f_sprList(params)
+	local t = {}
+	local spr = params.spr
+	for i = 1, #spr - 1, 2 do
+		if spr[i] >= 0 and spr[i + 1] >= 0 then
+			table.insert(t, {spr[i], spr[i + 1]})
+		end
+	end
+	return t
+end
+
+-- Anims to try, in order, followed by the sprites.
+function main.f_animSprLookups(params)
+	local t = {}
+	for _, a in ipairs(f_animList(params.anim)) do
+		table.insert(t, {a, -1})
+	end
+	for _, v in ipairs(main.f_sprList(params)) do
+		table.insert(t, v)
+	end
+	return t
+end
+
+-- true if both anim lists are the same
+function main.f_animListEqual(a, b)
+	local ta, tb = f_animList(a), f_animList(b)
+	if #ta ~= #tb then
+		return false
+	end
+	for i = 1, #ta do
+		if ta[i] ~= tb[i] then
+			return false
+		end
+	end
+	return true
+end
+
 function main.f_materializeCharCell(row)
 	local ch = main.t_selChars[row]
 	if ch == nil or ch.playable ~= true or ch.char_ref == nil or ch.cell_data_ready then
 		return ch and ch.cell_data_ready or false
 	end
 	local params = motif.select_info.portrait
-	for _, v in pairs({{params.anim, -1}, params.spr}) do
-		if v[1] ~= -1 then
-			local a = animGetPreloadedCharData(ch.char_ref, v[1], v[2])
-			if a then
-				animSetLocalcoord(a, motif.info.localcoord[1], motif.info.localcoord[2])
-				animSetLayerno(a, params.layerno)
-				animSetPos(a, 0, 0)
-				animSetScale(
-					a,
-					params.scale[1] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord,
-					params.scale[2] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord
-				)
-				animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
-				animSetFacing(a, params.facing)
-				animSetXShear(a, params.xshear)
-				animSetAngle(a, params.angle)
-				animSetXAngle(a, params.xangle)
-				animSetYAngle(a, params.yangle)
-				animSetProjection(a, params.projection)
-				animSetFocalLength(a, params.focallength)
-				animSetWindow(a, params.window[1], params.window[2], params.window[3], params.window[4])
-				animUpdate(a)
-				ch.cell_data = a
-				ch.cell_data_ready = true
-				return true
-			end
+	for _, v in ipairs(main.f_animSprLookups(params)) do
+		local a = animGetPreloadedCharData(ch.char_ref, v[1], v[2])
+		if a then
+			animSetLocalcoord(a, motif.info.localcoord[1], motif.info.localcoord[2])
+			animSetLayerno(a, params.layerno)
+			animSetPos(a, 0, 0)
+			animSetScale(
+				a,
+				params.scale[1] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord,
+				params.scale[2] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord
+			)
+			animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
+			animSetFacing(a, params.facing)
+			animSetXShear(a, params.xshear)
+			animSetAngle(a, params.angle)
+			animSetXAngle(a, params.xangle)
+			animSetYAngle(a, params.yangle)
+			animSetProjection(a, params.projection)
+			animSetFocalLength(a, params.focallength)
+			animSetWindow(a, params.window[1], params.window[2], params.window[3], params.window[4])
+			animUpdate(a)
+			ch.cell_data = a
+			ch.cell_data_ready = true
+			return true
 		end
 	end
 	return false
@@ -794,35 +841,33 @@ function main.f_materializeStagePortrait(stageNo)
 		return st and st.anim_data_ready or false
 	end
 	local function f_makeStageAnim(params, fieldName)
-		for _, v in pairs({{params.anim, -1}, params.spr}) do
-			if #v > 0 and v[1] ~= -1 then
-				local a = animGetPreloadedStageData(stageNo, v[1], v[2])
-				if a then
-					animSetLocalcoord(a, motif.info.localcoord[1], motif.info.localcoord[2])
-					animSetLayerno(a, params.layerno)
-					animSetPos(a, 0, 0)
-					animSetScale(
-						a,
-						params.scale[1] * st.portraitscale * motif.info.localcoord[1] / st.localcoord,
-						params.scale[2] * st.portraitscale * motif.info.localcoord[1] / st.localcoord
-					)
-					animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
-					animSetFacing(a, params.facing)
-					animSetXShear(a, params.xshear)
-					animSetAngle(a, params.angle)
-					animSetXAngle(a, params.xangle)
-					animSetYAngle(a, params.yangle)
-					animSetProjection(a, params.projection)
-					animSetFocalLength(a, params.focallength)
-					local wnd = params.window
-					if wnd == nil or #wnd < 4 then
-						wnd = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
-					end
-					animSetWindow(a, wnd[1], wnd[2], wnd[3], wnd[4])
-					animUpdate(a)
-					st[fieldName] = a
-					return true
+		for _, v in ipairs(main.f_animSprLookups(params)) do
+			local a = animGetPreloadedStageData(stageNo, v[1], v[2])
+			if a then
+				animSetLocalcoord(a, motif.info.localcoord[1], motif.info.localcoord[2])
+				animSetLayerno(a, params.layerno)
+				animSetPos(a, 0, 0)
+				animSetScale(
+					a,
+					params.scale[1] * st.portraitscale * motif.info.localcoord[1] / st.localcoord,
+					params.scale[2] * st.portraitscale * motif.info.localcoord[1] / st.localcoord
+				)
+				animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
+				animSetFacing(a, params.facing)
+				animSetXShear(a, params.xshear)
+				animSetAngle(a, params.angle)
+				animSetXAngle(a, params.xangle)
+				animSetYAngle(a, params.yangle)
+				animSetProjection(a, params.projection)
+				animSetFocalLength(a, params.focallength)
+				local wnd = params.window
+				if wnd == nil or #wnd < 4 then
+					wnd = {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
 				end
+				animSetWindow(a, wnd[1], wnd[2], wnd[3], wnd[4])
+				animUpdate(a)
+				st[fieldName] = a
+				return true
 			end
 		end
 		return false

@@ -139,9 +139,29 @@ type AnimationTextProperties struct {
 	TextSpriteData *TextSprite
 }
 
+type AnimationCharProperties struct {
+	Anim        []int32    `ini:"anim" default:"-1"`  // list, spr is the fallback
+	Spr         []int32    `ini:"spr" default:"-1,0"` // list of group, index pairs
+	Offset      [2]float32 `ini:"offset"`
+	Facing      int32      `ini:"facing" default:"1"`
+	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
+	Xshear      float32    `ini:"xshear"`
+	Angle       float32    `ini:"angle"`
+	XAngle      float32    `ini:"xangle"`
+	YAngle      float32    `ini:"yangle"`
+	Projection  string     `ini:"projection" default:"orthographic"`
+	Focallength float32    `ini:"focallength" default:"2048"`
+	Layerno     int16      `ini:"layerno"`
+	Window      [4]int32   `ini:"window"`
+	Localcoord  [2]int32   `ini:"localcoord"`
+	AnimData    *Anim
+}
+
 type AnimationCharPreloadProperties struct {
-	Anim        int32      `ini:"anim" default:"-1" preload:"char"`
-	Spr         [2]int32   `ini:"spr" default:"-1,0" preload:"char"`
+	Anim        []int32    `ini:"anim" default:"-1" preload:"char"`  // list, spr is the fallback
+	Spr         []int32    `ini:"spr" default:"-1,0" preload:"char"` // list of group, index pairs
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
@@ -162,8 +182,8 @@ type AnimationCharPreloadProperties struct {
 }
 
 type AnimationStagePreloadProperties struct {
-	Anim        int32      `ini:"anim" default:"-1" preload:"stage"`
-	Spr         [2]int32   `ini:"spr" default:"-1,0" preload:"stage"`
+	Anim        []int32    `ini:"anim" default:"-1" preload:"stage"`  // list, spr is the fallback
+	Spr         []int32    `ini:"spr" default:"-1,0" preload:"stage"` // list of group, index pairs
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
@@ -617,8 +637,8 @@ type PlayerResultsProperties struct {
 type PlayerDialogueProperties struct {
 	Bg   AnimationProperties `ini:"bg"`
 	Face struct {
-		AnimationProperties
-		Active AnimationProperties `ini:"active"`
+		AnimationCharProperties
+		Active AnimationCharProperties `ini:"active"`
 	} `ini:"face" skipinit:"true"`
 	Name TextProperties `ini:"name"`
 	Text struct {
@@ -2101,6 +2121,10 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		}
 
 		lowerPrefix := strings.ToLower(dstPrefix)
+		// Loading variants use screenpack sprites, so skip char/stage anim and spr.
+		if strings.HasSuffix(lowerPrefix, ".loading.") {
+			return true
+		}
 		for _, prefix := range []string{".face.random.", ".face2.random.", ".face.slot.", ".face2.slot.", ".palmenu.preview.", ".palmenu.preview2."} {
 			if strings.Contains(lowerPrefix, prefix) {
 				return true
@@ -4283,7 +4307,6 @@ func (di *MotifDialogue) parseLine(line string) DialogueParsedLine {
 		finalText.WriteString(substr)
 		offset += utf8.RuneCountInString(substr)
 	}
-	//fmt.Printf("[Dialogue] parseLine: side=%d text=%q tokens=%v\n", side, strings.TrimSpace(finalText.String()), tokensMap)
 	return DialogueParsedLine{
 		side:     side,
 		text:     strings.TrimSpace(finalText.String()),
@@ -4432,8 +4455,8 @@ func (di *MotifDialogue) initDefaults(m *Motif) {
 
 		// Default face (same as pXface); "side" must be 1 or 2.
 		var faceCfg *struct {
-			AnimationProperties
-			Active AnimationProperties `ini:"active"`
+			AnimationCharProperties
+			Active AnimationCharProperties `ini:"active"`
 		}
 		if side == 1 {
 			faceCfg = &m.DialogueInfo.P1.Face
@@ -4443,17 +4466,9 @@ func (di *MotifDialogue) initDefaults(m *Motif) {
 			return
 		}
 
-		// For defaults, prefer Anim over Spr. If Anim < 0, fall back to Spr.
-		grp, idx := -1, -1
-		if faceCfg.Anim >= 0 {
-			grp = int(faceCfg.Anim)
-			idx = -1 // treat as animation number
-		} else if faceCfg.Spr[0] >= 0 {
-			grp = int(faceCfg.Spr[0])
-			idx = int(faceCfg.Spr[1])
-		}
-
-		if grp >= 0 {
+		// Default face: the first anim or spr found.
+		for _, p := range portraitLookups(faceCfg.Anim, faceCfg.Spr) {
+			grp, idx := int(p[0]), int(p[1])
 			if anim := di.setFace(m, side, pn, grp, idx); anim != nil {
 				if side == 1 {
 					m.DialogueInfo.P1.Face.AnimData = anim
@@ -4461,27 +4476,19 @@ func (di *MotifDialogue) initDefaults(m *Motif) {
 					m.DialogueInfo.P2.Face.AnimData = anim
 				}
 				di.faceParams[side-1] = FaceParams{grp: grp, idx: idx, pn: pn}
+				break
 			}
 		}
 
 		// Default active face (same as <pXfaceactive>)
-		activeCfg := &faceCfg.Active
-		grp, idx = -1, -1
-		if activeCfg.Anim >= 0 {
-			grp = int(activeCfg.Anim)
-			idx = -1
-		} else if activeCfg.Spr[0] >= 0 {
-			grp = int(activeCfg.Spr[0])
-			idx = int(activeCfg.Spr[1])
-		}
-
-		if grp >= 0 {
-			if anim := di.setFaceActive(m, side, pn, grp, idx); anim != nil {
+		for _, p := range portraitLookups(faceCfg.Active.Anim, faceCfg.Active.Spr) {
+			if anim := di.setFaceActive(m, side, pn, int(p[0]), int(p[1])); anim != nil {
 				if side == 1 {
 					m.DialogueInfo.P1.Face.Active.AnimData = anim
 				} else if side == 2 {
 					m.DialogueInfo.P2.Face.Active.AnimData = anim
 				}
+				break
 			}
 		}
 
@@ -4519,16 +4526,6 @@ func (di *MotifDialogue) init(m *Motif, matchEnd bool) {
 	di.parsed = di.parseAll(lines)
 
 	di.initDefaults(m)
-
-	/*for i, line := range di.parsed {
-		fmt.Printf("\nLine %d, side=%d\nText: %q\nTokens:\n", i+1, line.side, line.text)
-		for textPos, tokens := range line.tokens {
-			for _, t := range tokens {
-				fmt.Printf("  atPos=%d  -> Param=%q Side=%d Redir=%q Pn=%d Value=%v\n",
-					textPos, t.param, t.side, t.redirection, t.pn, t.value)
-			}
-		}
-	}*/
 
 	di.active = true
 	di.initialized = true
@@ -4579,7 +4576,7 @@ func (di *MotifDialogue) resetPortraitIdle(a *Anim) {
 
 // buildFaceAnim is a shared helper used by setFace / setFaceActive to build
 // a portrait animation from either a character anim number or a raw sprite.
-func (di *MotifDialogue) buildFaceAnim(m *Motif, side, pn, grp, idx int, faceCfg *AnimationProperties) *Anim {
+func (di *MotifDialogue) buildFaceAnim(m *Motif, side, pn, grp, idx int, faceCfg *AnimationCharProperties) *Anim {
 	if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 		return nil
 	}
@@ -4665,7 +4662,7 @@ func (di *MotifDialogue) buildFaceAnim(m *Motif, side, pn, grp, idx int, faceCfg
 
 // setFaceActive changes the active face anim for the given side. This is used for the "talking" variant of the portrait.
 func (di *MotifDialogue) setFaceActive(m *Motif, side, pn, grp, idx int) *Anim {
-	var faceCfg *AnimationProperties
+	var faceCfg *AnimationCharProperties
 	switch side {
 	case 1:
 		faceCfg = &m.DialogueInfo.P1.Face.Active
@@ -4679,12 +4676,12 @@ func (di *MotifDialogue) setFaceActive(m *Motif, side, pn, grp, idx int) *Anim {
 
 // setFace changes the idle/normal face anim for the given side.
 func (di *MotifDialogue) setFace(m *Motif, side, pn, grp, idx int) *Anim {
-	var faceCfg *AnimationProperties
+	var faceCfg *AnimationCharProperties
 	switch side {
 	case 1:
-		faceCfg = &m.DialogueInfo.P1.Face.AnimationProperties
+		faceCfg = &m.DialogueInfo.P1.Face.AnimationCharProperties
 	case 2:
-		faceCfg = &m.DialogueInfo.P2.Face.AnimationProperties
+		faceCfg = &m.DialogueInfo.P2.Face.AnimationCharProperties
 	default:
 		return nil
 	}
@@ -4755,7 +4752,6 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 		}
 		return true
 	case "name":
-		//fmt.Printf("[Dialogue] applyToken name: pn=%d side=%d redir=%q value=%v\n", token.pn, token.side, token.redirection, token.value)
 		// 1) If we have a valid player number, use that character's display name.
 		if token.pn != -1 && di.isValidPlayerNo(token.pn) {
 			name := sys.chars[token.pn-1][0].gi().displayname
@@ -4944,7 +4940,6 @@ func (di *MotifDialogue) step(m *Motif) {
 
 	// We have a valid line to render
 	currentLine := &di.parsed[di.textNum]
-	//fmt.Printf("[Dialogue] step: textNum=%d side=%d typedCnt=%d text=%q\n", di.textNum, currentLine.side, currentLine.typedCnt, currentLine.text)
 	di.activeSide = currentLine.side
 	prevLineFullyRendered := di.lineFullyRendered
 
@@ -5849,14 +5844,12 @@ func hiscorePortraitAnim(defKey string, m *Motif, x, y float32) *Anim {
 		if !matchDef(sc.def, defKey) {
 			continue
 		}
-		// Prefer explicit anim number if configured, else sprite tuple.
+		// Use the first anim or spr found.
 		var animCopy *Animation
-		if m.HiscoreInfo.Item.Face.Anim >= 0 {
-			animCopy = sc.anims.get(m.HiscoreInfo.Item.Face.Anim, -1)
-		} else if m.HiscoreInfo.Item.Face.Spr[0] >= 0 {
-			grp := m.HiscoreInfo.Item.Face.Spr[0]
-			idx := m.HiscoreInfo.Item.Face.Spr[1]
-			animCopy = sc.anims.get(grp, idx)
+		for _, p := range portraitLookups(m.HiscoreInfo.Item.Face.Anim, m.HiscoreInfo.Item.Face.Spr) {
+			if animCopy = sc.anims.get(p[0], p[1]); animCopy != nil {
+				break
+			}
 		}
 		if animCopy == nil {
 			// Not preloaded; fall back to unknown handled by caller.
@@ -6060,8 +6053,6 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 	quoteIndex := int(p.winquote)
 	playerQuotes := sys.cgi[p.playerNo].quotes
 
-	//fmt.Printf("[Victory] Winner team=%d playerNo=%d initialWinquote=%d\n", sys.winnerTeam(), p.playerNo, quoteIndex)
-
 	// Check if the quote index is out of range
 	if quoteIndex < 0 || quoteIndex >= MaxQuotes {
 		// Collect available quote indices
@@ -6082,7 +6073,6 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 	}
 
 	// Return the selected quote if valid, otherwise fall back to the default
-	//fmt.Printf("[Victory] Using quoteIndex=%d (MaxQuotes=%d). Fallback text present=%v\n", quoteIndex, MaxQuotes, m.VictoryScreen.WinQuote.Text != "")
 	if quoteIndex != -1 && len(playerQuotes) == MaxQuotes {
 		return playerQuotes[quoteIndex]
 	}
@@ -6096,12 +6086,10 @@ func (vi *MotifVictory) getVictoryQuote(m *Motif, p *Char) string {
 func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []victoryEntry {
 	winnerSide := int(sys.winnerTeam() - 1)
 	if maxNum <= 0 {
-		//fmt.Printf("[Victory] buildSideOrder side=%d allowKO=%v maxNum=%d winnerSide=%d -> SKIP (num=0)\n", side, allowKO, maxNum, winnerSide)
 		return nil
 	}
 	out := make([]victoryEntry, 0, maxNum)
 	usedMember := map[int]bool{}
-	//fmt.Printf("[Victory] buildSideOrder side=%d allowKO=%v maxNum=%d winnerSide=%d\n", side, allowKO, maxNum, winnerSide)
 
 	// Helper to push a loaded char
 	pushLoaded := func(c *Char) {
@@ -6120,7 +6108,6 @@ func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []vic
 			c:        c,
 		})
 		usedMember[mn] = true
-		//fmt.Printf("[Victory] -> pushLoaded: side=%d memberNo=%d cn=%d pal=%d alive=%v leader=%v\n", side, mn, int(c.selectNo), int(c.gi().palno), c.alive(), len(out) == 1)
 	}
 
 	// 1) Choose leader
@@ -6196,7 +6183,6 @@ func (vi *MotifVictory) buildSideOrder(side int, allowKO bool, maxNum int) []vic
 		}
 	}
 	if len(out) > maxNum {
-		//fmt.Printf("[Victory] Truncating out to %d (had %d)\n", maxNum, len(out))
 		out = out[:maxNum]
 	}
 	return out
@@ -6217,7 +6203,6 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 			dst.Name.TextSpriteData.text = name
 		}
 	}
-	//fmt.Printf("[Victory] applyEntry slot=%s side=%d memberNo=%d cn=%d pal=%d loaded=%v name=%q\n", slotName, e.side, e.memberNo, e.cn, e.pal, e.c != nil, dst.Name.TextSpriteData.text)
 	// Resolve SelectChar (for portraits)
 	sc := sys.sel.GetChar(e.cn)
 
@@ -6230,16 +6215,16 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 	face2Brightness := int32(256)
 
 	if isLoser {
-		if dst.Lose.Spr[0] != -1 {
+		if len(sprList(dst.Lose.Spr)) > 0 {
 			targetSpr = dst.Lose.Spr
 		}
-		if dst.Lose.Anim != -1 {
+		if animListSet(dst.Lose.Anim) {
 			targetAnim = dst.Lose.Anim
 		}
-		if dst.Face2.Lose.Spr[0] != -1 {
+		if len(sprList(dst.Face2.Lose.Spr)) > 0 {
 			targetFace2Spr = dst.Face2.Lose.Spr
 		}
-		if dst.Face2.Lose.Anim != -1 {
+		if animListSet(dst.Face2.Lose.Anim) {
 			targetFace2Anim = dst.Face2.Lose.Anim
 		}
 		faceBrightness = dst.Lose.Brightness
@@ -6278,9 +6263,6 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 		dst.Face2.ApplyPal || e.c == nil,
 		e.pal, face2Brightness, e.c,
 	)
-	if dst.AnimData == nil && dst.Face2.AnimData == nil {
-		//fmt.Printf("[Victory] slot=%s -> WARNING: both main and face2 animations are nil\n", slotName)
-	}
 }
 
 func (vi *MotifVictory) isEnabled() bool {
@@ -6320,8 +6302,6 @@ func (vi *MotifVictory) init(m *Motif) {
 		}
 	}
 
-	//fmt.Printf("[Victory] init: enabled=%v winnerTeam=%d cpu.enabled=%v p1.num=%d p2.num=%d\n", m.VictoryScreen.Enabled, sys.winnerTeam(), m.VictoryScreen.Cpu.Enabled, m.VictoryScreen.P1.Num, m.VictoryScreen.P2.Num)
-
 	// Apply to motif slots: winners -> P1,P3,P5,P7 ; losers -> P2,P4,P6,P8
 	wSlots := []*PlayerVictoryProperties{&m.VictoryScreen.P1, &m.VictoryScreen.P3, &m.VictoryScreen.P5, &m.VictoryScreen.P7}
 	lSlots := []*PlayerVictoryProperties{&m.VictoryScreen.P2, &m.VictoryScreen.P4, &m.VictoryScreen.P6, &m.VictoryScreen.P8}
@@ -6349,8 +6329,6 @@ func (vi *MotifVictory) init(m *Motif) {
 		m.VictoryScreen.WinName.TextSpriteData.text = leader.gi().displayname
 	}
 	m.VictoryBgDef.BGDef.Reset()
-
-	//fmt.Printf("[Victory] init done. Winners=%d entries, Losers=%d entries. WinQuote=%q\n", len(wEntries), len(lEntries), vi.text)
 
 	if sys.winnerTeam() == 1 {
 		m.processStateTransitions(
@@ -6415,7 +6393,6 @@ func (vi *MotifVictory) step(m *Motif) {
 	cancelPressed := sys.esc || sys.uiRawInput(m.VictoryScreen.Cancel.Key, -1)
 	skipPressed := sys.uiRawInput(m.VictoryScreen.Skip.Key, -1)
 	prevLineFullyRendered := vi.lineFullyRendered
-	//fmt.Printf("[Victory] step: counter=%d time=%d endTimer=%d typedCnt=%d lineFullyRendered=%v cancel=%v skip=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, vi.typedCnt, vi.lineFullyRendered, cancelPressed, skipPressed)
 
 	m.VictoryScreen.P1.AnimData.Update(false)
 	m.VictoryScreen.P2.AnimData.Update(false)
@@ -6445,7 +6422,6 @@ func (vi *MotifVictory) step(m *Motif) {
 			vi.typedCnt = totalRunes
 			vi.lineFullyRendered = true
 			vi.charDelayCounter = 0
-			//fmt.Printf("[Victory] Skip pressed -> fast-forward winquote (totalRunes=%d)\n", totalRunes)
 		}
 
 		// While we haven't finished typing the quote, keep revealing characters
@@ -6484,7 +6460,6 @@ func (vi *MotifVictory) step(m *Motif) {
 		if userInterrupt || timeUp {
 			startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 			vi.endTimer = vi.counter + m.fadeOut.timeRemaining
-			//fmt.Printf("[Victory] Starting fadeout: counter=%d time=%d endTimer=%d userInterrupt=%v timeUp=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, userInterrupt, timeUp)
 		}
 	}
 
@@ -6578,6 +6553,39 @@ func buildSingleFrameFromSFF(sff *Sff, grp, idx int32) *Animation {
 	return anim
 }
 
+// portraitLookups returns the anims to try, in order, followed by the sprites.
+// Anims are returned as {anim, -1}.
+func portraitLookups(anims []int32, sprs []int32) [][2]int32 {
+	out := make([][2]int32, 0, len(anims)+len(sprs)/2)
+	for _, a := range anims {
+		if a >= 0 {
+			out = append(out, [2]int32{a, -1})
+		}
+	}
+	return append(out, sprList(sprs)...)
+}
+
+// sprList returns the group, index pairs from a spr list. A trailing value without a pair is ignored.
+func sprList(sprs []int32) [][2]int32 {
+	out := make([][2]int32, 0, len(sprs)/2)
+	for i := 0; i+1 < len(sprs); i += 2 {
+		if sprs[i] >= 0 && sprs[i+1] >= 0 {
+			out = append(out, [2]int32{sprs[i], sprs[i+1]})
+		}
+	}
+	return out
+}
+
+// animListSet reports if the anim list has any anim.
+func animListSet(anims []int32) bool {
+	for _, a := range anims {
+		if a >= 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // tryGetPortrait tries a sequence of (group,index) pairs first from preloaded
 // SelectChar anims, then by building a single-frame Animation from the owner SFF.
 // Returns the first non-nil *Animation and a label describing where it came from.
@@ -6600,64 +6608,34 @@ func tryGetPortrait(sc *SelectChar, ownerC *Char, pairs [][2]int32) (anim *Anima
 
 // victoryPortraitAnim builds a *Anim for a character select entry and positions it.
 // It uses per-character preloaded animations (sys.sel.charlist[cn].anims).
-// If the requested anim/spr is missing, it falls back to (9000,1) then (9000,0).
+// If no anim or spr is found, nothing is drawn.
 func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
-	animNo int32, spr [2]int32,
+	anims []int32, sprs []int32,
 	localcoord [2]int32, layerno int16, facing int32,
 	scale [2]float32, xshear float32, angle float32, xangle float32,
 	yangle float32, projection string, fLength float32,
 	velocity [2]float32, maxDist [2]float32, accel [2]float32, friction [2]float32,
 	window [4]int32, x, y float32, applyPal bool, pal int, brightness int32, ownerC *Char) *Anim {
 
-	//fmt.Printf("[Victory] buildPortrait slot=%s scNil=%v animNo=%d spr=(%d,%d) pos=(%.1f,%.1f) scale=(%.3f,%.3f) localcoord=(%d,%d) window=(%d,%d,%d,%d) applyPal=%v pal=%d\n", slot, sc == nil, animNo, spr[0], spr[1], x, y, scale[0], scale[1], localcoord[0], localcoord[1], window[0], window[1], window[2], window[3], applyPal, pal)
-
 	a := NewAnim(nil, "")
 
 	var animCopy *Animation
-	if sc != nil && animNo >= 0 {
-		// First: explicit animation number
-		animCopy = sc.anims.get(animNo, -1)
-		if animCopy == nil {
-			// if the specific anim is missing, try default big portrait
-			if a, _ /*from*/ := tryGetPortrait(sc, ownerC, [][2]int32{{9000, 1} /*, {9000, 0}*/}); a != nil {
-				animCopy = a
-				//fmt.Printf("[Victory] slot=%s -> fallback from anim %d to %s\n", slot, animNo/*, from*/)
-			}
-		}
-	} else if sc != nil && spr[0] >= 0 {
-		// Try requested (grp,idx) first (preloaded or SFF-build), then fall back to 9000,1
-		want := [][2]int32{{spr[0], spr[1]}, {9000, 1} /*, {9000, 0}*/}
-		if a, _ /*from*/ := tryGetPortrait(sc, ownerC, want); a != nil {
-			animCopy = a
-		} else {
-			// Detailed failure logs for the first requested pair
-			if ownerC != nil && ownerC.playerNo >= 0 && ownerC.playerNo < len(sys.cgi) && sys.cgi[ownerC.playerNo].sff != nil {
-				if sys.cgi[ownerC.playerNo].sff.GetSprite(uint16(spr[0]), uint16(spr[1])) == nil {
-					//fmt.Printf("[Victory] slot=%s -> FAILED to build 1-frame anim: sprite not in SFF (spr=%d,%d)\n", slot, spr[0], spr[1])
-				}
-			} else {
-				//fmt.Printf("[Victory] slot=%s -> owner SFF is nil; cannot build 1-frame anim (spr=%d,%d)\n", slot, spr[0], spr[1])
-			}
-		}
+	if sc != nil {
+		// Try preloaded data first, then the char SFF.
+		animCopy, _ = tryGetPortrait(sc, ownerC, portraitLookups(anims, sprs))
 	}
 	if animCopy != nil {
 		a.anim = animCopy
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> animCopy=nil (animNo=%d spr=%d,%d). Check if your portraits are defined as an ANIM or plain SPR.\n", slot, animNo, spr[0], spr[1])
 	}
 	// Localcoord / window / layer / facing
 	//a.SetLocalcoord(float32(localcoord[0]), float32(localcoord[1]))
 	if localcoord[0] > 0 && localcoord[1] > 0 {
 		a.SetLocalcoord(float32(localcoord[0]), float32(localcoord[1]))
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> skip SetLocalcoord (0,0); using default engine localcoord\n", slot)
 	}
 	a.layerno = layerno
 	//a.SetWindow([4]float32{float32(window[0]), float32(window[1]), float32(window[2]), float32(window[3])})
 	if window[2] > window[0] && window[3] > window[1] {
 		a.SetWindow([4]float32{float32(window[0]), float32(window[1]), float32(window[2]), float32(window[3])})
-	} else {
-		//fmt.Printf("[Victory] slot=%s -> skip SetWindow (no clipping)\n", slot)
 	}
 	// Position
 	a.SetPos(x, y)
@@ -6671,9 +6649,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 	}
 	a.SetScale(sx, sy)
 	a.facing = float32(facing)
-	if sx == 0 || sy == 0 {
-		//fmt.Printf("[Victory] slot=%s -> WARNING: zero scale sx=%.4f sy=%.4f (check portraitscale/localcoord)\n", slot, sx, sy)
-	}
 	// Transformations
 	a.xshear = xshear
 	a.rot.angle = angle
@@ -6718,7 +6693,6 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 				}
 			}
 		}
-		//fmt.Printf("[Victory] slot=%s -> applied palette %d\n", slot, pal)
 	}
 	// Apply pn.lose.brightness
 	if brightness > 0 && brightness < 256 && a.anim != nil && a.anim.sff != nil {
