@@ -7755,7 +7755,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			if e.bindtime == 0 {
 				e.bindtime = 1
 			}
-			e.space = Space_none
 			// Facing is also defaulted
 			// https://github.com/ikemen-engine/Ikemen-GO/issues/3813
 			if !facingSet && e.trueFacing() >= 0 { // See explod_facing

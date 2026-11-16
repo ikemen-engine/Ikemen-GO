@@ -152,9 +152,10 @@ const (
 type Space int32
 
 const (
-	Space_none Space = iota
+	Space_auto Space = iota
 	Space_stage
 	Space_screen
+	Space_none // Storyboard only
 )
 
 type Projection int32
@@ -1892,7 +1893,7 @@ func (e *Explod) initFromChar(c *Char) *Explod {
 		scale:             [2]float32{1, 1},
 		removetime:        -2,
 		postype:           PT_P1,
-		space:             Space_none,
+		space:             Space_auto,
 		relativef:         1,
 		facing:            1,
 		vfacing:           1,
@@ -1989,7 +1990,7 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 	// Set space based on postype in case it's missing
-	if e.space == Space_none {
+	if e.space == Space_auto {
 		switch e.postype {
 		case PT_Front, PT_Back, PT_Left, PT_Right:
 			e.space = Space_screen

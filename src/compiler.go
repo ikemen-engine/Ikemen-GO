@@ -6778,25 +6778,28 @@ func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byt
 			return Error("space not specified")
 		}
 		var spc Space
+		invalid := false
 		switch strings.ToLower(data) {
-		case "none":
-			if allowNone {
-				spc = Space_none
-			} else if c.zssMode && !sys.ignoreMostErrors {
-				return Error("Invalid space type: " + data)
-			} else {
-				sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
-			}
+		case "auto":
+			spc = Space_auto
+			invalid = allowNone
 		case "stage":
 			spc = Space_stage
 		case "screen":
 			spc = Space_screen
+		case "none":
+			spc = Space_none
+			invalid = !allowNone
 		default:
+			invalid = true
+		}
+		if invalid {
 			if c.zssMode && !sys.ignoreMostErrors {
 				return Error("Invalid space type: " + data)
-			} else {
-				sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
 			}
+			// Invalid values are ignored, like in Mugen
+			sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
+			return nil
 		}
 		sc.add(id, sc.iToExp(int32(spc)))
 		return nil
