@@ -1706,7 +1706,6 @@ func loadingCanceled() bool {
 	return sys.loader.cancelRequested() || sys.gameEnd || sys.loader.state == LS_Cancel
 }
 
-// Loads the full SFF file
 // bufReadSeeker adds a small read buffer to a ReadSeeker. SFF loading does many tiny reads and
 // short jumps (sprite headers, palette flags); on an unbuffered file each one is a system call.
 // Seeks only move the logical position; reads inside the buffered window cost no system call.
@@ -1733,23 +1732,32 @@ func (b *bufReadSeeker) Read(p []byte) (int, error) {
 		b.pos += int64(n)
 		return n, nil
 	}
-	if _, err := b.r.Seek(b.pos, io.SeekStart); err != nil {
-		return 0, err
-	}
 	if len(p) >= len(b.buf) {
+		if _, err := b.r.Seek(b.pos, io.SeekStart); err != nil {
+			return 0, err
+		}
 		n, err := b.r.Read(p)
 		b.pos += int64(n)
 		return n, err
 	}
+	start := b.pos
+	if b.bufLen > 0 && b.pos < b.bufStart {
+		// Moving backwards (e.g. the SFFv1 palette marker scan): fill the window so it ends at the
+		// requested bytes, otherwise every step back would refill the whole buffer
+		start = max(0, b.pos+int64(len(p))-int64(len(b.buf)))
+	}
+	if _, err := b.r.Seek(start, io.SeekStart); err != nil {
+		return 0, err
+	}
 	n, err := io.ReadFull(b.r, b.buf)
-	b.bufStart, b.bufLen = b.pos, n
-	if n == 0 {
+	b.bufStart, b.bufLen = start, n
+	if b.pos >= start+int64(n) {
 		if err == io.ErrUnexpectedEOF || err == nil {
 			err = io.EOF
 		}
 		return 0, err
 	}
-	m := copy(p, b.buf[:n])
+	m := copy(p, b.buf[b.pos-start:n])
 	b.pos += int64(m)
 	return m, nil
 }
@@ -1780,6 +1788,7 @@ func (b *bufReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	return np, nil
 }
 
+// Loads the full SFF file
 func loadSff(filename string, sffType SffType, isMainThread bool, isActPal bool) (*Sff, error) {
 	if loadingCanceled() {
 		return nil, ErrLoadingCanceled
@@ -2212,6 +2221,17 @@ func (s *Sff) loadPalettes(f io.ReadSeeker, lofs uint32) ([][2]uint16, error) {
 
 	// Read all 16-byte palette headers at once (was a seek and four small reads per palette)
 	numPals := int(s.header.NumberOfPalettes)
+	if numPals > 0 {
+		// The count comes from the file; check it fits before allocating so a corrupt header
+		// fails like a short read instead of requesting gigabytes
+		fileSize, err := f.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, err
+		}
+		if int64(s.header.FirstPaletteHeaderOffset)+int64(numPals)*16 > fileSize {
+			return nil, io.ErrUnexpectedEOF
+		}
+	}
 	hdrs := make([]byte, numPals*16)
 	if numPals > 0 {
 		if _, err := f.Seek(int64(s.header.FirstPaletteHeaderOffset), io.SeekStart); err != nil {
