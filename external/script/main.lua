@@ -661,10 +661,13 @@ main.preload = {
 }
 
 function main.f_waitForPreloads(force)
-	if not preloading() then
+	if gameOption('Config.BootLoadingMode') ~= 1 and not force then
 		return
 	end
-	if gameOption('Config.BootLoadingMode') ~= 1 and not force then
+	if not preloading() then
+		-- Loading may have finished while in other menus; cells are still placed only a few per frame,
+		-- so place every remaining one now instead of letting the select screen fill in.
+		main.f_preloadTick(math.huge)
 		return
 	end
 	local path = motif.title_info.loading.storyboard
@@ -684,6 +687,9 @@ function main.f_waitForPreloads(force)
 		main.f_preloadTick(2)
 		refresh()
 	end
+	-- Everything is loaded, but cells were only placed 2 per frame above; place the rest now so the
+	-- select screen does not open with empty cells that fill in afterwards.
+	main.f_preloadTick(math.huge)
 end
 
 function main.f_syncCharPaletteData(ref)
