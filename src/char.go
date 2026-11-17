@@ -4829,6 +4829,14 @@ func (c *Char) loadPalettes() {
 			pal := gi.palInfo[i]
 			pIdx, existsInSff := gi.palettedata.palList.PalTable[[...]uint16{1, uint16(i + 1)}]
 
+			// Like Mugen, a palette the SFFv2 already defines wins over a .act listed in the .def,
+			// unless its key is duplicated in the SFF. Otherwise leftover .act files recolor characters.
+			if existsInSff && pIdx >= 0 && !gi.sff.actOverridesSffPalette(uint16(i+1)) {
+				pal.exists = true
+				gi.palInfo[i] = pal
+				continue
+			}
+
 			if pl, ok := readAct(&pal); ok {
 				// Determine index where ACT file should go
 				var targetIdx int

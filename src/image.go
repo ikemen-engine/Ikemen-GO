@@ -1666,7 +1666,23 @@ type Sff struct {
 	palList      PaletteList
 	filename     string
 	debugMissing map[[2]uint16]bool // Sprites not found by animations
+	// Palette keys that appear more than once in this SFFv2. Such a slot is ambiguous,
+	// and Mugen uses the .act file from the .def for it.
+	dupPalKeys map[[2]uint16]bool
 	SpriteTextureAtlas
+}
+
+// actOverridesSffPalette reports whether a .act file listed in the .def should replace
+// SFFv2 palette 1,slot. Like Mugen, a palette the SFFv2 already defines is kept, unless
+// its key is duplicated in the file.
+func (s *Sff) actOverridesSffPalette(slot uint16) bool {
+	if s == nil || s.header.Version[0] != 2 {
+		return true
+	}
+	if idx, ok := s.palList.PalTable[[2]uint16{1, slot}]; !ok || idx < 0 {
+		return true
+	}
+	return s.dupPalKeys[[2]uint16{1, slot}]
 }
 
 type SffType int
@@ -2194,6 +2210,10 @@ func (s *Sff) loadPalettes(f io.ReadSeeker, lofs uint32) ([][2]uint16, error) {
 			idx = old
 			pal = s.palList.Get(old)
 			LogMessage("WARNING: Duplicate palette key in %v: %v,%v (%v/%v)", s.filename, gn[0], gn[1], i+1, s.header.NumberOfPalettes)
+			if s.dupPalKeys == nil {
+				s.dupPalKeys = make(map[[2]uint16]bool)
+			}
+			s.dupPalKeys[key] = true
 		} else if plSize == 0 {
 			// Linked palette
 			idx = int(link)
@@ -2307,6 +2327,11 @@ func (s *Sff) loadActPalettes(ref int) error {
 		targetIdx := int(palSlot) - 1
 
 		if targetIdx < 0 || targetIdx >= maxPal {
+			continue
+		}
+
+		// Keep palettes the SFFv2 already defines (Mugen behavior)
+		if !s.actOverridesSffPalette(palSlot) {
 			continue
 		}
 
