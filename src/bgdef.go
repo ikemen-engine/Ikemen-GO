@@ -398,7 +398,7 @@ func (s *BGDef) draw(layer int32, x, y, scl float32, transform *bgDrawTransform)
 	pos := [2]float32{x, y}
 	for _, b := range s.bg {
 		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {
-			if transform != nil && transform.space != Space_none {
+			if transform != nil && transform.space != Space_motif {
 				// Camera movement belongs to the whole instance, not individual BG deltas.
 				b.drawTransformed([2]float32{}, 1, 2*sys.cam.halfWidth/float32(s.localcoord[0]), 1, s.scale, 0, false, [4]int32{}, transform)
 			} else {

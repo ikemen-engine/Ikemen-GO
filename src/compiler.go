@@ -6772,7 +6772,7 @@ func (c *CharCompiler) paramPostype(is IniSection, sc *StateControllerBase, id b
 	})
 }
 
-func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte, allowNone bool) error {
+func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte, storyboard bool) error {
 	return c.stateParam(is, "space", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("space not specified")
@@ -6782,14 +6782,14 @@ func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byt
 		switch strings.ToLower(data) {
 		case "auto":
 			spc = Space_auto
-			invalid = allowNone
+			invalid = storyboard
 		case "stage":
 			spc = Space_stage
 		case "screen":
 			spc = Space_screen
-		case "none":
-			spc = Space_none
-			invalid = !allowNone
+		case "motif":
+			spc = Space_motif
+			invalid = !storyboard
 		default:
 			invalid = true
 		}

@@ -155,7 +155,7 @@ const (
 	Space_auto Space = iota
 	Space_stage
 	Space_screen
-	Space_none // Storyboard only
+	Space_motif
 )
 
 type Projection int32
@@ -2269,7 +2269,7 @@ func (e *Explod) update() {
 	}
 
 	//if e.space == Space_screen && e.bindtime == 0 {
-	//	if e.space <= Space_none {
+	//	if e.space <= Space_motif {
 	//		switch e.postype {
 	//		case PT_Left:
 	//			for i := range e.pos {

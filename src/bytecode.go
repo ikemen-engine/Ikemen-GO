@@ -13946,7 +13946,7 @@ func (sc storyboard) Run(c *Char, _ []int32) bool {
 	var s *Storyboard
 	var sid int32
 	p := storyboardPlacement{
-		space:    Space_none,
+		space:    Space_motif,
 		scale:    [2]float32{1, 1},
 		facing:   1,
 		bindID:   -2,

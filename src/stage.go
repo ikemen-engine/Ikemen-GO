@@ -570,7 +570,7 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool, overdrawClip [4]int32, transform *bgDrawTransform) {
 
-	applyTransform := transform != nil && transform.space != Space_none
+	applyTransform := transform != nil && transform.space != Space_motif
 
 	// Combine stage scale with the localcoord scale
 	lscl := [2]float32{stglscl * stgscl[0], stglscl * stgscl[1]}
