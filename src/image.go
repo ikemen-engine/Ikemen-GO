@@ -1006,27 +1006,19 @@ func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth i
 }
 
 func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32, link *uint16) error {
-	read := func(x interface{}) error {
-		return binary.Read(r, binary.LittleEndian, x)
-	}
-	if err := read(ofs); err != nil {
+	// One 18-byte read instead of six small ones (same bytes, same final position)
+	var b [18]byte
+	if _, err := io.ReadFull(r, b[:]); err != nil {
 		return err
 	}
-	if err := read(size); err != nil {
-		return err
-	}
-	if err := read(s.Offset[:]); err != nil {
-		return err
-	}
-	if err := read(&s.Group); err != nil {
-		return err
-	}
-	if err := read(&s.Number); err != nil {
-		return err
-	}
-	if err := read(link); err != nil {
-		return err
-	}
+	le := binary.LittleEndian
+	*ofs = le.Uint32(b[0:])
+	*size = le.Uint32(b[4:])
+	s.Offset[0] = int16(le.Uint16(b[8:]))
+	s.Offset[1] = int16(le.Uint16(b[10:]))
+	s.Group = le.Uint16(b[12:])
+	s.Number = le.Uint16(b[14:])
+	*link = le.Uint16(b[16:])
 	return nil
 }
 
@@ -1222,46 +1214,25 @@ func (s *Sprite) read(f io.ReadSeeker, sh *SffHeader, offset int64, datasize uin
 
 func (s *Sprite) readHeaderV2(r io.Reader, ofs *uint32, size *uint32,
 	lofs uint32, tofs uint32, link *uint16) error {
-	read := func(x interface{}) error {
-		return binary.Read(r, binary.LittleEndian, x)
-	}
-	if err := read(&s.Group); err != nil {
+	// One 28-byte read instead of eleven small ones (same bytes, same final position)
+	var b [28]byte
+	if _, err := io.ReadFull(r, b[:]); err != nil {
 		return err
 	}
-	if err := read(&s.Number); err != nil {
-		return err
-	}
-	if err := read(s.Size[:]); err != nil {
-		return err
-	}
-	if err := read(s.Offset[:]); err != nil {
-		return err
-	}
-	if err := read(link); err != nil {
-		return err
-	}
-	var format byte
-	if err := read(&format); err != nil {
-		return err
-	}
-	s.rle = -int(format)
-	if err := read(&s.coldepth); err != nil {
-		return err
-	}
-	if err := read(ofs); err != nil {
-		return err
-	}
-	if err := read(size); err != nil {
-		return err
-	}
-	var tmp uint16
-	if err := read(&tmp); err != nil {
-		return err
-	}
-	s.palidx = int(tmp)
-	if err := read(&tmp); err != nil {
-		return err
-	}
+	le := binary.LittleEndian
+	s.Group = le.Uint16(b[0:])
+	s.Number = le.Uint16(b[2:])
+	s.Size[0] = le.Uint16(b[4:])
+	s.Size[1] = le.Uint16(b[6:])
+	s.Offset[0] = int16(le.Uint16(b[8:]))
+	s.Offset[1] = int16(le.Uint16(b[10:]))
+	*link = le.Uint16(b[12:])
+	s.rle = -int(b[14])
+	s.coldepth = b[15]
+	*ofs = le.Uint32(b[16:])
+	*size = le.Uint32(b[20:])
+	s.palidx = int(le.Uint16(b[24:]))
+	tmp := le.Uint16(b[26:])
 	if tmp&1 == 0 {
 		*ofs += lofs
 	} else {
@@ -1735,6 +1706,88 @@ func loadingCanceled() bool {
 	return sys.loader.cancelRequested() || sys.gameEnd || sys.loader.state == LS_Cancel
 }
 
+// bufReadSeeker adds a small read buffer to a ReadSeeker. SFF loading does many tiny reads and
+// short jumps (sprite headers, palette flags); on an unbuffered file each one is a system call.
+// Seeks only move the logical position; reads inside the buffered window cost no system call.
+// Reads at least as large as the buffer bypass it.
+type bufReadSeeker struct {
+	r        io.ReadSeeker
+	buf      []byte
+	bufStart int64 // file offset of buf[0]
+	bufLen   int   // valid bytes in buf
+	pos      int64 // logical position
+	size     int64 // file size, -1 until needed
+}
+
+func newBufReadSeeker(r io.ReadSeeker) *bufReadSeeker {
+	return &bufReadSeeker{r: r, buf: make([]byte, 4096), size: -1}
+}
+
+func (b *bufReadSeeker) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if b.pos >= b.bufStart && b.pos < b.bufStart+int64(b.bufLen) {
+		n := copy(p, b.buf[b.pos-b.bufStart:b.bufLen])
+		b.pos += int64(n)
+		return n, nil
+	}
+	if len(p) >= len(b.buf) {
+		if _, err := b.r.Seek(b.pos, io.SeekStart); err != nil {
+			return 0, err
+		}
+		n, err := b.r.Read(p)
+		b.pos += int64(n)
+		return n, err
+	}
+	start := b.pos
+	if b.bufLen > 0 && b.pos < b.bufStart {
+		// Moving backwards (e.g. the SFFv1 palette marker scan): fill the window so it ends at the
+		// requested bytes, otherwise every step back would refill the whole buffer
+		start = max(0, b.pos+int64(len(p))-int64(len(b.buf)))
+	}
+	if _, err := b.r.Seek(start, io.SeekStart); err != nil {
+		return 0, err
+	}
+	n, err := io.ReadFull(b.r, b.buf)
+	b.bufStart, b.bufLen = start, n
+	if b.pos >= start+int64(n) {
+		if err == io.ErrUnexpectedEOF || err == nil {
+			err = io.EOF
+		}
+		return 0, err
+	}
+	m := copy(p, b.buf[b.pos-start:n])
+	b.pos += int64(m)
+	return m, nil
+}
+
+func (b *bufReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	var np int64
+	switch whence {
+	case io.SeekStart:
+		np = offset
+	case io.SeekCurrent:
+		np = b.pos + offset
+	case io.SeekEnd:
+		if b.size < 0 {
+			sz, err := b.r.Seek(0, io.SeekEnd)
+			if err != nil {
+				return b.pos, err
+			}
+			b.size = sz
+		}
+		np = b.size + offset
+	default:
+		return b.pos, fmt.Errorf("bufReadSeeker: bad whence %d", whence)
+	}
+	if np < 0 {
+		return b.pos, fmt.Errorf("bufReadSeeker: negative position")
+	}
+	b.pos = np
+	return np, nil
+}
+
 // Loads the full SFF file
 func loadSff(filename string, sffType SffType, isMainThread bool, isActPal bool) (*Sff, error) {
 	if loadingCanceled() {
@@ -1748,14 +1801,16 @@ func loadSff(filename string, sffType SffType, isMainThread bool, isActPal bool)
 	s := newSff(sffType)
 	s.filename = filename
 
-	f, err := OpenFile(filename)
+	fh, err := OpenFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
-		chk(f.Close())
+		chk(fh.Close())
 	}()
+	// SFF loading does many tiny reads and short seeks; buffer them
+	f := newBufReadSeeker(fh)
 
 	var lofs, tofs uint32
 	if err := s.header.Read(f, &lofs, &tofs); err != nil {
@@ -1929,14 +1984,16 @@ func preloadSff(filename string, sffType SffType, preloadSpr map[[2]uint16]bool)
 	sff := newSff(sffType)
 	sff.filename = filename
 
-	f, err := OpenFile(filename)
+	fh, err := OpenFile(filename)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	defer func() {
-		chk(f.Close())
+		chk(fh.Close())
 	}()
+	// SFF loading does many tiny reads and short seeks; buffer them
+	f := newBufReadSeeker(fh)
 
 	// Read SFF header
 	var lofs, tofs uint32
@@ -2159,33 +2216,41 @@ func (s *Sff) loadPalettes(f io.ReadSeeker, lofs uint32) ([][2]uint16, error) {
 		return nil, nil
 	}
 
-	read := func(x interface{}) error {
-		return binary.Read(f, binary.LittleEndian, x)
-	}
-
 	uniquePals := make(map[[2]uint16]int)
 	var keys [][2]uint16
 
-	for i := 0; i < int(s.header.NumberOfPalettes); i++ {
+	// Read all 16-byte palette headers at once (was a seek and four small reads per palette)
+	numPals := int(s.header.NumberOfPalettes)
+	if numPals > 0 {
+		// The count comes from the file; check it fits before allocating so a corrupt header
+		// fails like a short read instead of requesting gigabytes
+		fileSize, err := f.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, err
+		}
+		if int64(s.header.FirstPaletteHeaderOffset)+int64(numPals)*16 > fileSize {
+			return nil, io.ErrUnexpectedEOF
+		}
+	}
+	hdrs := make([]byte, numPals*16)
+	if numPals > 0 {
+		if _, err := f.Seek(int64(s.header.FirstPaletteHeaderOffset), io.SeekStart); err != nil {
+			return nil, err
+		}
+		if _, err := io.ReadFull(f, hdrs); err != nil {
+			return nil, err
+		}
+	}
+
+	for i := 0; i < numPals; i++ {
 		if loadingCanceled() {
 			return nil, ErrLoadingCanceled
 		}
-		f.Seek(int64(s.header.FirstPaletteHeaderOffset)+int64(i*16), 0)
-		var gn [3]uint16
-		if err := read(gn[:]); err != nil {
-			return nil, err
-		}
-		var link uint16
-		if err := read(&link); err != nil {
-			return nil, err
-		}
-		var ofs, plSize uint32
-		if err := read(&ofs); err != nil {
-			return nil, err
-		}
-		if err := read(&plSize); err != nil {
-			return nil, err
-		}
+		h := hdrs[i*16 : i*16+16]
+		gn := [3]uint16{binary.LittleEndian.Uint16(h[0:]), binary.LittleEndian.Uint16(h[2:]), binary.LittleEndian.Uint16(h[4:])}
+		link := binary.LittleEndian.Uint16(h[6:])
+		ofs := binary.LittleEndian.Uint32(h[8:])
+		plSize := binary.LittleEndian.Uint32(h[12:])
 		key := [2]uint16{gn[0], gn[1]}
 		var pal []uint32
 		var idx int
@@ -2259,17 +2324,21 @@ func (s *Sff) ReadPalette(f io.ReadSeeker, offset int64, size uint32) ([]uint32,
 	// Previously Ikemen always allocated 256 colors, but because of RemapPal we must respect the original color count
 	pal := make([]uint32, depth)
 
-	// Read the actual data
+	// Read all colors present in the file at once (was one 4-byte read per color)
+	nRead := min(rawCount, len(pal))
+	raw := make([]byte, nRead*4)
+	if _, err := io.ReadFull(f, raw); err != nil {
+		return nil, err
+	}
+
 	// Loop through the entire allocated palette, not just the colors found in the file
 	for i := 0; i < len(pal); i++ {
 		var rgba [4]byte
 
 		// Only read from file while within bounds
 		// If len(pal) > rawCount the rest will default to 0's
-		if i < rawCount {
-			if err := binary.Read(f, binary.LittleEndian, rgba[:]); err != nil {
-				return nil, err
-			}
+		if i < nRead {
+			copy(rgba[:], raw[i*4:i*4+4])
 		}
 
 		// Fill in the alpha values
