@@ -8795,6 +8795,12 @@ func (c *CharCompiler) Compile(p *Char, def string, gi *CharGlobalInfo) (map[int
 			return nil, err
 		}
 	}
+	// [Statedef -4] is an Ikemen feature that Mugen never runs. Some Mugen characters still define it
+	// (often leftover or test code), which made them behave differently in Ikemen than in Mugen.
+	// Drop the character's own -4 for Mugen characters; the common states below may still add one.
+	if gi.ikemenver[0] == 0 && gi.ikemenver[1] == 0 {
+		delete(states, -4)
+	}
 	// Compile common states
 	for _, key := range SortedKeys(sys.cfg.Common.States) {
 		for _, v := range sys.cfg.Common.States[key] {
