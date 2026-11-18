@@ -482,9 +482,9 @@ type PlayerSelectProperties struct {
 			Text string `ini:"text"`
 		} `ini:"random"`
 	} `ini:"name"`
-	Swap struct {
+	Slot struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
-	} `ini:"swap"`
+	} `ini:"slot"`
 	Select struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"select"`
@@ -783,9 +783,9 @@ type SelectInfoProperties struct {
 		Move struct {
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"move"`
-		Swap struct {
+		Slot struct {
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
-		} `ini:"swap"`
+		} `ini:"slot"`
 		Portrait struct {
 			AnimationStagePreloadProperties `skipinit:"true"`
 			Bg                              AnimationProperties `ini:"bg"`

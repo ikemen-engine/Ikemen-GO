@@ -1558,7 +1558,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 			for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
 				if #entry[1].key > 0 and getInput(cmd, entry[1].key) then
 					if slotCycle(cell, entry[2]) then
-						sndPlay(motif.Snd, motif.select_info['p' .. side].swap.snd[1], motif.select_info['p' .. side].swap.snd[2])
+						sndPlay(motif.Snd, motif.select_info['p' .. side].slot.snd[1], motif.select_info['p' .. side].slot.snd[2])
 					end
 					pressed = true
 					break
@@ -4194,7 +4194,7 @@ function start.f_stageSlotSelected(group)
 		for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
 			if #entry[1].key > 0 and getInput(-1, entry[1].key) then
 				group.slot = (group.slot - 1 + entry[2]) % #group.available + 1
-				sndPlay(motif.Snd, motif.select_info.stage.swap.snd[1], motif.select_info.stage.swap.snd[2])
+				sndPlay(motif.Snd, motif.select_info.stage.slot.snd[1], motif.select_info.stage.slot.snd[2])
 				return false, true
 			end
 		end
