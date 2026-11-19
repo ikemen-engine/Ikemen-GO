@@ -4467,7 +4467,7 @@ func (s *System) runNextRound() bool {
 			}
 			for i, p := range s.chars {
 				if len(p) > 0 {
-					if s.tmode[i&1] != TM_Turns || !s.effectiveLoss[i&1] {
+					if s.tmode[i&1] != TM_Turns || s.winTeam < 0 {
 						p[0].life = p[0].lifeMax
 					} else if p[0].life <= 0 {
 						p[0].life = 1
