@@ -3755,6 +3755,10 @@ func (ro *FightScreenRound) handleRoundIntro() {
 	// Skip fight call
 	// Cannot be skipped unless round call is finished or also skipped
 	if ro.roundDisplayPhase == 2 && sys.gsf(GSF_skipfightdisplay) {
+		if ro.fightDisplayPhase == 0 {
+			sys.timerCount = append(sys.timerCount, sys.matchTime)
+			ro.timerActive = true
+		}
 		ro.fightDisplayPhase = 2
 		if sys.intro > 1 {
 			sys.intro = 1 // Skip ctrl waiting time
