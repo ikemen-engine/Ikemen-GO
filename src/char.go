@@ -4261,7 +4261,6 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				if is.ReadI32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
 					// Char scale relative to a 320 localcoord. Independent of aspect ratio
 					gi.rawlocalscl = 320 / float32(gi.localcoord[0])
-					gi.portraitscale = gi.rawlocalscl
 					// Raw scale adjusted to the game width
 					c.baselocalscl = gi.rawlocalscl * (sys.gameWidth / 320)
 					c.localscl = c.baselocalscl
