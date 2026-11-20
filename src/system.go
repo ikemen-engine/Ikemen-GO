@@ -174,7 +174,7 @@ var sys = System{
 	ignoreMostErrors: true,
 	stageList:        make(map[int32]*Stage),
 	stageLocalcoords: make(map[string][2]int32),
-	commandLine:      make(chan string),
+	terminalLua:      make(chan string),
 	mainThreadTask:   make(chan func(), 65536),
 	workpal:          make([]uint32, 256),
 	saveState:        NewGameState(),
@@ -284,7 +284,7 @@ type System struct {
 	stageLocalcoords    map[string][2]int32
 	wireframeDisplay    bool
 	shortcutScripts     map[ShortcutKey]*ShortcutScript
-	commandLine         chan string
+	terminalLua         chan string
 	debugWC             *Char
 	projs               [MaxPlayerNo][]*Projectile
 	explods             [MaxPlayerNo][]*Explod
@@ -558,7 +558,7 @@ func (s *System) init(w, h int32) *lua.LState {
 					LogMessage(err.Error())
 					return
 				}
-				s.commandLine <- stdin.Text()
+				s.terminalLua <- stdin.Text()
 			}
 		})
 	}
@@ -839,6 +839,17 @@ func (s *System) eventUpdate() bool {
 	s.window.pollEvents()
 	s.gameEnd = s.window.shouldClose()
 	return !s.gameEnd
+}
+
+// Runs one line of Lua typed into the terminal
+func (s *System) runTerminalLua() {
+	select {
+	case cl := <-s.terminalLua:
+		if err := s.luaLState.DoString(cl); err != nil {
+			s.luaLState.RaiseError("Error during terminal Lua execution:\nCode: %s\nDetails: %s", cl, err.Error())
+		}
+	default:
+	}
 }
 
 func (s *System) runMainThreadTask() {
@@ -4114,15 +4125,6 @@ func (s *System) runMatch() (reload bool) {
 
 	// Default debug/scripts to any found char
 	s.debugWC = s.anyChar()
-	debugInput := func() {
-		select {
-		case cl := <-s.commandLine:
-			if err := s.luaLState.DoString(cl); err != nil {
-				s.luaLState.RaiseError("Error during Debug Input Lua execution:\nCode: %s\nDetails: %s", cl, err.Error())
-			}
-		default:
-		}
-	}
 
 	// Reset round state
 	s.resetRound()
@@ -4158,6 +4160,8 @@ func (s *System) runMatch() (reload bool) {
 		// Load the next opponent once no Turns member is waiting to load
 		s.startNextMatchPreload()
 
+		// Run Lua from pressed hotkeys
+		// This happens before game logic, so that a frame step covers a whole frame
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := s.luaLState.DoString(v.Script); err != nil {
@@ -4166,8 +4170,9 @@ func (s *System) runMatch() (reload bool) {
 			}
 		}
 
-		// Run console input with the hotkeys, before game logic, so a console frame step covers the whole frame
-		debugInput()
+		// Run Lua typed into the terminal
+		// Next to hotkeys so they happen with the same logical timing
+		s.runTerminalLua()
 
 		// Save/load state
 		// TODO: Confirm at which exact point rollback does its own save/restore and match that
