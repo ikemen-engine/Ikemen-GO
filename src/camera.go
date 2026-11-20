@@ -330,6 +330,10 @@ func (c *Camera) YBound(scl, y float32) float32 {
 }
 
 func (c *Camera) BaseScale() float32 {
+	// Camera calculations divide by the base scale
+	if c.ztopscale <= 0 || !IsFinite(c.ztopscale) {
+		return 1
+	}
 	return c.ztopscale
 }
 

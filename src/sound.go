@@ -953,6 +953,10 @@ type soundPanner struct {
 }
 
 func (p *soundPanner) set(pan, gain float32) {
+	// Keep invalid panning out of the mixer
+	if !IsFinite(pan) {
+		pan = 0
+	}
 	pan = Clamp(pan, float32(-1), float32(1))
 	gain = Clamp(gain, float32(0), float32(2))
 	p.request.Store(uint64(math.Float32bits(pan))<<32 | uint64(math.Float32bits(gain)))
