@@ -10233,7 +10233,10 @@ func (c *Char) unbindFrom(id int32) {
 
 // The player this char follows while the bind is active
 func (c *Char) activeBinder() *Char {
-	// Ignores the frame an ended target bind lingers. See targetBinder()
+	// Unlike targetBinder(), this ignores time 0, the frame a bind lingers after it ends
+	// So the char stops moving on that frame, even though the bind is still there
+	// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
 	if bc := sys.playerID(c.bindTo.id); bc != nil && c.bindTo.time != 0 {
 		return bc
 	}
@@ -13185,7 +13188,14 @@ func (c *Char) tick() {
 		c.animBackup = c.anim
 	}
 
+	// Remove a bind that ran out on the previous frame, or whose anchor no longer exists
+	// Grabs skip this. The grabbing player removes them instead, also one frame after they run out
+	if c.activeBinder() == nil && c.targetBinder() == nil {
+		c.bindTo.clear()
+	}
+
 	// Step the bind timer
+	// Runs after the clear above, so an ending bind's data lingers until the next tick
 	// Pause/SuperPause stops it, like Mugen. Hitpause does not
 	if c.bindTo.time > 0 {
 		if bt := c.targetBinder(); bt != nil {
@@ -13196,12 +13206,6 @@ func (c *Char) tick() {
 		} else if !c.pause() {
 			c.bindTo.time--
 		}
-	}
-	// A target keeps an ended bind one more frame so getHitVar(isbound) lingers. Other binds end immediately
-	// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
-	if c.activeBinder() == nil && c.targetBinder() == nil {
-		c.bindTo.clear()
 	}
 
 	if c.cmd == nil {

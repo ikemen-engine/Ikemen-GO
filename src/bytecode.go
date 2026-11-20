@@ -1276,6 +1276,7 @@ const (
 	OC_ex3_animloopcount
 	OC_ex3_animprefix
 	OC_ex3_inrunstate
+	OC_ex3_bindid
 )
 
 type StringPool struct {
@@ -4936,6 +4937,8 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex3_inrunstate:
 		sys.bcStack.PushB(c.inRunState)
+	case OC_ex3_bindid:
+		sys.bcStack.PushI(c.bindTo.id)
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")

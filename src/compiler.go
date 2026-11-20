@@ -380,6 +380,7 @@ var triggerMap = map[string]int{
 	"attack":             1,
 	"attackmul":          1,
 	"bgmvar":             1,
+	"bindid":             1,
 	"clamp":              1,
 	"clsnoverlap":        1,
 	"clsnvar":            1,
@@ -4757,6 +4758,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_attack)
 	case "attackmul":
 		out.append(OC_ex2_, OC_ex2_attackmul)
+	case "bindid":
+		out.append(OC_ex3_, OC_ex3_bindid)
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":

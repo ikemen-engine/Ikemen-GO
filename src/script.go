@@ -8210,6 +8210,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "bindID", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.bindTo.id))
+		return 1
+	})
 	luaRegister(l, "botBoundBodyDist", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.botBoundBodyDist()))
 		return 1
