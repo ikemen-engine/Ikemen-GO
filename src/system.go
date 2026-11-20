@@ -4166,6 +4166,9 @@ func (s *System) runMatch() (reload bool) {
 			}
 		}
 
+		// Run console input with the hotkeys, before game logic, so a console frame step covers the whole frame
+		debugInput()
+
 		// Save/load state
 		// TODO: Confirm at which exact point rollback does its own save/restore and match that
 		if s.saveStateFlag {
@@ -4201,9 +4204,6 @@ func (s *System) runMatch() (reload bool) {
 		// Step sounds after both the core game and motif have updated
 		s.tickSound()
 
-		s.frameStepFlag = false
-		debugInput()
-
 		// Output debug data provided by an external Lua script.
 		if _, enabled := s.cmdFlags["-debugdump"]; enabled {
 			if fn, ok := s.luaLState.GetGlobal("__ikemen_debug_dump").(*lua.LFunction); ok {
@@ -4235,6 +4235,8 @@ func (s *System) runMatch() (reload bool) {
 		}
 
 		if !s.addFrameTime(s.turbo) {
+			// The iteration ends early, so end the step here or the next iteration steps again
+			s.frameStepFlag = false
 			if !s.eventUpdate() {
 				return false
 			}
@@ -4307,6 +4309,9 @@ func (s *System) runMatch() (reload bool) {
 		// Cue sprites, then render
 		s.cueDraw()
 		s.renderFrame()
+
+		// End the step only after drawing, so sprites and afterimages update like on a normal frame
+		s.frameStepFlag = false
 
 		// Update system. Break if update returns false (engine shutdown).
 		if !s.update() {
