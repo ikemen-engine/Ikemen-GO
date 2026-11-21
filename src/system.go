@@ -2386,7 +2386,7 @@ func (s *System) clearAllSound() {
 
 // Remove the player's explods, projectiles and (optionally) helpers as well as stopping their sounds
 func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
-	s.matchStoryboards.clear(pn)
+	s.matchStoryboards.clear(pn, true)
 	if len(s.chars[pn]) > 0 {
 		// These aren't "assets" but we'll do it here
 		for _, c := range s.chars[pn] {
