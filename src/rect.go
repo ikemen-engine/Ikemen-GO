@@ -131,6 +131,15 @@ func (fa *Fade) drawRect(rect [4]int32, color uint32, alpha int32) {
 }
 
 func (fa *Fade) draw() {
+	fa.drawWithOverlay(false)
+}
+
+// Like draw, but the fade color covers the whole screen instead of only the fight.
+func (fa *Fade) drawFullScreen() {
+	fa.drawWithOverlay(true)
+}
+
+func (fa *Fade) drawWithOverlay(fullScreen bool) {
 	if !fa.active || fa.timeRemaining < 0 || fa.totalTime <= 0 {
 		return
 	}
@@ -144,12 +153,15 @@ func (fa *Fade) draw() {
 	if elapsed < 0 || elapsed > fa.time {
 		return
 	}
+	alpha := int32(math.Floor(255 * float64(elapsed) / float64(fa.time)))
 	if fa.isFadeIn {
-		alpha := int32(math.Floor(float64(255) - 255*float64(elapsed-1)/float64(fa.time)))
-		fa.drawRect(sys.scrrect, fa.colEncoded, alpha)
+		alpha = int32(math.Floor(float64(255) - 255*float64(elapsed-1)/float64(fa.time)))
+	}
+	draw := func() { fa.drawRect(sys.scrrect, fa.colEncoded, alpha) }
+	if fullScreen {
+		sys.withFullViewport(sys.motif.Bezel.Fade, draw)
 	} else {
-		alpha := int32(math.Floor(255 * float64(elapsed) / float64(fa.time)))
-		fa.drawRect(sys.scrrect, fa.colEncoded, alpha)
+		draw()
 	}
 }
 
@@ -264,12 +276,13 @@ type Rect struct {
 	pulsePhaseStep float32 // radians per frame = 2π / periodFrames
 	autoAlpha      bool
 	//palfx          *PalFX
+	windowDefault bool // The clip follows sys.scrrect if no window was authored.
 	// initial, unscaled values
 	windowInit [4]float32
 }
 
 func NewRect() *Rect {
-	return &Rect{window: sys.scrrect, trans: TT_default, alpha: [2]int32{255, 0}, localScale: 1}
+	return &Rect{window: sys.scrrect, windowDefault: true, trans: TT_default, alpha: [2]int32{255, 0}, localScale: 1}
 }
 
 func packAlpha(src, dst int32) [2]int32 {
@@ -293,7 +306,13 @@ func (r *Rect) Draw(ln int16) {
 		if r.trans == TT_none {
 			alpha = [2]int32{255, 0}
 		}
-		FillRectTrans(r.drawWindow(), r.col, r.trans, alpha, nil)
+		draw := func() { FillRectTrans(r.drawWindow(), r.col, r.trans, alpha, nil) }
+		if r.windowDefault && sys.drawMotif {
+			// Menu overlays without a window (e.g. pause-menu darkening) cover the whole screen.
+			sys.withFullViewport(true, draw)
+		} else {
+			draw()
+		}
 	}
 }
 
@@ -347,10 +366,14 @@ func (r *Rect) SetWindow(window [4]float32) {
 		return
 	}
 	r.windowInit = window
+	r.windowDefault = false
 	r.window = r.drawWindow()
 }
 
 func (r *Rect) drawWindow() [4]int32 {
+	if r.windowDefault {
+		return sys.scrrect
+	}
 	if r.windowInit == [4]float32{0, 0, 0, 0} {
 		return r.window
 	}

@@ -60,6 +60,10 @@ type InfoProperties struct {
 	Localcoord    [2]int32 `ini:"localcoord" default:"320,240"`
 }
 
+type MouseProperties struct {
+	Enabled bool `ini:"enabled" default:"true"`
+}
+
 type FontProperties struct {
 	Font    string    `ini:"" lua:"font" lookup:"def,font/,,data/"`
 	Height  int32     `ini:"height" default:"-1"`
@@ -67,6 +71,23 @@ type FontProperties struct {
 	Size    [2]uint16 `ini:"size"`
 	Spacing [2]int32  `ini:"spacing"`
 	Offset  [2]int32  `ini:"offset"`
+	Glyphs  FontGlyphProperties `ini:"glyphs"`
+}
+
+// Empty values keep the glyph settings from the font DEF file.
+type FontGlyphProperties struct {
+	Offset  []float32 `ini:"offset"`
+	Scale   []float32 `ini:"scale"`
+	Spacing *float32  `ini:"spacing"`
+}
+
+// Applies the fontN.glyphs.* values from [Files] over those from the font DEF file.
+func (fp *FontProperties) applyGlyphs(f *Fnt) {
+	copy(f.glyphOffset[:], fp.Glyphs.Offset)
+	copy(f.glyphScale[:], fp.Glyphs.Scale)
+	if fp.Glyphs.Spacing != nil {
+		f.glyphSpacing = *fp.Glyphs.Spacing
+	}
 }
 
 type FilesProperties struct {
@@ -308,8 +329,34 @@ type GlyphProperties struct {
 	Size       [2]int32 `lua:"Size"`
 }
 
+type ControllerGlyphsProperties struct {
+	Controller map[string]*ControllerGlyphProperties `ini:"controller"`
+	GUID       map[string]string                     `ini:"guid" literal:"true"`
+	Name       map[string]string                     `ini:"name" literal:"true"`
+	Mirror     map[string]string                     `ini:"mirror" insensitivekeys:"false"`
+	Command    map[string]string                     `ini:"command" insensitivekeys:"false"`
+}
+
+type ControllerGlyphProperties struct {
+	// Device kind the pack belongs to: gamepad or keyboard.
+	Type string `ini:"type" default:"gamepad"`
+	// Overrides by binding token, for the buttons or keys the device reports.
+	Gamepad map[string]int32 `ini:"gamepad" insensitivekeys:"false"`
+	Key     map[string]int32 `ini:"key" insensitivekeys:"false"`
+	Group   int32            `ini:"group" default:"-1"`
+	// Artwork and name shown when choosing a pack by hand.
+	Icon  int32  `ini:"icon" default:"-1"`
+	Label string `ini:"label"`
+}
+
+type HintProperties struct {
+	TextMapProperties
+	Warn TextMapProperties `ini:"warn"`
+}
+
 type MenuProperties struct {
 	Pos   [2]float32      `ini:"pos" default:"1000,900"`
+	Wrap  bool            `ini:"wrap" default:"true"`
 	Tween TweenProperties `ini:"tween"`
 	Item  struct {
 		TextProperties
@@ -321,24 +368,19 @@ type MenuProperties struct {
 			TextProperties
 			Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
 		} `ini:"active"`
-		Selected struct { // not used by [Title Info], [Option Info].keymenu, [Replay Info], [Attract Mode]
+		Selected struct { // not used by [Title Info], [Replay Info], [Attract Mode]
 			TextProperties
 			Active TextProperties `ini:"active"`
 		} `ini:"selected"`
 		Value struct { // not used by [Title Info], [Replay Info], [Attract Mode]
 			TextProperties
 			Active   TextProperties `ini:"active"`
-			Conflict TextProperties `ini:"conflict"`
 		} `ini:"value"`
-		Info struct { // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
-			TextProperties
-			Active TextProperties `ini:"active"`
-		} `ini:"info"`
-		Delete struct { // only used by [Title Info], [Replay Info]
-			KeyCode string `ini:"keycode"`
+		Delete struct { // only used by [Title Info], [Replay Info], [Option Info]
+			Action []string `ini:"action"`
 		} `ini:"delete"`
-		Rename struct { // only used by [Title Info], [Replay Info]
-			KeyCode string `ini:"keycode"`
+		Rename struct { // only used by [Title Info], [Replay Info], [Option Info]
+			Action []string `ini:"action"`
 		} `ini:"rename"`
 	} `ini:"item"`
 	Window struct {
@@ -346,6 +388,8 @@ type MenuProperties struct {
 			Y [2]float32 `ini:"y"`
 		} `ini:"margins"`
 		VisibleItems int32 `ini:"visibleitems"`
+		Width        int32  `ini:"width"`
+		ScrollMode   string `ini:"scrollmode" default:"cursor"`
 	} `ini:"window"`
 	BoxCursor BoxCursorProperties `ini:"boxcursor"`
 	BoxBg     BoxBgProperties     `ini:"boxbg"`
@@ -357,29 +401,30 @@ type MenuProperties struct {
 		Uppercase bool `ini:"uppercase"`
 	} `ini:"title"`
 	Next struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"next"`
 	Previous struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"previous"`
 	Add struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"add"`
 	Subtract struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"subtract"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"done"`
-	Hiscore struct { // not used by [Option Info], [Option Info].keymenu, [Replay Info], [Pause Menu]
-		Key []string `ini:"key"`
+	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
+		Action []string `ini:"action"`
 	} `ini:"hiscore"`
-	Unlock    map[string]string `ini:"unlock"`    // not used by [Option Info].keymenu, [Replay Info], [Pause Menu]
-	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Option Info].keymenu, [Replay Info], [Pause Menu], [Attract Mode]
+	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
+	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
 	Itemname  map[string]string `ini:"itemname"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type InfoBoxProperties struct {
@@ -389,7 +434,8 @@ type InfoBoxProperties struct {
 		TextWrap string `ini:"textwrap" default:"w"`
 	} `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
-	KeyCode string            `ini:"keycode"`
+	Action []string            `ini:"action"`
+	Hint    HintProperties    `ini:"hint"`
 }
 
 type CellOverrideProperties struct {
@@ -450,7 +496,7 @@ type FaceProperties struct {
 	AnimationCharPreloadProperties `skipinit:"true"`
 	Done                           struct { // not used by [Victory Screen]
 		AnimationCharPreloadProperties `skipinit:"true"`
-		Key                            []string `ini:"key"` // only used by [VS Screen]
+		Action                          []string `ini:"action"` // only used by [VS Screen]
 	} `ini:"done"`
 	Random   AnimationProperties `ini:"random"`  // only used by [Select Info]
 	Loading  AnimationProperties `ini:"loading"` // only used by [Select Info] and [VS Screen]
@@ -512,44 +558,44 @@ type PlayerSelectProperties struct {
 			Spacing [2]float32 `ini:"spacing"`
 		} `ini:"value"`
 		Done struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"cancel"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Add struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"add"`
 		Subtract struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"subtract"`
 		Item ItemProperties `ini:"item"`
 	} `ini:"teammenu"`
 	PalMenu struct {
 		Pos  [2]float32 `ini:"pos"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Done struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"cancel"`
 		Random struct {
-			Key  []string `ini:"key"`
+			Action []string `ini:"action"`
 			Text string   `ini:"text"`
 		} `ini:"random"`
 		Value struct {
@@ -581,7 +627,7 @@ type ValueIconVsProperties struct {
 type PlayerVsProperties struct {
 	FaceProperties
 	Face2 FaceProperties `ini:"face2"`
-	Key   []string       `ini:"key"`
+	Action []string       `ini:"action"`
 	Name  struct {
 		TextProperties
 		Pos     [2]float32 `ini:"pos"`
@@ -651,20 +697,97 @@ type PlayerDialogueProperties struct {
 }
 
 type TextInputProperties struct {
+	Text map[string]string `ini:"text" keyfirst:"true"`
+}
+
+type KeyboardKeyProperties struct {
 	TextMapProperties
+	Bg    AnimationProperties `ini:"bg"`
+	BoxBg BoxBgProperties     `ini:"boxbg"`
+}
+
+type KeyboardInfoProperties struct {
+	Pos       [2]float32        `ini:"pos"`
+	MaxLength int               `ini:"maxlength" default:"256"`
+	Layout    map[string]string `ini:"layout"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Confirm struct {
-		KeyCode string `ini:"keycode"`
-	} `ini:"confirm"`
-	Trim struct {
-		KeyCode string `ini:"keycode"`
-	} `ini:"trim"`
-	Truncate struct {
-		KeyCode string `ini:"keycode"`
-	} `ini:"truncate"`
+	// Unlike menu.boxbg (sized from boxcursor.coords), this box is auto-fitted
+	// around the whole generated key grid; coords only pads it (left,top,right,bottom).
+	BoxBg struct {
+		BoxBgProperties
+		Coords [4]int32 `ini:"coords"`
+	} `ini:"boxbg"`
+	Title TextProperties `ini:"title"`
+	Timer TextProperties `ini:"timer"`
+	Text  struct {
+		TextProperties
+		Bg     OverlayProperties `ini:"bg"`
+		Cursor TextProperties    `ini:"cursor"`
+	} `ini:"text"`
+	Key struct {
+		KeyboardKeyProperties
+		Size    [2]float32            `ini:"size"`
+		Spacing [2]float32            `ini:"spacing"`
+		Width   map[string]float32    `ini:"width"`
+		Active  KeyboardKeyProperties `ini:"active"`
+		Pressed KeyboardKeyProperties `ini:"pressed"`
+	} `ini:"key"`
+	Up struct {
+		Action []string `ini:"action"`
+	} `ini:"up"`
+	Down struct {
+		Action []string `ini:"action"`
+	} `ini:"down"`
+	Left struct {
+		Action []string `ini:"action"`
+	} `ini:"left"`
+	Right struct {
+		Action []string `ini:"action"`
+	} `ini:"right"`
+	Select struct {
+		Action []string `ini:"action"`
+	} `ini:"select"`
+	Backspace struct {
+		Action []string `ini:"action"`
+	} `ini:"backspace"`
+	Delete struct {
+		Action []string `ini:"action"`
+	} `ini:"delete"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Done struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Shift struct {
+		Action []string `ini:"action"`
+	} `ini:"shift"`
+	Page struct {
+		Action []string `ini:"action"`
+	} `ini:"page"`
+	Cursor struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+		Start struct {
+			Action []string `ini:"action"`
+		} `ini:"start"`
+		End struct {
+			Action []string `ini:"action"`
+		} `ini:"end"`
+	} `ini:"cursor"`
 	Paste struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"paste"`
+	Move  struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type TitleInfoProperties struct {
@@ -699,6 +822,7 @@ type TitleInfoProperties struct {
 		Overlay OverlayProperties `ini:"overlay"`
 	} `ini:"connecting"`
 	TextInput TextInputProperties `ini:"textinput"`
+	Hint      HintProperties      `ini:"hint"`
 }
 
 type SelectInfoProperties struct {
@@ -716,16 +840,16 @@ type SelectInfoProperties struct {
 		Size    [2]int32   `ini:"size"`
 		Spacing [2]float32 `ini:"spacing"`
 		Up      struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"up"`
 		Down struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"down"`
 		Left struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"left"`
 		Right struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"right"`
 		Bg     AnimationProperties `ini:"bg"`
 		Random struct {
@@ -736,10 +860,10 @@ type SelectInfoProperties struct {
 		Slot    struct {
 			AnimationProperties
 			Next struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"next"`
 			Previous struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"previous"`
 		} `ini:"slot"`
 	} `ini:"cell"`
@@ -794,27 +918,37 @@ type SelectInfoProperties struct {
 			Slot                            AnimationProperties `ini:"slot"`
 		} `ini:"portrait"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Skip struct {
 			Previous struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"previous"`
 			Next struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"next"`
 		} `ini:"skip"`
 	} `ini:"stage"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
+	Exit struct {
+		Action []string `ini:"action"`
+	} `ini:"exit"`
+	Palette struct {
+		Select int32 `ini:"select"`
+		Action []string `ini:"action"`
+		Shift  struct {
+			Action []string `ini:"action"`
+		} `ini:"shift"`
+	} `ini:"palette"`
 	Portrait struct {
 		AnimationCharPreloadProperties `skipinit:"true"`
 		Loading                        AnimationProperties `ini:"loading"`
@@ -828,8 +962,8 @@ type SelectInfoProperties struct {
 		Itemname map[string]*TeamModesProperties `ini:"itemname"`
 	} `ini:"teammenu"`
 	Timer         TimerProperties `ini:"timer"`
-	PaletteSelect int32           `ini:"paletteselect"`
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
+	Hint          HintProperties  `ini:"hint"`
 }
 
 type VsScreenProperties struct {
@@ -850,14 +984,14 @@ type VsScreenProperties struct {
 	P8    PlayerVsProperties `ini:"p8"`
 	Timer TimerProperties    `ini:"timer"`
 	Done  struct {
-		Key  []string `ini:"key"`
+		Action []string `ini:"action"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Skip struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"skip"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	Stage struct {
 		Pos [2]float32 `ini:"pos"`
@@ -875,6 +1009,7 @@ type VsScreenProperties struct {
 		Wait       AnimationTextProperties `ini:"wait"`
 		Storyboard string                  `ini:"storyboard" lookup:"def,,data/"`
 	} `ini:"loading"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type DemoModeProperties struct {
@@ -904,7 +1039,7 @@ type DemoModeProperties struct {
 		Enabled bool `ini:"enabled"`
 	} `ini:"vsscreen"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 }
 
@@ -937,19 +1072,17 @@ type ContinueScreenProperties struct {
 		Enabled bool `ini:"enabled"`
 	} `ini:"gameover"`
 	Move struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
 	Cancel struct {
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
-	Skip struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
 	Overlay OverlayProperties        `ini:"overlay"`
 	P1      PlayerContinueProperties `ini:"p1"`
 	P2      PlayerContinueProperties `ini:"p2"`
@@ -971,11 +1104,47 @@ type ContinueScreenProperties struct {
 		MapCounts map[string]*ContinueCounterProperties `ini:"map:^[0-9]+$" lua:""`
 		End       ContinueCounterProperties             `ini:"end"`
 	} `ini:"counter"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type StoryboardProperties struct {
 	Enabled    bool   `ini:"enabled"`
 	Storyboard string `ini:"storyboard" lookup:"def,,data/"`
+}
+
+type VersusResultStatProperties struct {
+	TextProperties
+	Value TextProperties `ini:"value"`
+}
+
+type PlayerRematchProperties struct {
+	PlayerVictoryProperties
+	Bg        AnimationProperties        `ini:"bg"`
+	Title     TextMapProperties          `ini:"title"`
+	Wins      VersusResultStatProperties `ini:"wins"`
+	WinStreak VersusResultStatProperties `ini:"winstreak"`
+	WinRate   VersusResultStatProperties `ini:"winrate"`
+}
+
+type RematchInfoProperties struct {
+	MenuInfoProperties
+	Time     int32 `ini:"time"`
+	KeepSide struct {
+		Enabled bool `ini:"enabled"`
+	} `ini:"keepside"`
+	Winner struct {
+		TeamKo struct {
+			Enabled bool `ini:"enabled"`
+		} `ini:"teamko"`
+	} `ini:"winner"`
+	P1 PlayerRematchProperties `ini:"p1"`
+	P2 PlayerRematchProperties `ini:"p2"`
+	P3 PlayerRematchProperties `ini:"p3"`
+	P4 PlayerRematchProperties `ini:"p4"`
+	P5 PlayerRematchProperties `ini:"p5"`
+	P6 PlayerRematchProperties `ini:"p6"`
+	P7 PlayerRematchProperties `ini:"p7"`
+	P8 PlayerRematchProperties `ini:"p8"`
 }
 
 type VictoryScreenProperties struct {
@@ -1009,11 +1178,11 @@ type VictoryScreenProperties struct {
 		DisplayTime int32      `ini:"displaytime"`
 	} `ini:"winquote"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Skip    struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	P1 PlayerVictoryProperties `ini:"p1"`
 	P2 PlayerVictoryProperties `ini:"p2"`
@@ -1023,6 +1192,10 @@ type VictoryScreenProperties struct {
 	P6 PlayerVictoryProperties `ini:"p6"`
 	P7 PlayerVictoryProperties `ini:"p7"`
 	P8 PlayerVictoryProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
+	Rematch struct {
+		FadeOut bool `ini:"fadeout"`
+	} `ini:"rematch"`
 }
 
 type WinScreenProperties struct {
@@ -1044,9 +1217,9 @@ type WinScreenProperties struct {
 		DisplayTime int32 `ini:"displaytime"`
 	} `ini:"wintext"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Cancel  struct {
-		Key []string `ini:"key"`
-	} `ini:"cancel"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
 	P3 PlayerResultsProperties `ini:"p3"`
@@ -1055,6 +1228,7 @@ type WinScreenProperties struct {
 	P6 PlayerResultsProperties `ini:"p6"`
 	P7 PlayerResultsProperties `ini:"p7"`
 	P8 PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type ResultsScreenProperties struct {
@@ -1076,9 +1250,9 @@ type ResultsScreenProperties struct {
 		DisplayTime int32 `ini:"displaytime"`
 	} `ini:"winstext"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Cancel  struct {
-		Key []string `ini:"key"`
-	} `ini:"cancel"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
 	P3 PlayerResultsProperties `ini:"p3"`
@@ -1087,6 +1261,43 @@ type ResultsScreenProperties struct {
 	P6 PlayerResultsProperties `ini:"p6"`
 	P7 PlayerResultsProperties `ini:"p7"`
 	P8 PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
+}
+
+type MappingControlProperties struct {
+	AnimationProperties
+	Active AnimationProperties `ini:"active"`
+}
+
+type MappingInfoProperties struct {
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		TextProperties
+		Uppercase bool `ini:"uppercase"`
+	} `ini:"title"`
+	Hint    HintProperties                       `ini:"hint"`
+	Bg      AnimationProperties                  `ini:"bg"`
+	Control map[string]*MappingControlProperties `ini:"control"`
+	Prompt  TextMapProperties                    `ini:"prompt"`
+	Move    struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd    [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Skip struct {
+		Action []string `ini:"action"`
+	} `ini:"skip"`
+	Previous struct {
+		Action []string `ini:"action"`
+	} `ini:"previous"`
+	HoldTime int32            `ini:"holdtime" default:"60"`
 }
 
 type OptionInfoProperties struct {
@@ -1106,21 +1317,15 @@ type OptionInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
-	KeyMenu   struct {
-		P1 struct {
-			MenuOffset [2]float32     `ini:"menuoffset"`
-			Playerno   TextProperties `ini:"playerno"`
-		} `ini:"p1"`
-		P2 struct {
-			MenuOffset [2]float32     `ini:"menuoffset"`
-			Playerno   TextProperties `ini:"playerno"`
-		} `ini:"p2"`
-		Unbind struct {
-			KeyCode string `ini:"keycode"`
-		} `ini:"unbind"`
-		MenuProperties
-	} `ini:"keymenu"`
+	HoldTime  int32               `ini:"holdtime" default:"60"`
+	ButtonSetup struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"buttonsetup"`
+	ControllerMapping struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"controllermapping"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
+	Hint     HintProperties    `ini:"hint"`
 }
 
 type ReplayInfoProperties struct {
@@ -1139,14 +1344,7 @@ type ReplayInfoProperties struct {
 	Cancel struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
-}
-
-type MovelistGlyphsProperties struct {
-	Offset     [2]float32 `ini:"offset"`
-	Scale      [2]float32 `ini:"scale" default:"1,1"`
-	Layerno    int16      `ini:"layerno"`
-	Localcoord [2]int32   `ini:"localcoord"`
-	Spacing    [2]float32 `ini:"spacing"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type MenuInfoProperties struct {
@@ -1156,6 +1354,10 @@ type MenuInfoProperties struct {
 	Title    TextProperties `ini:"title"`
 	Menu     MenuProperties `ini:"menu"`
 	HideBars bool           `ini:"hidebars"`
+	Open     struct {
+		Action   []string `ini:"action"`
+		HoldTime int32    `ini:"holdtime"`
+	} `ini:"open"`
 	Cursor   struct {
 		Move struct {
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
@@ -1175,30 +1377,23 @@ type MenuInfoProperties struct {
 	} `ini:"exit"`
 	Overlay  OverlayProperties `ini:"overlay"`
 	Movelist struct {
-		Pos   [2]float32 `ini:"pos"`
-		Title struct {
-			TextProperties
-			Uppercase bool `ini:"uppercase"`
-		} `ini:"title"`
-		Text struct {
-			TextProperties
-			Spacing [2]float32 `ini:"spacing"`
-		} `ini:"text"`
-		Glyphs MovelistGlyphsProperties `ini:"glyphs"`
-		Window struct {
-			Margins struct {
-				Y [2]float32 `ini:"y"`
-			} `ini:"margins"`
-			VisibleItems int32 `ini:"visibleitems"`
-			Width        int32 `ini:"width"`
-		} `ini:"window"`
-		Overlay OverlayProperties `ini:"overlay"`
-		Arrow   struct {
-			Up   AnimationProperties `ini:"up"`
-			Down AnimationProperties `ini:"down"`
-		} `ini:"arrow"`
-		Itemname map[string]string `ini:"itemname"`
+		Title TextProperties `ini:"title"`
+		Menu  MenuProperties `ini:"menu"`
+		Hint     HintProperties    `ini:"hint"`
+		Page  struct {
+			Next struct {
+				Action []string `ini:"action"`
+			} `ini:"next"`
+			Previous struct {
+				Action []string `ini:"action"`
+			} `ini:"previous"`
+			Bg     map[string]*AnimationTextProperties `ini:"bg" flatten:"true"`
+			Active struct {
+				Bg map[string]*AnimationTextProperties `ini:"bg" flatten:"true"`
+			} `ini:"active"`
+		} `ini:"page"`
 	} `ini:"movelist"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type AttractModeProperties struct {
@@ -1222,10 +1417,10 @@ type AttractModeProperties struct {
 	Credits struct {
 		TextProperties
 		Snd     [2]int32 `ini:"snd" default:"-1,0"`
-		KeyCode string   `ini:"keycode"`
+		Action []string   `ini:"action"`
 	} `ini:"credits"`
 	Options struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"options"`
 	Logo struct {
 		Storyboard string `ini:"storyboard" lookup:"def,,data/"`
@@ -1246,10 +1441,11 @@ type AttractModeProperties struct {
 		Press struct {
 			TextProperties
 			Blinktime int32    `ini:"blinktime"`
-			Key       []string `ini:"key"`
+			Action     []string `ini:"action"`
 		} `ini:"press"`
 		Timer TimerProperties `ini:"timer"`
 	} `ini:"start"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type ChallengerInfoProperties struct {
@@ -1264,7 +1460,7 @@ type ChallengerInfoProperties struct {
 		Snd  [2]int32 `ini:"" default:"-1,0"`
 		Time int32    `ini:"time"`
 	} `ini:"snd"`
-	Key  []string `ini:"key"`
+	Action []string `ini:"action"`
 	Text struct {
 		TextProperties
 		Displaytime int32 `ini:"displaytime"`
@@ -1282,18 +1478,22 @@ type DialogueInfoProperties struct {
 	EndTime    int32 `ini:"endtime"`
 	SwitchTime int32 `ini:"switchtime"`
 	SkipTime   int32 `ini:"skiptime"`
-	Skip       struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
+	Done       struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	P1 PlayerDialogueProperties `ini:"p1"`
 	P2 PlayerDialogueProperties `ini:"p2"`
+	Hint HintProperties           `ini:"hint"`
 }
 
 type HiscoreInfoProperties struct {
 	Enabled bool              `ini:"enabled"`
+	ArcadeInput struct {
+		Enabled bool `ini:"enabled"`
+	} `ini:"arcadeinput"`
 	FadeIn  FadeProperties    `ini:"fadein"`
 	FadeOut FadeProperties    `ini:"fadeout"`
 	Time    int32             `ini:"time"`
@@ -1330,25 +1530,108 @@ type HiscoreInfoProperties struct {
 		Width        int32 `ini:"width"`
 	} `ini:"window"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Next    struct {
-		Key []string `ini:"key"`
-	} `ini:"next"`
-	Previous struct {
-		Key []string `ini:"key"`
-	} `ini:"previous"`
 	Done struct {
-		Key  []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd  [2]int32 `ini:"snd" default:"-1,0"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
+	TextInput struct {
+		Text      string `ini:"text"`
+		MaxLength int    `ini:"maxlength" default:"3"`
+	} `ini:"textinput"`
+	Next struct {
+		Action []string `ini:"action"`
+	} `ini:"next"`
+	Previous struct {
+		Action []string `ini:"action"`
+	} `ini:"previous"`
 	Move struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
 	Glyphs []string `ini:"glyphs"`
+	Hint   HintProperties `ini:"hint"`
+}
+
+type SideSelectItemColumn struct {
+	TextMapProperties
+	Bg     map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+	Active struct {
+		TextMapProperties
+		Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+	} `ini:"active"`
+	Done struct {
+		TextMapProperties
+		Bg     map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+		Active struct {
+			TextMapProperties
+			Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+		} `ini:"active"`
+	} `ini:"done"`
+	Arrow struct {
+		Left  AnimationProperties `ini:"left"`
+		Right AnimationProperties `ini:"right"`
+	} `ini:"arrow"`
+}
+
+type SideSelectInfoProperties struct {
+	Enabled bool              `ini:"enabled"`
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Pos     [2]float32        `ini:"pos"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		AnimationTextProperties
+		Unassigned AnimationTextProperties `ini:"unassigned"`
+		P1         AnimationTextProperties `ini:"p1"`
+		P2         AnimationTextProperties `ini:"p2"`
+	} `ini:"title"`
+	Item struct {
+		Offset     [2]float32           `ini:"offset"`
+		Spacing    [2]float32           `ini:"spacing"`
+		Unassigned SideSelectItemColumn `ini:"unassigned"`
+		P1         SideSelectItemColumn `ini:"p1"`
+		P2         SideSelectItemColumn `ini:"p2"`
+	} `ini:"item"`
+	Side struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+	} `ini:"side"`
+	Setup struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+		Edit struct {
+			Action []string `ini:"action"`
+		} `ini:"edit"`
+	} `ini:"setup"`
+	Move struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Exit struct {
+		Action []string `ini:"action"`
+	} `ini:"exit"`
+	Window struct {
+		VisibleItems int32 `ini:"visibleitems"`
+	} `ini:"window"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type WarningInfoProperties struct {
@@ -1364,6 +1647,7 @@ type WarningInfoProperties struct {
 	Done struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type Motif struct {
@@ -1374,11 +1658,13 @@ type Motif struct {
 	Sff             *Sff
 	Snd             *Snd
 	Fnt             map[int]*Fnt
+	GlyphAnimations map[[2]int32]*Animation
 	GlyphsSff       *Sff
 	Model           *Model
 	Music           Music
 	Def             string                              `ini:"def"`
 	Info            InfoProperties                      `ini:"info"`
+	Mouse           MouseProperties                     `ini:"mouse"`
 	Files           FilesProperties                     `ini:"files"`
 	Languages       map[string]string                   `ini:"languages"`
 	TitleInfo       TitleInfoProperties                 `ini:"title_info"`
@@ -1394,6 +1680,8 @@ type Motif struct {
 	GameOverScreen  StoryboardProperties                `ini:"game_over_screen"`
 	VictoryScreen   VictoryScreenProperties             `ini:"victory_screen"`
 	VictoryBgDef    BgDefProperties                     `ini:"victorybgdef"`
+	RematchInfo     RematchInfoProperties               `ini:"rematch_info"`
+	RematchBgDef    BgDefProperties                     `ini:"rematchbgdef"`
 	WinScreen       WinScreenProperties                 `ini:"win_screen"`
 	WinBgDef        BgDefProperties                     `ini:"winbgdef"`
 	DefaultEnding   StoryboardProperties                `ini:"default_ending"`
@@ -1402,6 +1690,10 @@ type Motif struct {
 	ResultsBgDef    map[string]*BgDefProperties         `ini:"map:^(?i).+resultsbgdef$" lua:"resultsbgdef"`
 	OptionInfo      OptionInfoProperties                `ini:"option_info"`
 	OptionBgDef     BgDefProperties                     `ini:"optionbgdef"`
+	MappingInfo     MappingInfoProperties               `ini:"mapping_info" sff:"GlyphsSff"`
+	MappingBgDef    BgDefProperties                     `ini:"mappingbgdef"`
+	SetupInfo       MappingInfoProperties               `ini:"setup_info" sff:"GlyphsSff"`
+	SetupBgDef      BgDefProperties                     `ini:"setupbgdef"`
 	ReplayInfo      ReplayInfoProperties                `ini:"replay_info"`
 	ReplayBgDef     BgDefProperties                     `ini:"replaybgdef"`
 	PauseMenu       map[string]*MenuInfoProperties      `ini:"map:^(?i).*pause.*menu$" lua:"pause_menu"`
@@ -1413,15 +1705,26 @@ type Motif struct {
 	DialogueInfo    DialogueInfoProperties              `ini:"dialogue_info"`
 	HiscoreInfo     HiscoreInfoProperties               `ini:"hiscore_info"`
 	HiscoreBgDef    BgDefProperties                     `ini:"hiscorebgdef"`
+	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
+	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
+	KeyboardInfo    KeyboardInfoProperties              `ini:"keyboard_info"`
+	KeyboardBgDef   BgDefProperties                     `ini:"keyboardbgdef"`
+	Bezel           struct {
+		AnimationProperties
+		Menus bool `ini:"menus"`
+		Fade  bool `ini:"fade"`
+	} `ini:"bezel"`
+	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
-	inheritedKeys   map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
+	inheritedKeys   map[string]bool                     // normalized paths assigned by inheritance
 	ch              MotifChallenger
 	co              MotifContinue
 	de              MotifDemo
 	di              MotifDialogue
 	vi              MotifVictory
+	re              MotifRematch
 	wi              MotifWin
 	hi              MotifHiscore
 	me              MotifMenu
@@ -1564,6 +1867,49 @@ func (m *Motif) resolveFontFile(path string) string {
 		return resolved
 	}
 	return path
+}
+
+// Glyph settings of the defaultMotif.ini fonts, keyed by file.
+func (m *Motif) defaultFontGlyphs() map[string]FontGlyphProperties {
+	out := map[string]FontGlyphProperties{}
+	for _, fp := range m.Files.Font {
+		if fp == nil || fp.Font == "" {
+			continue
+		}
+		g := fp.Glyphs
+		g.Offset = append([]float32(nil), g.Offset...)
+		g.Scale = append([]float32(nil), g.Scale...)
+		if g.Spacing != nil {
+			spacing := *g.Spacing
+			g.Spacing = &spacing
+		}
+		out[fontKey(m.resolveFontFile(fp.Font), fp.Height)] = g
+	}
+	return out
+}
+
+// Fonts take the default glyph settings of their file, not their slot, unless system.def sets them.
+func (m *Motif) applyDefaultFontGlyphs(defaults map[string]FontGlyphProperties) {
+	var user *ini.Section
+	if m.UserIniFile != nil {
+		user, _ = m.UserIniFile.GetSection("Files")
+	}
+	for k, fp := range m.Files.Font {
+		if fp == nil {
+			continue
+		}
+		d := defaults[fontKey(m.resolveFontFile(fp.Font), fp.Height)]
+		set := func(name string) bool { return user != nil && user.HasKey(k+".glyphs."+name) }
+		if !set("offset") {
+			fp.Glyphs.Offset = d.Offset
+		}
+		if !set("scale") {
+			fp.Glyphs.Scale = d.Scale
+		}
+		if !set("spacing") {
+			fp.Glyphs.Spacing = d.Spacing
+		}
+	}
 }
 
 // returns a stable-sorted list of files named "+system.def" located anywhere under the given root (e.g. external/mods), including nested subdirs.
@@ -1813,7 +2159,7 @@ func loadMotif(def string) (*Motif, error) {
 				goto nextSection
 			}
 			for _, p := range []string{
-				"titlebg", "selectbg", "versusbg", "continuebg",
+				"titlebg", "selectbg", "sideselectbg", "versusbg", "continuebg",
 				"victorybg", "winbg",
 				"optionbg", "replaybg", "attractbg",
 				"challengerbg", "hiscorebg",
@@ -1886,6 +2232,7 @@ func loadMotif(def string) (*Motif, error) {
 
 	// Apply precedence: struct defaults < defaultMotif.ini < user motif
 	assignFrom(defaultOnlyIni)
+	defaultGlyphs := m.defaultFontGlyphs()
 	assignFrom(userIniFile)
 	sys.keepAlive()
 
@@ -1903,6 +2250,7 @@ func loadMotif(def string) (*Motif, error) {
 	reserveFontSlots(&m)
 	resolveInlineFonts(m.IniFile, m.Def, m.Fnt, m.fntIndexByKey, m.SetValueUpdate)
 	syncFontsMap(&m.Files.Font, m.Fnt, m.fntIndexByKey)
+	m.applyDefaultFontGlyphs(defaultGlyphs)
 	sys.keepAlive()
 
 	// Build the loading TextSprite and draw it before we proceed to heavier asset loads (SFF, BG, etc).
@@ -1918,7 +2266,6 @@ func loadMotif(def string) (*Motif, error) {
 	m.overrideParams()
 	m.fixLocalcoordOverrides()
 	m.inheritCursorCellOverrides()
-	m.applyGlyphDefaultsFromMovelist()
 	m.populateDataPointers()
 	m.applyPostParsePosAdjustments()
 
@@ -1928,41 +2275,121 @@ func loadMotif(def string) (*Motif, error) {
 	return &m, nil
 }
 
-// Propagates movelist.glyphs defaults
-func (m *Motif) applyGlyphDefaultsFromMovelist() {
-	if m == nil {
+// Draws the hint for the given situation, falling back to the default text.
+// A device of 0 shows the buttons of the device used last.
+func (h *HintProperties) draw(layerno int16, context string, device int) {
+	if h == nil {
 		return
 	}
-	if len(m.Glyphs) == 0 {
-		return
+	if h.TextSpriteData != nil {
+		h.TextSpriteData.glyphDevice = device
+		h.TextSpriteData.text = h.text(context, h.TextSpriteData.glyphDevice)
+		h.TextSpriteData.Draw(layerno)
 	}
+}
 
-	// Use [Pause Menu] movelist glyph defaults as the global baseline.
-	var mg MovelistGlyphsProperties
-	if m.PauseMenu != nil {
-		if pm := m.PauseMenu["pause_menu"]; pm != nil {
-			mg = pm.Movelist.Glyphs
-		} else {
-			// Best-effort fallback: first available pause menu entry.
-			for _, pm := range m.PauseMenu {
-				if pm != nil {
-					mg = pm.Movelist.Glyphs
-					break
-				}
-			}
-		}
-	} else {
-		return
+// Hint text: glyph.<pack>.<context> while the device shown uses that pack, else <context>.
+func (h *HintProperties) text(context string, deviceID int) string {
+	if context == "" {
+		context = "default"
 	}
-	for _, g := range m.Glyphs {
-		if g == nil {
-			continue
+	if pack := sys.hintGlyphPack(sys.glyphDevice(deviceID)); pack != "" {
+		set := "glyph." + pack
+		name := set + "." + context
+		if context == "default" {
+			name = set
 		}
-		g.Offset = mg.Offset
-		g.Scale = mg.Scale
-		g.Layerno = mg.Layerno
-		g.Localcoord = mg.Localcoord
+		if text, ok := h.Text[name]; ok {
+			return text
+		}
 	}
+	if text, ok := h.Text[context]; ok {
+		return text
+	}
+	return h.Text["default"]
+}
+
+// Returns a cached one-frame animation for a glyph sprite. Built the same way as
+// the motif's other single sprites, see SetAnim.
+func (m *Motif) glyphAnimation(group, index int32) *Animation {
+	if m.GlyphsSff == nil || group < 0 || group > math.MaxUint16 || index < 0 || index > math.MaxUint16 {
+		return nil
+	}
+	key := [2]int32{group, index}
+	if a := m.GlyphAnimations[key]; a != nil {
+		return a
+	}
+	sprite := m.GlyphsSff.GetSprite(uint16(group), uint16(index))
+	if sprite == nil || sprite.Size[0] == 0 || sprite.Size[1] == 0 {
+		return nil
+	}
+	if m.GlyphAnimations == nil {
+		m.GlyphAnimations = make(map[[2]int32]*Animation)
+	}
+	a := NewAnim(m.GlyphsSff, fmt.Sprintf("%d,%d, 0,0, -1", group, index)).anim
+	a.UpdateSprite()
+	m.GlyphAnimations[key] = a
+	return a
+}
+
+// Device kind a glyph pack belongs to.
+func glyphDeviceType(device *InputDevice) string {
+	if device != nil && device.Joy < 0 {
+		return "keyboard"
+	}
+	return "gamepad"
+}
+
+// Glyph packs of this kind a player can pick, sorted by label. Packs without a label
+// are only used for detection.
+func (m *Motif) glyphPacks(kind string) []string {
+	var sets []string
+	for id, set := range m.ControllerGlyphs.Controller {
+		if set != nil && set.Label != "" && strings.EqualFold(set.Type, kind) {
+			sets = append(sets, id)
+		}
+	}
+	sort.Slice(sets, func(i, j int) bool {
+		a, b := m.ControllerGlyphs.Controller[sets[i]].Label, m.ControllerGlyphs.Controller[sets[j]].Label
+		return a < b || (a == b && sets[i] < sets[j])
+	})
+	return sets
+}
+
+// Artwork representing a whole glyph pack, for lists and controller names.
+func (m *Motif) glyphPackIcon(set string) *Animation {
+	variant := m.ControllerGlyphs.Controller[set]
+	if variant == nil || variant.Icon < 0 {
+		return nil
+	}
+	group := variant.Group
+	if group < 0 {
+		// Packs without a group of their own use the base artwork of their kind.
+		base := m.glyph("gamepad.A")
+		if strings.EqualFold(variant.Type, "keyboard") {
+			base = m.glyph("keyboard.a")
+		}
+		if base != nil {
+			group = base.Spr[0]
+		}
+	}
+	return m.glyphAnimation(group, variant.Icon)
+}
+
+// Looks up a glyph by name, accepting both <name> and name.
+func (m *Motif) glyph(name string) *GlyphProperties {
+	name = strings.TrimSuffix(strings.TrimPrefix(name, "<"), ">")
+	if g := m.Glyphs["<"+name+">"]; g != nil {
+		return g
+	}
+	return m.Glyphs[name] // Existing command-list glyphs, e.g. <_U> and <^A>.
+}
+
+func (m *Motif) namedGlyph(name string) *Animation {
+	if g := m.glyph(name); g != nil {
+		return m.glyphAnimation(g.Spr[0], g.Spr[1])
+	}
+	return nil
 }
 
 // If an element is customized in userIniFile but its localcoord is missing/empty,
@@ -2011,8 +2438,9 @@ func (m *Motif) fixLocalcoordOverrides() {
 				}
 			}
 
-			// 2) Is this exact .localcoord key present in the embedded defaults?
-			inDefaults := false
+			// Inherited coordinates are defaults too, unless this element was customized.
+			query := strings.ToLower(strings.ReplaceAll(secName, " ", "_") + "." + keyName)
+			inDefaults := m.inheritedKeys[query]
 			if defSec != nil {
 				if dk, err := defSec.GetKey(keyName); err == nil && dk != nil {
 					inDefaults = true
@@ -2057,7 +2485,7 @@ func (m *Motif) fixLocalcoordOverrides() {
 			// set struct (and ini) value to 0,0 so it is treated as "unspecified".
 			secNorm := strings.ReplaceAll(secName, " ", "_")
 			keyNorm := strings.ReplaceAll(keyName, " ", "_")
-			query := strings.ToLower(secNorm + "." + keyNorm)
+			query = strings.ToLower(secNorm + "." + keyNorm)
 
 			if err := m.SetValueUpdate(query, "0, 0"); err != nil {
 				fmt.Printf("Warning: failed to reset localcoord for %s: %v\n", query, err)
@@ -2070,12 +2498,15 @@ func (m *Motif) fixLocalcoordOverrides() {
 // when menu.uselocalcoord is enabled in a section.
 
 // InheritSpec describes how to inherit keys from one prefix to another inside the given INI sections.
-// Example: srcSec="Option Info", srcPrefix="menu.", dstSec="Option Info", dstPrefix="keymenu.menu."
+// Example: srcSec="Select Info", srcPrefix="p1.face.", dstSec="Select Info", dstPrefix="p1.face.done."
 type InheritSpec struct {
 	SrcSec    string
 	SrcPrefix string
 	DstSec    string
 	DstPrefix string
+	SkipText  bool
+	Flat      bool // copy only the source's own keys, not its nested elements
+	Merged    bool // also copy values the source section inherited itself
 }
 
 // mergeWithInheritance applies "user overrides default" with intra-file inheritance.
@@ -2188,9 +2619,18 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		collect(user, sp.DstSec, sp.DstPrefix)
 		collect(defs, sp.SrcSec, sp.SrcPrefix)
 		collect(defs, sp.DstSec, sp.DstPrefix)
+		if sp.Merged {
+			collect(merged, sp.SrcSec, sp.SrcPrefix)
+		}
 
 		// Resolve and set final values following the precedence.
 		for suf := range suffixes {
+			if sp.SkipText && strings.Contains("."+strings.ToLower(suf)+".", ".text.") {
+				continue
+			}
+			if sp.Flat && strings.Contains(suf, ".") {
+				continue
+			}
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
 			if shouldSkipAnimSpr(sp.DstPrefix, suf) {
@@ -2227,6 +2667,8 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 				src = srcDefDst
 			} else if _, ok := get(defs, sp.SrcSec, srcKey); ok {
 				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
+			} else if _, ok := get(merged, sp.SrcSec, srcKey); ok && sp.Merged {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
 			} else {
 				continue
 			}
@@ -2240,6 +2682,11 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			if err := m.SetValueUpdate(query, val); err != nil {
 				//fmt.Printf("Warning: inheritance set failed for %s = %q: %v\n", query, val, err)
 				continue
+			}
+			// SetValueUpdate stores a map's default entry as <map>.default.<field>.
+			// Later specs read <map>.<field>, so keep that key up to date as well.
+			if s, err := merged.GetSection(sp.DstSec); err == nil {
+				s.Key(dstKey).SetValue(val)
 			}
 
 			// Remember only values that were actually inherited into the destination.
@@ -2305,8 +2752,6 @@ func (m *Motif) overrideParams() {
 	specs := []InheritSpec{
 		// [Title Info]
 		{SrcSec: "Title Info", SrcPrefix: "loading.", DstSec: "Title Info", DstPrefix: "loading.wait."},
-		// [Option Info]
-		{SrcSec: "Option Info", SrcPrefix: "menu.", DstSec: "Option Info", DstPrefix: "keymenu."},
 		// [Select Info]
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.done."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.random."},
@@ -2391,10 +2836,76 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.result.", DstSec: "Hiscore Info", DstPrefix: "item.result.active2."},
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.name.", DstSec: "Hiscore Info", DstPrefix: "item.name.active."},
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.name.", DstSec: "Hiscore Info", DstPrefix: "item.name.active2."},
+		// [Option Info]
+		{SrcSec: "Option Info", SrcPrefix: "menu.item.", DstSec: "Option Info", DstPrefix: "menu.item.selected."},
+		{SrcSec: "Option Info", SrcPrefix: "menu.item.active.", DstSec: "Option Info", DstPrefix: "menu.item.selected.active."},
+		{SrcSec: "Option Info", SrcPrefix: "menu.hint.", DstSec: "Option Info", DstPrefix: "menu.hint.warn."},
+		// [Mapping Info]
+		{SrcSec: "Mapping Info", SrcPrefix: "hint.", DstSec: "Mapping Info", DstPrefix: "hint.warn."},
+		// [Pause Menu]
+		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
+		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},
+		// [Side Select Info]
+		{SrcSec: "Side Select Info", SrcPrefix: "item.unassigned.", DstSec: "Side Select Info", DstPrefix: "item.unassigned.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
+	}
+	// Keyboard and gamepad row backgrounds in [Side Select Info] inherit the plain bg of the same row style
+	for _, col := range []string{"unassigned", "p1", "p2"} {
+		styles := []string{"", "active."}
+		if col != "unassigned" {
+			styles = append(styles, "done.", "done.active.")
+		}
+		for _, style := range styles {
+			prefix := "item." + col + "." + style + "bg."
+			for _, kind := range []string{"keyboard", "gamepad"} {
+				specs = append(specs, InheritSpec{SrcSec: "Side Select Info", SrcPrefix: prefix, DstSec: "Side Select Info", DstPrefix: prefix + kind + ".", Flat: true})
+			}
+		}
+	}
+	// Active control art in [Mapping Info] and [Setup Info] inherits the released art
+	for _, sec := range []string{"Mapping Info", "Setup Info"} {
+		names := map[string]bool{}
+		for _, f := range []*ini.File{m.DefaultOnlyIni, m.UserIniFile} {
+			if f == nil {
+				continue
+			}
+			if s, err := f.GetSection(sec); err == nil {
+				for _, k := range s.Keys() {
+					if parts := strings.SplitN(strings.ToLower(k.Name()), ".", 3); len(parts) == 3 && parts[0] == "control" {
+						names[parts[1]] = true
+					}
+				}
+			}
+		}
+		for name := range names {
+			specs = append(specs, InheritSpec{SrcSec: sec, SrcPrefix: "control." + name + ".", DstSec: sec, DstPrefix: "control." + name + ".active."})
+		}
+	}
+	pauseSections := append([]string{"Pause Menu"}, m.customPauseMenuSections()...)
+	// Inherit each pause menu's settings before copying them to other pause menus.
+	for _, sec := range pauseSections {
+		for _, prefix := range []string{"title.", "menu.", "hint."} {
+			specs = append(specs, InheritSpec{
+				SrcSec: sec, SrcPrefix: prefix, DstSec: sec, DstPrefix: "movelist." + prefix, SkipText: true,
+			})
+		}
 	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
-	for _, sec := range m.customPauseMenuSections() {
+	for _, sec := range pauseSections[1:] {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
+	}
+	// The rematch menu shares pause styling but has its own text and items.
+	for _, prefix := range []string{"title.", "menu.", "movelist.", "hint.", "cursor.", "cancel.", "enter.", "exit.", "overlay."} {
+		specs = append(specs, InheritSpec{
+			SrcSec: "Pause Menu", SrcPrefix: prefix, DstSec: "Rematch Info", DstPrefix: prefix, SkipText: true,
+		})
+	}
+	// Rematch portraits continue the victory screen ones, including the p3..p8 values it inherited.
+	for _, prefix := range []string{"keepside.", "winner.", "p1.", "p2.", "p3.", "p4.", "p5.", "p6.", "p7.", "p8."} {
+		specs = append(specs, InheritSpec{
+			SrcSec: "Victory Screen", SrcPrefix: prefix, DstSec: "Rematch Info", DstPrefix: prefix, Merged: true,
+		})
 	}
 	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]
 	for _, sec := range m.customResultsScreenSections() {
@@ -2586,7 +3097,6 @@ func (m *Motif) loadFiles() {
 		return nil
 	})
 	sys.keepAlive()
-
 	LoadFile(&m.Files.Model, []string{m.Files.Model}, "", func(filename string) error {
 		if filename != "" {
 			var err error
@@ -2609,6 +3119,11 @@ func (m *Motif) loadFiles() {
 	m.loadBgDefProperties(&m.VersusBgDef, "versusbg", m.Files.Spr)
 	m.loadBgDefProperties(&m.ContinueBgDef, "continuebg", m.Files.Spr)
 	m.loadBgDefProperties(&m.VictoryBgDef, "victorybg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("RematchBgDef"); err == nil {
+		m.loadBgDefProperties(&m.RematchBgDef, "rematchbg", m.Files.Spr)
+	} else {
+		m.RematchBgDef = m.VictoryBgDef
+	}
 	m.loadBgDefProperties(&m.WinBgDef, "winbg", m.Files.Spr)
 
 	// Load all ResultsBgDef entries (any mode that defines <mode>ResultsBgDef).
@@ -2623,6 +3138,16 @@ func (m *Motif) loadFiles() {
 	}
 
 	m.loadBgDefProperties(&m.OptionBgDef, "optionbg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("MappingBgDef"); err == nil {
+		m.loadBgDefProperties(&m.MappingBgDef, "mappingbg", m.Files.Spr)
+	} else {
+		m.MappingBgDef = m.OptionBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SetupBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SetupBgDef, "setupbg", m.Files.Spr)
+	} else {
+		m.SetupBgDef = m.OptionBgDef
+	}
 	if _, err := m.UserIniFile.GetSection("ReplayBgDef"); err == nil {
 		m.loadBgDefProperties(&m.ReplayBgDef, "replaybg", m.Files.Spr)
 	} else {
@@ -2658,6 +3183,16 @@ func (m *Motif) loadFiles() {
 		m.loadBgDefProperties(&m.HiscoreBgDef, "hiscorebg", m.Files.Spr)
 	} else {
 		m.HiscoreBgDef = m.TitleBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SideSelectBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SideSelectBgDef, "sideselectbg", m.Files.Spr)
+	} else {
+		m.SideSelectBgDef = m.OptionBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("KeyboardBgDef"); err == nil {
+		m.loadBgDefProperties(&m.KeyboardBgDef, "keyboardbg", m.Files.Spr)
+	} else {
+		m.KeyboardBgDef = m.OptionBgDef
 	}
 
 	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
@@ -2700,6 +3235,7 @@ func (m *Motif) loadFiles() {
 			fnt.Size = m.Fnt[i].Size
 			fnt.Spacing = m.Fnt[i].Spacing
 			fnt.Offset = m.Fnt[i].offset
+			fnt.applyGlyphs(m.Fnt[i])
 
 			return nil
 		})
@@ -2709,6 +3245,11 @@ func (m *Motif) loadFiles() {
 
 func (m *Motif) populateDataPointers() {
 	PopulateDataPointers(m, m.Info.Localcoord)
+	if a := m.Bezel.AnimData; a != nil {
+		// Menus can use the same action without resetting the bezel animation.
+		a.anim = a.anim.ShallowCopy()
+		a.palfx.ignoreAllPalFX = true
+	}
 }
 
 func (m *Motif) resolvePath() {
@@ -2774,10 +3315,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 			me.Item.Active.TextSpriteData,
 			me.Item.Value.TextSpriteData,
 			me.Item.Value.Active.TextSpriteData,
-			// Extra fields some menus use:
-			me.Item.Value.Conflict.TextSpriteData,
-			me.Item.Info.TextSpriteData,
-			me.Item.Info.Active.TextSpriteData,
 		)
 		// Backgrounds
 		for _, ap := range me.Item.Bg {
@@ -2786,14 +3323,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		for _, ap := range me.Item.Active.Bg {
 			animSetPos(ap.AnimData, dx, dy)
 		}
-	}
-	shiftMovelist := func(mv *MenuInfoProperties) {
-		if mv == nil {
-			return
-		}
-		ml := &mv.Movelist
-		offsetAnims(ml.Pos[0], ml.Pos[1], ml.Arrow.Up.AnimData, ml.Arrow.Down.AnimData)
-		offsetTexts(ml.Pos[0], ml.Pos[1], ml.Title.TextSpriteData, ml.Text.TextSpriteData)
 	}
 	adjustSelect := func(ps *PlayerSelectProperties) {
 		tm := &ps.TeamMenu
@@ -2852,7 +3381,8 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		&m.OptionInfo.Menu,
 		&m.ReplayInfo.Menu,
 		&m.AttractMode.Menu,
-		&m.OptionInfo.KeyMenu.MenuProperties,
+		&m.RematchInfo.Menu,
+		&m.RematchInfo.Movelist.Menu,
 	} {
 		shiftMenu(me)
 	}
@@ -2860,22 +3390,7 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		for _, pm := range m.PauseMenu {
 			if pm != nil {
 				shiftMenu(&pm.Menu)
-			}
-		}
-	}
-
-	// KeyMenu
-	{
-		km := &m.OptionInfo.KeyMenu
-		textSetPos(km.P1.Playerno.TextSpriteData, km.Pos[0]+km.P1.MenuOffset[0], km.Pos[1]+km.P1.MenuOffset[1])
-		textSetPos(km.P2.Playerno.TextSpriteData, km.Pos[0]+km.P2.MenuOffset[0], km.Pos[1]+km.P2.MenuOffset[1])
-	}
-
-	// Movelists (all pause menus)
-	{
-		if m.PauseMenu != nil {
-			for _, pm := range m.PauseMenu {
-				shiftMovelist(pm)
+				shiftMenu(&pm.Movelist.Menu)
 			}
 		}
 	}
@@ -2939,6 +3454,7 @@ func (m *Motif) drawLoading() {
 				fp.Size = f.Size
 				fp.Spacing = f.Spacing
 				fp.Offset = f.offset
+				fp.applyGlyphs(f)
 			}
 		}
 	}
@@ -2968,7 +3484,7 @@ func (m *Motif) drawLoading() {
 			gfx.EndFrame()
 
 			// Start a one-off frame
-			gfx.BeginFrame(true)
+			sys.beginFrame(true)
 
 			FillRect(sys.scrrect, 0x000000, [2]int32{255, 0}, nil)
 
@@ -2983,7 +3499,7 @@ func (m *Motif) drawLoading() {
 			}
 
 			// Prepare a fresh frame for whatever comes next (no clear)
-			gfx.BeginFrame(false)
+			sys.beginFrame(false)
 		}
 	}
 	sys.runMainThreadTask()
@@ -3110,17 +3626,20 @@ func (mo *Motif) processStateTransitionsBySide(p1States, p2States [4][]int32) {
 }
 
 func (m *Motif) reset() {
+	sys.textInput.finish(false)
 	if m.IniFile == nil {
 		return
 	}
 	m.fadeIn.reset()
 	m.fadeOut.reset()
+	m.Bezel.AnimData.Reset()
 	m.ch.reset(m)
 	m.de.reset(m)
 	m.di.reset(m)
 	m.di.clear(m)
 	m.vi.reset(m)
 	m.vi.clear(m)
+	m.re.reset(m)
 	m.wi.reset(m)
 	m.hi.reset(m)
 	m.co.reset(m)
@@ -3129,6 +3648,33 @@ func (m *Motif) reset() {
 }
 
 func (m *Motif) step() {
+	if sys.synchronizedInput() && !m.me.active {
+		context := "match"
+		switch {
+		case m.di.active:
+			context = "dialogue"
+		case m.vi.active:
+			context = "victory"
+		case m.re.active:
+			context = "rematch"
+		case m.co.active:
+			context = "continue"
+		case m.wi.active:
+			context = "results"
+		case m.hi.active:
+			context = "hiscore"
+		case m.ch.active:
+			context = "challenger"
+		case sys.storyboard.active:
+			context = "storyboard"
+		}
+		for i := range sys.menuChannels {
+			sys.menuChannels[i].mouse.setContext(context)
+		}
+	}
+	if m.bezelActive() {
+		m.Bezel.AnimData.Update(false)
+	}
 	if !m.me.active && (!sys.paused || sys.frameStepFlag) &&
 		!(sys.fightScreen.round.fadeOut.isActive() || sys.fightScreen.round.fadeIn.isActive()) {
 		if m.fadeOut.isActive() {
@@ -3137,10 +3683,15 @@ func (m *Motif) step() {
 			m.fadeIn.step()
 		}
 	}
+	// A replay ends on Esc even while a recorded pause menu is open
+	if sys.replayFile != nil && sys.escExit() {
+		sys.esc, sys.endMatch = true, true
+		return
+	}
 	if m.me.active {
 		m.me.step(m)
 	} else if sys.escExit() {
-		sys.endMatch = true
+		sys.esc, sys.endMatch = true, true
 		return
 	} else if sys.esc && sys.paused {
 		sys.paused = false
@@ -3162,6 +3713,9 @@ func (m *Motif) step() {
 	if m.vi.active {
 		m.vi.step(m)
 	}
+	if m.re.active {
+		m.re.step(m)
+	}
 	if m.wi.active {
 		m.wi.step(m)
 	}
@@ -3176,29 +3730,40 @@ func (m *Motif) step() {
 	}
 }
 
-// drawAspectBars renders black bars when the fight aspect and motif aspect differ.
-func (m *Motif) drawAspectBars() {
-	viewport, ok := sys.fightDrawClip()
-	if !ok {
+func (m *Motif) bezelActive() bool {
+	a := m.Bezel.AnimData
+	return sys.cfg.Video.KeepAspect && (sys.middleOfMatch() || sys.postMatchFlg || m.Bezel.Menus) &&
+		(m.Bezel.Anim >= 0 || m.Bezel.Spr[0] >= 0) &&
+		m.Bezel.Localcoord[0] > 0 && m.Bezel.Localcoord[1] > 0 &&
+		a != nil && a.anim != nil
+}
+
+func (m *Motif) drawBezel() {
+	if !m.bezelActive() {
 		return
 	}
-	screen := sys.scrrect
-	rects := [4][4]int32{
-		{screen[0], screen[1], viewport[0] - screen[0], screen[3]},
-		{viewport[0] + viewport[2], screen[1], screen[0] + screen[2] - viewport[0] - viewport[2], screen[3]},
-		{viewport[0], screen[1], viewport[2], viewport[1] - screen[1]},
-		{viewport[0], viewport[1] + viewport[3], viewport[2], screen[1] + screen[3] - viewport[1] - viewport[3]},
+	a := m.Bezel.AnimData
+	// Map the bezel's localcoord to the whole window.
+	st := drawAspectState{
+		gameWidth:  float32(m.Bezel.Localcoord[0]) / a.localScale,
+		gameHeight: float32(m.Bezel.Localcoord[1]) / a.localScale,
+		viewport:   sys.renderTargetRect,
 	}
-
-	for _, r := range rects {
-		if r[2] > 0 && r[3] > 0 {
-			// 0x000000 = black, fully opaque.
-			FillRect(r, 0x000000, [2]int32{255, 0}, nil)
-		}
-	}
+	st.widthScale = float32(sys.scrrect[2]) / st.gameWidth
+	st.heightScale = float32(sys.scrrect[3]) / st.gameHeight
+	sys.withAspectState(st, func() {
+		oldBright := sys.brightness
+		sys.brightness = 1
+		defer func() { sys.brightness = oldBright }()
+		// Not Draw: it skips frames while the game catches up, which makes the bezel blink.
+		a.anim.draw(a.drawParams())
+	})
 }
 
 func (m *Motif) shouldScopeMotifAspect() bool {
+	if sys.shouldComposeFullResolution() {
+		return true
+	}
 	if sys.cfg.Video.KeepAspect || sys.skipMotifScaling() {
 		return false
 	}
@@ -3206,6 +3771,7 @@ func (m *Motif) shouldScopeMotifAspect() bool {
 		m.ch.active ||
 		m.di.active ||
 		m.vi.active ||
+		m.re.active ||
 		m.wi.active ||
 		m.hi.active ||
 		m.co.active
@@ -3216,13 +3782,8 @@ func (m *Motif) draw(layerno int16) {
 	sys.matchStoryboards.draw(layerno)
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		sys.restoreAspectState(sys.motifAspectState())
 		defer sys.restoreAspectState(prev)
-	}
-	// Draw black bars if fight aspect and motif aspect differ.
-	if layerno == 1 && sys.shouldComposeFullResolution() &&
-		(!sys.middleOfMatch() || sys.motifOverlayActive()) {
-		m.drawAspectBars()
 	}
 	if m.ch.active {
 		m.ch.draw(m, layerno)
@@ -3235,6 +3796,9 @@ func (m *Motif) draw(layerno int16) {
 	}
 	if m.vi.active {
 		m.vi.draw(m, layerno)
+	}
+	if m.re.active {
+		m.re.draw(m, layerno)
 	}
 	if m.wi.active {
 		m.wi.draw(m, layerno)
@@ -3257,13 +3821,13 @@ func (m *Motif) drawFade() {
 	sys.matchStoryboards.drawFade()
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		sys.restoreAspectState(sys.motifAspectState())
 		defer sys.restoreAspectState(prev)
 	}
 	if m.fadeOut.isActive() {
-		m.fadeOut.draw()
+		m.fadeOut.drawFullScreen()
 	} else if m.fadeIn.isActive() {
-		m.fadeIn.draw()
+		m.fadeIn.drawFullScreen()
 	}
 }
 
@@ -3304,6 +3868,13 @@ func (m *Motif) act() {
 			m.vi.init(m)
 		}
 		if m.vi.active {
+			return
+		}
+		// Rematch Info
+		if !m.re.initialized {
+			m.re.init(m)
+		}
+		if m.re.active {
 			return
 		}
 		// Win / Results Screen
@@ -3444,10 +4015,17 @@ type MotifMenu struct {
 	initialized bool
 	state       MenuState
 	reopenLock  bool
+	player      int // 1-based player who opened the menu
+	netDelay    int
+	rematch     bool
 }
 
 func (me *MotifMenu) reset(m *Motif) {
 	me.active = false
+	me.player = 0
+	me.netDelay = 0
+	me.rematch = false
+	sys.menuPlayer = 0
 	me.initialized = false
 	me.state = ME_OpeningOut
 	if err := sys.luaLState.DoString("menuReset()"); err != nil {
@@ -3458,17 +4036,51 @@ func (me *MotifMenu) reset(m *Motif) {
 // returns true if the pause/menu open input is still physically held.
 func (me *MotifMenu) menuOpenInputHeld(m *Motif) bool {
 	// Physical ESC hold
-	if sys.keyState != nil && sys.keyState[KeyEscape] {
+	if !sys.synchronizedInput() && sys.keyState != nil && sys.keyState[KeyEscape] {
 		return true
 	}
-	// Also respect configured menu cancel/open bindings
+	// Also respect the configured open action
 	if pm := me.pauseMenu(m); pm != nil && pm.Enabled {
-		return sys.uiRawInput(pm.Menu.Cancel.Key, -1)
+		for i := range sys.commandLists {
+			if sys.synchronizedInput() && sys.menuEscape(i) > 0 || sys.actionTime(pm.Open.Action, i) > 0 {
+				return true
+			}
+		}
 	}
 	return false
 }
 
+func (me *MotifMenu) openingPlayer(pm *MenuInfoProperties) int {
+	if sys.esc {
+		for i := range sys.commandLists {
+			if sys.localSlot(i) {
+				// In co-op Turns, Esc belongs to the player of the member in the fight.
+				if i < 2 && len(sys.chars[i]) > 0 && sys.chars[i][0] != nil {
+					if slot := sys.memberController(i, sys.chars[i][0].memberNo); sys.localSlot(slot) {
+						return slot + 1
+					}
+				}
+				return i + 1
+			}
+		}
+		return 1
+	}
+	hold := int32(1)
+	if sys.cfg.Options.PauseDelay {
+		hold = Max(1, pm.Open.HoldTime)
+	}
+	for i := range sys.commandLists {
+		if sys.synchronizedInput() && sys.menuEscape(i) == 1 || sys.actionTime(pm.Open.Action, i) == hold {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 func (me *MotifMenu) pauseMenu(m *Motif) *MenuInfoProperties {
+	if me.rematch {
+		return &m.RematchInfo.MenuInfoProperties
+	}
 	if m == nil || m.PauseMenu == nil {
 		return nil
 	}
@@ -3492,13 +4104,31 @@ func (me *MotifMenu) requestClose(m *Motif) {
 	if !me.active || me.state >= ME_ClosingOut {
 		return
 	}
-	if pm := me.pauseMenu(m); pm != nil {
+	if me.rematch {
+		m.re.startFadeOut(m)
+	} else if pm := me.pauseMenu(m); pm != nil {
 		pm.FadeOut.FadeData.init(m.fadeOut, false)
 	}
 	me.state = ME_ClosingOut
 }
 
+func (me *MotifMenu) startRematch(m *Motif, player int) {
+	me.rematch = true
+	me.active = true
+	me.initialized = true
+	me.state = ME_OpeningOut
+	me.player = player
+	sys.menuPlayer = player
+	sys.esc = false
+	if sys.netplay() {
+		me.netDelay = netMenuDelay
+	}
+}
+
 func (me *MotifMenu) init(m *Motif) {
+	if sys.rollback.session != nil && sys.rollback.session.syncTest {
+		return
+	}
 	pm := me.pauseMenu(m)
 	if pm == nil || !pm.Enabled || !me.enabled {
 		me.initialized = true
@@ -3516,7 +4146,8 @@ func (me *MotifMenu) init(m *Motif) {
 		}
 		me.reopenLock = false
 	}
-	openPressed := sys.esc || sys.uiRawInput(pm.Menu.Cancel.Key, -1)
+	player := me.openingPlayer(pm)
+	openPressed := player > 0
 
 	if !sys.sel.gameParams.PauseMenu {
 		if openPressed {
@@ -3527,22 +4158,33 @@ func (me *MotifMenu) init(m *Motif) {
 	}
 
 	if sys.escExit() {
-		sys.endMatch = true
+		sys.esc, sys.endMatch = true, true
 		return
 	}
 	if !openPressed {
 		return
 	}
 
+	// Only the player who opened the menu controls it.
+	me.player = player
+	sys.menuPlayer = player
 	// Freeze the match first, then fade it to black before initializing the menu.
 	sys.paused = true
 	pm.FadeOut.FadeData.init(m.fadeOut, false)
 	me.active = true
 	me.initialized = true
 	me.state = ME_OpeningOut
+	if sys.netplay() {
+		// Predicted pause entry can be replayed. Lua starts beyond that prediction window.
+		me.netDelay = netMenuDelay
+	}
 }
 
 func (me *MotifMenu) step(m *Motif) {
+	if me.netDelay > 0 {
+		me.netDelay--
+		return
+	}
 	// Round state does not advance motif fades while the match is paused.
 	if m.fadeOut.isActive() {
 		m.fadeOut.step()
@@ -3562,10 +4204,14 @@ func (me *MotifMenu) step(m *Motif) {
 		if m.fadeOut.isActive() {
 			return
 		}
-		if err := sys.luaLState.DoString("menuInit()"); err != nil {
+		id := ""
+		if me.rematch {
+			id = "rematch"
+		}
+		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d, %q)", me.player, id)); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 		}
-		if pm != nil {
+		if pm != nil && !me.rematch {
 			pm.FadeIn.FadeData.init(m.fadeIn, true)
 		}
 		me.state = ME_OpeningIn
@@ -3574,6 +4220,9 @@ func (me *MotifMenu) step(m *Motif) {
 			me.state = ME_Open
 		}
 	case ME_ClosingOut:
+		if me.rematch {
+			return
+		}
 		// If exiting match from the pause menu
 		if sys.endMatch {
 			if sys.fightScreen.round.fadeOut.isActive() {
@@ -3602,6 +4251,9 @@ func (me *MotifMenu) step(m *Motif) {
 
 // runLua executes the pause-menu Lua loop.
 func (me *MotifMenu) runLua(m *Motif) {
+	if sys.rollback.session != nil && !sys.rollback.menuUpdating {
+		return
+	}
 	// Draw the menu during its fade-in and fade-out, but not while the match is on screen.
 	if me.state == ME_OpeningOut || me.state == ME_ClosingIn {
 		return
@@ -3650,11 +4302,25 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
-	controllerNo := sys.buttonController(m.ChallengerInfo.Key)
-	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
+	if sys.netplay() {
 		return
 	}
-	ch.controllerNo = controllerNo
+	deviceID := 0
+	for _, device := range sys.inputs.Devices {
+		if !device.Connected || sys.inputs.owner(device.ID) >= 0 || sys.keyboardConflict(device.ID) {
+			continue
+		}
+		// Read each unassigned device directly: a menu press lasts one frame and can be missed
+		// by the match UI, especially in slow motion.
+		if sys.deviceActionTime(device, m.ChallengerInfo.Action) > 0 {
+			deviceID = device.ID
+			break
+		}
+	}
+	if deviceID == 0 {
+		return
+	}
+	ch.controllerNo = deviceID - 1
 
 	if err := sys.luaLState.DoString("hook.run('game.challenger_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger_init", err.Error())
@@ -3671,7 +4337,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 	m.ChallengerInfo.Bg.AnimData.Reset()
 
 	m.ChallengerInfo.FadeIn.FadeData.init(m.fadeIn, true)
-	ch.counter = 0
+	ch.counter, ch.endTimer = 0, -1
 	ch.active = true
 	ch.initialized = true
 }
@@ -3683,7 +4349,7 @@ func (ch *MotifChallenger) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger", err.Error())
 		}
 	}
-	if ch.endTimer == -1 && ch.counter == m.ChallengerInfo.Time {
+	if ch.endTimer == -1 && ch.counter >= m.ChallengerInfo.Time {
 		startFadeOut(m.ChallengerInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 		ch.endTimer = ch.counter + m.fadeOut.timeRemaining
 	}
@@ -3811,7 +4477,7 @@ func (co *MotifContinue) init(m *Motif) {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.continue_init", err.Error())
 	}
 
-	co.pn = 1 // TODO: Initialize pn appropriately
+	co.pn = sys.runLeaderSlot() + 1
 
 	// Extract and sort keys in descending order
 	co.counts = co.extractAndSortKeysDescending(m)
@@ -3960,10 +4626,10 @@ func (co *MotifContinue) step(m *Motif) {
 
 	if !co.selected {
 		if m.ContinueScreen.LegacyMode.Enabled {
-			if sys.uiRawInput(m.ContinueScreen.Move.Key, co.pn-1) {
+			if sys.menuAction(m.ContinueScreen.Move.Action, co.pn-1) {
 				m.Snd.play(m.ContinueScreen.Move.Snd, 100, 0, 0, 0, 0)
 				co.yesSide = !co.yesSide
-			} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) || sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
+			} else if sys.menuAction(m.ContinueScreen.Done.Action, co.pn-1) {
 				if !co.yesSide || co.canContinue() {
 					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
 					co.processSelection(m, co.yesSide)
@@ -3971,10 +4637,10 @@ func (co *MotifContinue) step(m *Motif) {
 			}
 		} else {
 			if co.counter < m.ContinueScreen.Counter.End.SkipTime {
-				if co.canContinue() && sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
+				if co.canContinue() && sys.menuAction(m.ContinueScreen.Done.Action, co.pn-1) {
 					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
 					co.processSelection(m, true)
-				} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) &&
+				} else if sys.menuAction(m.ContinueScreen.Cancel.Action, co.pn-1) &&
 					co.counter >= m.ContinueScreen.Counter.StartTime+m.ContinueScreen.Counter.SkipStart {
 					co.skipCounter(m)
 				}
@@ -4053,6 +4719,13 @@ func (co *MotifContinue) draw(m *Motif, layerno int16) {
 	if layerno == 2 {
 		m.ContinueBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	if !co.selected {
+		context := "default"
+		if !m.ContinueScreen.LegacyMode.Enabled {
+			context = "arcade"
+		}
+		m.ContinueScreen.Hint.draw(layerno, context, sys.playerGlyphDevice(co.pn-1))
+	}
 }
 
 type MotifDemo struct {
@@ -4087,7 +4760,7 @@ func (de *MotifDemo) init(m *Motif) {
 
 func (de *MotifDemo) step(m *Motif) {
 	if de.endTimer == -1 {
-		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.uiRawInput(m.DemoMode.Cancel.Key, -1))
+		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.menuAction(m.DemoMode.Cancel.Action, -1))
 		if de.counter == m.DemoMode.Fight.EndTime || cancel {
 			m.fadeIn.reset()
 			startFadeOut(m.DemoMode.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
@@ -4900,7 +5573,7 @@ func (di *MotifDialogue) step(m *Motif) {
 	}
 
 	// If user presses "cancel", end the dialogue
-	if sys.uiRawInput(m.DialogueInfo.Cancel.Key, -1) {
+	if sys.menuAction(m.DialogueInfo.Cancel.Action, -1) {
 		di.finish(m)
 		return
 	}
@@ -4943,9 +5616,9 @@ func (di *MotifDialogue) step(m *Motif) {
 	di.activeSide = currentLine.side
 	prevLineFullyRendered := di.lineFullyRendered
 
-	// Handle "skip" key (only after SkipTime)
+	// Handle "done" key (only after SkipTime)
 	if di.counter >= m.DialogueInfo.SkipTime {
-		if sys.uiRawInput(m.DialogueInfo.Skip.Key, -1) {
+		if sys.menuAction(m.DialogueInfo.Done.Action, -1) {
 			if !di.lineFullyRendered {
 				currentLine.typedCnt = utf8.RuneCountInString(currentLine.text)
 				di.lineFullyRendered = true
@@ -5179,6 +5852,126 @@ func (di *MotifDialogue) draw(m *Motif, layerno int16) {
 	} else if di.activeSide == 2 {
 		m.DialogueInfo.P2.Active.AnimData.Draw(layerno)
 	}
+	m.DialogueInfo.Hint.draw(layerno, "default", 0)
+}
+
+// Draw after scene fades in both refresh() and renderFrame(). All keyboard
+// elements use motif coordinates, including when opened over a paused match.
+func (t *TextInput) draw() {
+	if !t.active {
+		return
+	}
+	k := &sys.motif.KeyboardInfo
+	previous := sys.captureAspectState()
+	sys.restoreAspectState(sys.motifAspectState())
+	defer sys.restoreAspectState(previous)
+	if k.Text.Bg.RectData != nil {
+		sys.window.SetTextInputRect(k.Text.Bg.RectData.drawWindow())
+	}
+	for _, style := range []*KeyboardKeyProperties{&k.Key.KeyboardKeyProperties, &k.Key.Active, &k.Key.Pressed} {
+		if style.Bg.AnimData != nil {
+			style.Bg.AnimData.Update(false)
+		}
+	}
+	// Fit the box background around the whole key grid.
+	var boxFit [4]float32
+	hasBox := len(t.keys) > 0 && k.BoxBg.RectData != nil
+	if hasBox {
+		boxFit = t.keys[0].rect
+		for _, key := range t.keys {
+			boxFit[0] = Min(boxFit[0], key.rect[0])
+			boxFit[1] = Min(boxFit[1], key.rect[1])
+			boxFit[2] = Max(boxFit[2], key.rect[2])
+			boxFit[3] = Max(boxFit[3], key.rect[3])
+		}
+		// coords pads the fitted box outward: left, top, right, bottom.
+		boxFit[0] -= float32(k.BoxBg.Coords[0])
+		boxFit[1] -= float32(k.BoxBg.Coords[1])
+		boxFit[2] += float32(k.BoxBg.Coords[2])
+		boxFit[3] += float32(k.BoxBg.Coords[3])
+	}
+	for layer := int16(0); layer <= 2; layer++ {
+		k.Overlay.RectData.Draw(layer)
+		if hasBox {
+			box := *k.BoxBg.RectData
+			box.SetWindow(boxFit)
+			box.Draw(layer)
+		}
+		k.Text.Bg.RectData.Draw(layer)
+		if title := k.Title.TextSpriteData; title != nil {
+			title.text = t.title
+			title.Draw(layer)
+		}
+		if timer := k.Timer.TextSpriteData; timer != nil && t.time >= 0 {
+			timer.text = fmt.Sprintf(sys.motif.replaceFormatSpecifiers(k.Timer.Text), t.time)
+			timer.Draw(layer)
+		}
+		for i, key := range t.keys {
+			style := &k.Key.KeyboardKeyProperties
+			if i == t.selected {
+				style = &k.Key.Active
+			}
+			if i == t.pressed {
+				style = &k.Key.Pressed
+			}
+			r := key.rect
+			if style.BoxBg.Visible && style.BoxBg.RectData != nil {
+				box := *style.BoxBg.RectData
+				box.SetWindow(r)
+				box.Draw(layer)
+			}
+			if style.Bg.Anim >= 0 || style.Bg.Spr[0] >= 0 {
+				if a := style.Bg.AnimData.Copy(); a != nil {
+					a.SetPos(r[0]+style.Bg.Offset[0], r[1]+style.Bg.Offset[1])
+					a.Draw(layer)
+				}
+			}
+			if ts := style.TextSpriteData.Copy(); ts != nil {
+				name := strings.Trim(key.text, "{}")
+				label, ok := k.Key.Text[name]
+				if !ok {
+					label, ok = textInputCharacters[name]
+					if !ok {
+						label = key.text
+					}
+				}
+				ts.text = label
+				ts.AddPos((r[0]+r[2])/2, (r[1]+r[3])/2)
+				ts.Draw(layer)
+			}
+		}
+		t.drawValue(layer)
+		context := "default"
+		if t.keyboard {
+			context = "keyboard"
+		}
+		k.Hint.draw(layer, context, 0)
+	}
+}
+
+func (t *TextInput) drawValue(layer int16) {
+	k := &sys.motif.KeyboardInfo
+	ts := k.Text.TextSpriteData.Copy()
+	if ts == nil {
+		return
+	}
+	ts.literal = true
+	width := float32(k.Text.Window[2] - k.Text.Window[0])
+	if width <= 0 {
+		width = float32(k.Text.Localcoord[0]) - k.Text.Offset[0]*2
+	}
+	scale := ts.xscl / ts.localScale
+	t.scroll = Min(t.scroll, t.cursor)
+	for t.scroll < t.cursor && float32(ts.TextWidth(string(t.value[t.scroll:t.cursor])))*scale > width-8 {
+		t.scroll++
+	}
+	before := string(t.value[t.scroll:t.cursor])
+	ts.text = before + t.composition + string(t.value[t.cursor:])
+	ts.Draw(layer)
+	if cursor := k.Text.Cursor.TextSpriteData.Copy(); cursor != nil {
+		cursor.AddPos(k.Text.Offset[0]+float32(ts.TextWidth(before))*scale, k.Text.Offset[1])
+		cursor.Draw(layer)
+	}
 }
 
 type MotifHiscore struct {
@@ -5205,8 +5998,9 @@ type MotifHiscore struct {
 	nameUseActive2    bool
 
 	// Name entry & timer
+	controller  int   // controller index entering the name
+	letters     []int // 1-based indices into glyphs, for arcade entry
 	input       bool  // true while entering name
-	letters     []int // 1-based indices into glyph list
 	timerCount  int32 // remaining displayed timer count
 	timerFrames int32 // frames left until next decrement
 	haveSaved   bool  // true once we've persisted the entered name
@@ -5235,8 +6029,13 @@ type rankingRow struct {
 }
 
 func (hi *MotifHiscore) reset(m *Motif) {
+	if hi.input {
+		sys.textInput.finish(false)
+	}
 	hi.active = false
 	hi.initialized = false
+	hi.controller = 0
+	hi.letters = nil
 	hi.endTimer = -1
 	hi.counter = 0
 	hi.place = 0
@@ -5249,7 +6048,6 @@ func (hi *MotifHiscore) reset(m *Motif) {
 	hi.rankUseActive2, hi.resultUseActive2, hi.nameUseActive2 = false, false, false
 	hi.rows = nil
 	hi.input = false
-	hi.letters = nil
 	hi.timerCount = 0
 	hi.timerFrames = 0
 	hi.haveSaved = false
@@ -5293,10 +6091,6 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 	hi.noOverlay = noOverlay
 	// In netplay place 0 means only the other player placed, so enter a name in step too
 	hi.input = place > 0 || (place == 0 && sys.netplay())
-	if hi.input {
-		// Start with one letter selected
-		hi.letters = []int{1}
-	}
 
 	// Timer setup (only matters during input)
 	hi.timerCount = m.HiscoreInfo.Timer.Count
@@ -5470,16 +6264,8 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 				)))
 				rowYBase := baseY + itemOffY + stepY*float32(i)
 				ts.SetPos(rowXBase+m.HiscoreInfo.Item.Name.Offset[0], rowYBase+m.HiscoreInfo.Item.Name.Offset[1])
-				// If highlighted & input, start with glyph-based editable text; else use row.name from stats
-				if hi.input && int(hi.place-1) == i {
-					row.name = "" // TODO: this shouldn't be needed if we're appending new row
-					name := buildNameFromLetters(m, hi.letters)
-					fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
-					ts.text = fmt.Sprintf(fs, name)
-				} else {
-					fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
-					ts.text = fmt.Sprintf(fs, row.name)
-				}
+				fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
+				ts.text = fmt.Sprintf(fs, row.name)
 				if m.HiscoreInfo.Item.Name.Uppercase {
 					ts.text = strings.ToUpper(ts.text)
 				}
@@ -5502,18 +6288,11 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 		}
 	}
 
-	// Initialize timer TextSprite (position & first value)
-	if m.HiscoreInfo.Timer.TextSpriteData != nil {
-		m.HiscoreInfo.Timer.TextSpriteData.Reset()
-		m.HiscoreInfo.Timer.TextSpriteData.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])
-		ts := m.HiscoreInfo.Timer.Text
-		ts = m.replaceFormatSpecifiers(ts)
-		if hi.input && hi.timerCount >= 0 && m.HiscoreInfo.Timer.Count != -1 {
-			m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
-		} else {
-			// Leave text as-is if timer disabled
-			m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, 0)
-		}
+	// Arcade entry shows the countdown on this screen instead of the keyboard.
+	if ts := m.HiscoreInfo.Timer.TextSpriteData; ts != nil {
+		ts.Reset()
+		ts.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])
+		ts.text = fmt.Sprintf(m.replaceFormatSpecifiers(m.HiscoreInfo.Timer.Text), hi.timerCount)
 	}
 
 	m.HiscoreBgDef.BGDef.Reset()
@@ -5549,6 +6328,31 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 	//hi.counter = 0
 	hi.active = true
 	hi.initialized = true
+	hi.controller = sys.runSideIndex()
+	if hi.input {
+		hi.controller = sys.runLeaderSlot()
+	}
+	if hi.input && int(hi.place) <= len(hi.rows) {
+		row := &rankingRow{}
+		if hi.place > 0 {
+			row = &hi.rows[hi.place-1]
+		}
+		if hi.arcadeInput(m) {
+			hi.letters = []int{1}
+			m.setRowName(row, hi.arcadeName(m))
+		} else {
+			device := sys.participantMenuDevice(sys.inputRemap[hi.controller])
+			if err := sys.textInput.open(m.HiscoreInfo.TextInput.Text,
+				row.name, m.HiscoreInfo.TextInput.MaxLength, device); err != nil {
+				LogMessage("Unable to open name entry: %v", err)
+				hi.input = false
+			} else {
+				sys.textInput.time = hi.timerCount
+			}
+		}
+	} else {
+		hi.input = false
+	}
 }
 
 func (hi *MotifHiscore) step(m *Motif) {
@@ -5562,8 +6366,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 	// Begin fade-out on cancel or when time elapses.
 	if hi.endTimer == -1 {
-		cancel := sys.esc || sys.uiRawInput(m.HiscoreInfo.Cancel.Key, -1) ||
-			(!hi.input && sys.uiRawInput(m.HiscoreInfo.Done.Key, -1)) ||
+		cancel := !hi.input && (sys.esc || sys.menuAction(m.HiscoreInfo.Done.Action, -1)) ||
 			(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)
 		if cancel || (!hi.input && hi.counter == hi.endTime) {
 			if !hi.noFade {
@@ -5611,76 +6414,38 @@ func (hi *MotifHiscore) step(m *Motif) {
 				}
 				hi.timerFrames = m.HiscoreInfo.Timer.Framespercount
 			}
-			// Update timer text each step
-			if m.HiscoreInfo.Timer.TextSpriteData != nil {
-				ts := m.HiscoreInfo.Timer.Text
-				ts = m.replaceFormatSpecifiers(ts)
-				m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
+			if hi.arcadeInput(m) {
+				if ts := m.HiscoreInfo.Timer.TextSpriteData; ts != nil {
+					ts.text = fmt.Sprintf(m.replaceFormatSpecifiers(m.HiscoreInfo.Timer.Text), hi.timerCount)
+				}
+			} else {
+				sys.textInput.time = hi.timerCount
 			}
-			// When time runs out, auto-finish input
 			if hi.timerCount <= 0 {
-				m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-				hi.input = false
-				// Give a short tail
-				hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
-				hi.finalizeAndSave()
+				if hi.arcadeInput(m) {
+					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+					hi.finishInput(m)
+				} else {
+					sys.textInput.finish(true)
+				}
 			}
 		}
-
-		// Handle name glyph entry while input is active
-		if hi.input {
-			controller := -1 // TODO: proper controller
-			maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
-			glyphCount := len(m.HiscoreInfo.Glyphs)
-			// Previous glyph
-			if sys.uiRawInput(m.HiscoreInfo.Previous.Key, controller) {
-				m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-				if len(hi.letters) == 0 {
-					hi.letters = []int{1}
-				} else {
-					last := len(hi.letters) - 1
-					hi.letters[last]--
-					if hi.letters[last] <= 0 {
-						hi.letters[last] = glyphCount
+		if hi.input && hi.arcadeInput(m) {
+			hi.stepArcadeInput(m, row)
+		} else if hi.input {
+			sys.textInput.step()
+			m.setRowName(row, string(sys.textInput.value))
+			if !sys.textInput.active {
+				hi.input = false
+				hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+				if sys.textInput.closedByAction {
+					sound := m.KeyboardInfo.Cancel.Snd
+					if sys.textInput.accepted {
+						sound = m.KeyboardInfo.Done.Snd
 					}
+					m.Snd.play(sound, 100, 0, 0, 0, 0)
 				}
-				updateRowNameFromLetters(m, row, hi.letters)
-				// Next glyph
-			} else if sys.uiRawInput(m.HiscoreInfo.Next.Key, controller) {
-				m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-				if len(hi.letters) == 0 {
-					hi.letters = []int{1}
-				} else {
-					last := len(hi.letters) - 1
-					hi.letters[last]++
-					if hi.letters[last] > glyphCount {
-						hi.letters[last] = 1
-					}
-				}
-				updateRowNameFromLetters(m, row, hi.letters)
-				// Confirm / Add / Backspace
-			} else if sys.uiRawInput(m.HiscoreInfo.Done.Key, controller) {
-				// Current glyph meaning
-				curGlyph := currentGlyph(m, hi.letters)
-				if curGlyph == "<" {
-					// Backspace
-					m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
-					if len(hi.letters) > 1 {
-						hi.letters = hi.letters[:len(hi.letters)-1]
-					} else {
-						hi.letters = []int{1}
-					}
-					updateRowNameFromLetters(m, row, hi.letters)
-				} else if len(hi.letters) < maxLen {
-					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-					lastIdx := hi.letters[len(hi.letters)-1]
-					hi.letters = append(hi.letters, lastIdx)
-					updateRowNameFromLetters(m, row, hi.letters)
-				} else {
-					// Finalize
-					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-					hi.input = false
-					hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+				if sys.textInput.accepted {
 					hi.finalizeAndSave()
 				}
 			}
@@ -5698,6 +6463,82 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 
 	hi.counter++
+}
+
+// The on-screen keyboard reads local devices, so netplay and replays use arcade entry,
+// which reads the synchronized menu input of the player entering the name.
+func (hi *MotifHiscore) arcadeInput(m *Motif) bool {
+	return m.HiscoreInfo.ArcadeInput.Enabled || sys.netplay()
+}
+
+// Arcade name entry for cabinets without a keyboard: up/down change the letter,
+// a button accepts it. "<" deletes, ">" adds a space.
+func (hi *MotifHiscore) stepArcadeInput(m *Motif, row *rankingRow) {
+	count := len(m.HiscoreInfo.Glyphs)
+	if count == 0 {
+		return
+	}
+	if len(hi.letters) == 0 {
+		hi.letters = []int{1}
+	}
+	last := len(hi.letters) - 1
+	switch {
+	case sys.menuAction(m.HiscoreInfo.Previous.Action, hi.controller):
+		m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+		hi.letters[last]--
+		if hi.letters[last] <= 0 {
+			hi.letters[last] = count
+		}
+	case sys.menuAction(m.HiscoreInfo.Next.Action, hi.controller):
+		m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+		hi.letters[last]++
+		if hi.letters[last] > count {
+			hi.letters[last] = 1
+		}
+	case sys.menuAction(m.HiscoreInfo.Done.Action, hi.controller):
+		if m.HiscoreInfo.Glyphs[hi.letters[last]-1] == "<" {
+			m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
+			if len(hi.letters) > 1 {
+				hi.letters = hi.letters[:last]
+			} else {
+				hi.letters[0] = 1
+			}
+		} else if len(hi.letters) < m.HiscoreInfo.TextInput.MaxLength {
+			m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+			hi.letters = append(hi.letters, hi.letters[last])
+		} else {
+			m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+			m.setRowName(row, hi.arcadeName(m))
+			hi.finishInput(m)
+			return
+		}
+	default:
+		return
+	}
+	m.setRowName(row, hi.arcadeName(m))
+}
+
+// Turns the selected glyph indices into the name being entered.
+func (hi *MotifHiscore) arcadeName(m *Motif) string {
+	var name strings.Builder
+	for _, index := range hi.letters {
+		if index <= 0 || index > len(m.HiscoreInfo.Glyphs) {
+			continue
+		}
+		glyph := m.HiscoreInfo.Glyphs[index-1]
+		if glyph == ">" {
+			glyph = " "
+		}
+		name.WriteString(glyph)
+	}
+	return name.String()
+}
+
+// Ends name entry and gives the screen a short tail before it closes.
+func (hi *MotifHiscore) finishInput(m *Motif) {
+	hi.input = false
+	hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+	hi.finalizeAndSave()
 }
 
 func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
@@ -5764,14 +6605,21 @@ func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
 		}
 	}
 
-	// Timer (only when enabled & during input)
-	if m.HiscoreInfo.Timer.Count != -1 && hi.input && m.HiscoreInfo.Timer.TextSpriteData != nil {
-		m.HiscoreInfo.Timer.TextSpriteData.Draw(layerno)
-	}
 	// Top background
 	if !hi.noBgs && layerno == 2 {
 		m.HiscoreBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	if hi.input && hi.arcadeInput(m) && m.HiscoreInfo.Timer.Count != -1 {
+		m.HiscoreInfo.Timer.TextSpriteData.Draw(layerno)
+	}
+	context, device := "default", 0
+	if hi.input {
+		if !hi.arcadeInput(m) {
+			return
+		}
+		context, device = "input", sys.playerGlyphDevice(hi.controller)
+	}
+	m.HiscoreInfo.Hint.draw(layerno, context, device)
 }
 
 func (hi *MotifHiscore) finalizeAndSave() {
@@ -5934,49 +6782,8 @@ func parseRankingRows(path, mode string) []rankingRow {
 	return out
 }
 
-func initialsWidth(fmtStr string) int {
-	// Extract %<N>s (default 3)
-	re := regexp.MustCompile(`%([0-9]+)s`)
-	m := re.FindStringSubmatch(fmtStr)
-	if len(m) >= 2 {
-		if n := Atoi(m[1]); n > 0 {
-			return int(n)
-		}
-	}
-	return 3
-}
-
-// currentGlyph returns current glyph character for the active letter slot.
-func currentGlyph(mo *Motif, letters []int) string {
-	if len(letters) == 0 {
-		return ""
-	}
-	idx := letters[len(letters)-1] // 1-based
-	if idx <= 0 || idx > len(mo.HiscoreInfo.Glyphs) {
-		return ""
-	}
-	return mo.HiscoreInfo.Glyphs[idx-1]
-}
-
-// buildNameFromLetters converts indices into the configured glyph table.
-func buildNameFromLetters(mo *Motif, letters []int) string {
-	var b strings.Builder
-	for _, i := range letters {
-		if i <= 0 || i > len(mo.HiscoreInfo.Glyphs) {
-			continue
-		}
-		ch := mo.HiscoreInfo.Glyphs[i-1]
-		if ch == ">" {
-			ch = " "
-		}
-		b.WriteString(ch)
-	}
-	return b.String()
-}
-
-// updateRowNameFromLetters updates row text sprites (normal + active variants) from letters.
-func updateRowNameFromLetters(mo *Motif, row *rankingRow, letters []int) {
-	name := buildNameFromLetters(mo, letters)
+// Refresh the ranking row while the shared keyboard edits its name.
+func (mo *Motif) setRowName(row *rankingRow, name string) {
 	if mo.HiscoreInfo.Item.Name.Uppercase {
 		name = strings.ToUpper(name)
 	}
@@ -6004,6 +6811,8 @@ type MotifVictory struct {
 	lineFullyRendered bool
 	charDelayCounter  int32
 	typedCnt          int
+	back              bool // cancel goes back to the select screen
+	seamless          bool // ended without a fade out because [Rematch Info] follows
 }
 
 // victoryEntry represents one slot to render on the victory screen
@@ -6023,6 +6832,8 @@ func (vi *MotifVictory) reset(m *Motif) {
 	vi.lineFullyRendered = false
 	vi.charDelayCounter = 0
 	vi.typedCnt = 0
+	vi.back = false
+	vi.seamless = false
 	// Victory screen uses its own typewriter logic, so disable the internal TextSprite typing.
 	m.VictoryScreen.WinQuote.TextSpriteData.textDelay = 0
 	vi.endTimer = -1
@@ -6272,9 +7083,16 @@ func (vi *MotifVictory) isEnabled() bool {
 	return vi.enabled
 }
 
+func (vi *MotifVictory) startFadeOut(m *Motif) {
+	if vi.endTimer < 0 {
+		startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
+		vi.endTimer = vi.counter + m.fadeOut.timeRemaining
+	}
+}
+
 func (vi *MotifVictory) init(m *Motif) {
 	if !m.VictoryScreen.Enabled || !vi.isEnabled() || sys.winnerTeam() < 1 ||
-		(sys.winnerTeam() == 2 && !m.VictoryScreen.Cpu.Enabled) ||
+		(sys.aiLevel[sys.winnerTeam()-1] > 0 && !m.VictoryScreen.Cpu.Enabled) ||
 		((sys.gameMode == "versus" || sys.gameMode == "netplayversus") && !m.VictoryScreen.Vs.Enabled) {
 		vi.initialized = true
 		return
@@ -6390,8 +7208,8 @@ func (vi *MotifVictory) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.victory", err.Error())
 		}
 	}
-	cancelPressed := sys.esc || sys.uiRawInput(m.VictoryScreen.Cancel.Key, -1)
-	skipPressed := sys.uiRawInput(m.VictoryScreen.Skip.Key, -1)
+	cancelPressed := sys.esc || sys.menuAction(m.VictoryScreen.Cancel.Action, -1)
+	skipPressed := sys.menuAction(m.VictoryScreen.Done.Action, -1)
 	prevLineFullyRendered := vi.lineFullyRendered
 
 	m.VictoryScreen.P1.AnimData.Update(false)
@@ -6453,13 +7271,21 @@ func (vi *MotifVictory) step(m *Motif) {
 	m.VictoryScreen.WinQuote.TextSpriteData.Update()
 
 	// Decide when to start fadeout: Cancel key / Skip key / Time limit
-	if vi.endTimer == -1 {
-		userInterrupt := cancelPressed || (skipPressed && prevLineFullyRendered)
+	// Cancel goes back to the select screen.
+	if vi.endTimer == -1 && cancelPressed {
+		vi.back = true
+		vi.startFadeOut(m)
+	} else if vi.endTimer == -1 {
+		userInterrupt := skipPressed && prevLineFullyRendered
 		timeUp := vi.lineFullyRendered && vi.counter >= m.VictoryScreen.Time
 
 		if userInterrupt || timeUp {
-			startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
-			vi.endTimer = vi.counter + m.fadeOut.timeRemaining
+			if !m.VictoryScreen.Rematch.FadeOut && m.re.rematchPlayer(m) > 0 {
+				vi.seamless = true
+				vi.endTimer = vi.counter
+			} else {
+				vi.startFadeOut(m)
+			}
 		}
 	}
 
@@ -6469,8 +7295,17 @@ func (vi *MotifVictory) step(m *Motif) {
 			m.fadeOut.reset()
 		}
 		vi.active = false
+		if vi.back {
+			if err := sys.luaLState.DoString("start.characterchange = true"); err != nil {
+				sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
+			}
+		}
 		if !m.VictoryScreen.Sounds.Enabled {
 			sys.noCharSoundFlg = false
+		}
+		// Start [Rematch Info] now, so no frame passes without either screen.
+		if vi.seamless {
+			m.re.init(m)
 		}
 		return
 	}
@@ -6535,6 +7370,246 @@ func (vi *MotifVictory) draw(m *Motif, layerno int16) {
 	// Top background
 	if layerno == 2 {
 		m.VictoryBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
+	}
+	m.VictoryScreen.Hint.draw(layerno, "default", 0)
+}
+
+type MotifRematch struct {
+	active      bool
+	initialized bool
+	counter     int32
+	endTimer    int32
+	player      int  // 1-based player who controls the menu
+	seamless    bool // continues the victory screen without fades or restarts
+}
+
+func (re *MotifRematch) slots(m *Motif) [8]*PlayerRematchProperties {
+	ri := &m.RematchInfo
+	return [8]*PlayerRematchProperties{&ri.P1, &ri.P2, &ri.P3, &ri.P4, &ri.P5, &ri.P6, &ri.P7, &ri.P8}
+}
+
+func (re *MotifRematch) reset(m *Motif) {
+	re.active = false
+	re.initialized = false
+	re.counter = 0
+	re.endTimer = -1
+	re.player = 0
+	re.seamless = false
+	for _, p := range re.slots(m) {
+		m.vi.clearProps(&p.PlayerVictoryProperties)
+	}
+}
+
+// The human player who controls the rematch menu, preferring the losing side, or 0 if the screen is skipped.
+func (re *MotifRematch) rematchPlayer(m *Motif) int {
+	if !m.RematchInfo.Enabled || sys.sel.gameParams == nil || !sys.sel.gameParams.VersusResults || sys.winnerTeam() < 0 {
+		return 0
+	}
+	human := func(pn, side int) int {
+		if pn >= 0 && pn < len(sys.chars) && len(sys.chars[pn]) > 0 {
+			c := sys.chars[pn][0]
+			if int(c.teamside) == side && c.controller >= 0 && c.getAILevel() == 0 {
+				return c.controller + 1
+			}
+		}
+		return 0
+	}
+	side := 0
+	if sys.winnerTeam() == 1 {
+		side = 1
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if player := human(sys.teamLeader[side], side); player > 0 {
+			return player
+		}
+		for pn := side; pn < MaxPlayerNo; pn += 2 {
+			if player := human(pn, side); player > 0 {
+				return player
+			}
+		}
+		side ^= 1
+	}
+	return 0
+}
+
+// True if the screenpack sets [Rematch Info] portrait parameters, rather than inheriting them from [Victory Screen].
+func (re *MotifRematch) slotsOverridden(m *Motif) bool {
+	sec, err := m.UserIniFile.GetSection("Rematch Info")
+	if err != nil || sec == nil {
+		return false
+	}
+	own := regexp.MustCompile(`^p[1-8]\.(bg|title|wins|winstreak|winrate)\.`)
+	for _, k := range sec.Keys() {
+		name := strings.ToLower(k.Name())
+		// Values inherited from a user [Victory Screen] are copied here too.
+		if m.inheritedKeys["rematch_info."+name] {
+			continue
+		}
+		if strings.HasPrefix(name, "keepside.") || strings.HasPrefix(name, "winner.") {
+			return true
+		}
+		if len(name) > 3 && name[0] == 'p' && name[1] >= '1' && name[1] <= '8' && name[2] == '.' && !own.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (re *MotifRematch) init(m *Motif) {
+	re.initialized = true
+	re.player = re.rematchPlayer(m)
+	if re.player == 0 || m.vi.back {
+		return
+	}
+	re.seamless = m.vi.seamless
+	slots := re.slots(m)
+	if re.seamless && !re.slotsOverridden(m) {
+		// Same portraits as the victory screen: keep their animations and character states running.
+		vs := []*PlayerVictoryProperties{&m.VictoryScreen.P1, &m.VictoryScreen.P2, &m.VictoryScreen.P3, &m.VictoryScreen.P4,
+			&m.VictoryScreen.P5, &m.VictoryScreen.P6, &m.VictoryScreen.P7, &m.VictoryScreen.P8}
+		for i, p := range slots {
+			p.AnimData = vs[i].AnimData
+			p.Face2.AnimData = vs[i].Face2.AnimData
+		}
+	} else {
+		re.initSlots(m, slots)
+	}
+	for side, p := range []*PlayerRematchProperties{&m.RematchInfo.P1, &m.RematchInfo.P2} {
+		p.Bg.AnimData.Reset()
+		outcome := "lose"
+		if sys.winnerTeam() == 0 {
+			outcome = "draw"
+		} else if int(sys.winnerTeam()) == side+1 {
+			outcome = "win"
+		}
+		p.Title.TextSpriteData.text = p.Title.Text[outcome]
+		p.Wins.Value.TextSpriteData.text = m.sprintf(p.Wins.Value.Text, sys.versusStats.Wins[side])
+		p.WinStreak.Value.TextSpriteData.text = m.sprintf(p.WinStreak.Value.Text, sys.versusStats.Streak[side])
+		rate := 100 * float64(sys.versusStats.Wins[side]) / float64(Max(1, sys.versusStats.Matches))
+		p.WinRate.Value.TextSpriteData.text = m.sprintf(p.WinRate.Value.Text, rate)
+	}
+	// A shared background keeps running from the victory screen.
+	if !re.seamless || m.RematchBgDef.BGDef != m.VictoryBgDef.BGDef {
+		m.RematchBgDef.BGDef.Reset()
+	}
+	if !re.seamless {
+		m.RematchInfo.FadeIn.FadeData.init(m.fadeIn, true)
+	}
+	sys.esc = false
+	sys.menuPlayer = re.player
+	re.counter = 0
+	re.endTimer = -1
+	re.active = true
+}
+
+// Builds the portraits the same way as the victory screen, from the [Rematch Info] parameters.
+func (re *MotifRematch) initSlots(m *Motif, slots [8]*PlayerRematchProperties) {
+	ri := &m.RematchInfo
+	winnerSide := int(Max(0, sys.winnerTeam()-1))
+	wEntries := m.vi.buildSideOrder(winnerSide, ri.Winner.TeamKo.Enabled, int(Clamp(ri.P1.Num, 0, 4)))
+	lEntries := m.vi.buildSideOrder(winnerSide^1, true, int(Clamp(ri.P2.Num, 0, 4)))
+	wSlots := []*PlayerVictoryProperties{&slots[0].PlayerVictoryProperties, &slots[2].PlayerVictoryProperties,
+		&slots[4].PlayerVictoryProperties, &slots[6].PlayerVictoryProperties}
+	lSlots := []*PlayerVictoryProperties{&slots[1].PlayerVictoryProperties, &slots[3].PlayerVictoryProperties,
+		&slots[5].PlayerVictoryProperties, &slots[7].PlayerVictoryProperties}
+	wNames := []string{"P1", "P3", "P5", "P7"}
+	lNames := []string{"P2", "P4", "P6", "P8"}
+	if ri.KeepSide.Enabled && sys.winnerTeam() == 2 {
+		wSlots, lSlots = lSlots, wSlots
+	}
+	for i := 0; i < len(wEntries) && i < len(wSlots); i++ {
+		m.vi.applyEntry(m, wSlots[i], wEntries[i], wNames[i], false)
+	}
+	for i := 0; i < len(lEntries) && i < len(lSlots); i++ {
+		m.vi.applyEntry(m, lSlots[i], lEntries[i], lNames[i], true)
+	}
+	odd := [4][]int32{ri.P1.State, ri.P3.State, ri.P5.State, ri.P7.State}
+	even := [4][]int32{ri.P2.State, ri.P4.State, ri.P6.State, ri.P8.State}
+	if sys.winnerTeam() == 1 {
+		m.processStateTransitions(odd, even)
+	} else if sys.winnerTeam() == 2 {
+		m.processStateTransitions(even, odd)
+	}
+}
+
+func (re *MotifRematch) startFadeOut(m *Motif) {
+	if re.endTimer < 0 {
+		startFadeOut(m.RematchInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
+		re.endTimer = re.counter + m.fadeOut.timeRemaining
+	}
+}
+
+func (re *MotifRematch) step(m *Motif) {
+	m.RematchBgDef.BGDef.step()
+	for _, p := range re.slots(m) {
+		p.AnimData.Update(false)
+		p.Face2.AnimData.Update(false)
+	}
+	m.RematchInfo.P1.Bg.AnimData.Update(false)
+	m.RematchInfo.P2.Bg.AnimData.Update(false)
+	// The menu opens after time frames.
+	if !m.me.rematch && re.endTimer == -1 && re.counter >= m.RematchInfo.Time {
+		m.me.startRematch(m, re.player)
+	}
+	if re.endTimer != -1 && re.counter >= re.endTimer {
+		if m.fadeOut != nil {
+			m.fadeOut.reset()
+		}
+		re.active = false
+		if m.me.rematch {
+			m.me.reset(m)
+		}
+		sys.menuPlayer = 0
+		return
+	}
+	re.counter++
+}
+
+func (re *MotifRematch) draw(m *Motif, layerno int16) {
+	type slotRef struct {
+		idx   int
+		p     *PlayerRematchProperties
+		order int32
+	}
+	var slots []slotRef
+	for i, p := range re.slots(m) {
+		slots = append(slots, slotRef{i, p, p.DrawOrder})
+	}
+	sort.SliceStable(slots, func(i, j int) bool {
+		if slots[i].order == slots[j].order {
+			return slots[i].idx < slots[j].idx
+		}
+		return slots[i].order < slots[j].order
+	})
+	// Background
+	if m.RematchBgDef.BgClearColor[0] >= 0 {
+		m.RematchBgDef.RectData.Draw(layerno)
+	}
+	if layerno <= 1 {
+		m.RematchBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
+	}
+	// Face2 portraits
+	for _, s := range slots {
+		s.p.Face2.AnimData.Draw(layerno)
+	}
+	// Face portraits
+	for _, s := range slots {
+		s.p.AnimData.Draw(layerno)
+	}
+	// Overlay
+	m.RematchInfo.Overlay.RectData.Draw(layerno)
+	// Versus stats
+	for _, p := range []*PlayerRematchProperties{&m.RematchInfo.P1, &m.RematchInfo.P2} {
+		p.Bg.AnimData.Draw(layerno)
+		p.Title.TextSpriteData.Draw(layerno)
+		for _, stat := range []*VersusResultStatProperties{&p.Wins, &p.WinStreak, &p.WinRate} {
+			stat.TextSpriteData.Draw(layerno)
+			stat.Value.TextSpriteData.Draw(layerno)
+		}
+	}
+	// Top background
+	if layerno == 2 {
+		m.RematchBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
 }
 
@@ -6727,7 +7802,7 @@ type MotifWin struct {
 	soundsEnabled bool
 	fadeOutTime   int32
 	time          int32
-	keyCancel     []string
+	keyDone       []string
 	p1States      [4][]int32
 	p2States      [4][]int32
 	stateTime     int32
@@ -6741,6 +7816,9 @@ type MotifWin struct {
 
 // Assign state data to MotifWin
 func (wi *MotifWin) assignStates(p1States, p2States [4][]int32) {
+	if sys.runSideIndex() == 1 {
+		p1States, p2States = p2States, p1States
+	}
 	wi.p1States = p1States
 	wi.p2States = p2States
 }
@@ -6882,11 +7960,11 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 			// Total score for P1 side:
 			sc := int32(0)
 			if len(sys.scoreStart) > 0 {
-				sc = int32(sys.scoreStart[0])
+				sc = int32(sys.scoreStart[sys.runSideIndex()])
 			}
 			for _, v := range sys.scoreRounds {
 				if len(v) > 0 {
-					sc += int32(v[0])
+					sc += int32(v[sys.runSideIndex()])
 				}
 			}
 			rs.WinsText.TextSpriteData.text = fmt.Sprintf(fs, sc)
@@ -6915,7 +7993,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 
 	wi.stateTime = rs.State.Time
 	wi.soundsEnabled = rs.Sounds.Enabled
-	wi.keyCancel = rs.Cancel.Key
+	wi.keyDone = rs.Done.Action
 	wi.time = rs.Show.Time
 	wi.fadeOutTime = rs.FadeOut.FadeData.duration()
 	wi.fadeIn = rs.FadeIn.FadeData
@@ -6925,7 +8003,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 
 // Handle win screen mode initialization
 func (wi *MotifWin) initWinScreen(m *Motif) bool {
-	if sys.home != 1 || !m.WinScreen.Enabled {
+	if !m.WinScreen.Enabled {
 		return false
 	}
 
@@ -6942,7 +8020,7 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 	wi.stateTime = m.WinScreen.State.Time
 	wi.soundsEnabled = m.WinScreen.Sounds.Enabled
 
-	wi.keyCancel = m.WinScreen.Cancel.Key
+	wi.keyDone = m.WinScreen.Done.Action
 	wi.time = m.WinScreen.Pose.Time
 	wi.fadeOutTime = m.WinScreen.FadeOut.FadeData.duration()
 	wi.fadeIn = m.WinScreen.FadeIn.FadeData
@@ -6965,8 +8043,8 @@ func (wi *MotifWin) step(m *Motif) {
 		}
 	}
 	if wi.endTimer == -1 {
-		cancel := sys.esc || sys.uiRawInput(wi.keyCancel, -1)
-		if cancel || wi.counter == wi.time {
+		done := sys.esc || sys.menuAction(wi.keyDone, -1)
+		if done || wi.counter == wi.time {
 			startFadeOut(wi.fadeOut, m.fadeOut, false, m.fadePolicy)
 			wi.endTimer = wi.counter + m.fadeOut.timeRemaining
 		}
@@ -7020,6 +8098,7 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 		if bg != nil && bg.BGDef != nil && layerno == 2 {
 			bg.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
+		rs.Hint.draw(layerno, "default", 0)
 		return
 	}
 	// Fallback: normal win screen.
@@ -7041,4 +8120,5 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 			m.WinBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
 	}
+	m.WinScreen.Hint.draw(layerno, "default", 0)
 }

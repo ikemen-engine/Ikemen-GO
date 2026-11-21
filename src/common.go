@@ -1390,13 +1390,18 @@ func (l *Layout) Read(pre string, is IniSection) {
 		l.window[2] -= l.window[0]
 		l.window[3] -= l.window[1]
 	} else {
-		l.window = sys.scrrect
+		// Zero means no authored clipping window. Do not snapshot the
+		// current screen size; layouts survive video resolution changes.
+		l.window = [4]int32{}
 	}
 }
 
 // Calculates the fight screen window local coordinates into real screen pixels,
 // taking the FightAspect ratio into account
 func (l *Layout) calcLBRect(window [4]int32) [4]int32 {
+	if window == [4]int32{} {
+		return sys.scrrect
+	}
 	if window[2] == sys.scrrect[2] && window[3] == sys.scrrect[3] {
 		return sys.scrrect
 	}
@@ -1493,14 +1498,18 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		if l.vfacing < 0 {
 			y += sys.fightScreen.fnt_scale
 		}
-		// Xshear offset correction
-		xshear := -l.xshear
-		xsoffset := xshear * (float32(f.offset[1]) * l.scale[1] * scl)
-
-		f.Print(text, (x+l.offset[0]-xsoffset)*scl, (y+l.offset[1])*scl,
-			l.scale[0]*sys.fightScreen.fnt_scale*float32(l.facing)*scl,
-			l.scale[1]*sys.fightScreen.fnt_scale*float32(l.vfacing)*scl, xshear, l.rot,
-			int32(l.projection), l.fLength, b, a, drawwindow, palfx, frgba)
+		if sys.frameSkip {
+			return
+		}
+		if a == -1 {
+			x -= 1
+		}
+		ts := TextSprite{fnt: f, x: (x + l.offset[0]) * scl, y: (y + l.offset[1]) * scl,
+			xscl: l.scale[0] * sys.fightScreen.fnt_scale * float32(l.facing) * scl,
+			yscl: l.scale[1] * sys.fightScreen.fnt_scale * float32(l.vfacing) * scl,
+			xshear: l.xshear, rot: l.rot, projection: int32(l.projection), fLength: l.fLength,
+			bank: b, align: a, palfx: palfx, frgba: frgba, trans: TT_default, alpha: [2]int32{255, 0}, localScale: scl}
+		ts.drawGlyphText(text, *drawwindow)
 	}
 }
 
