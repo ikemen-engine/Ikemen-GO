@@ -673,7 +673,7 @@ func (c *CharCompiler) operator(in *string) error {
 			if opp < 0 || ((!c.reverseOrder || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error("Invalid data: " + c.previousOperator)
+				return Error("Unexpected operator: " + c.previousOperator)
 			}
 			*in = c.token + " " + *in
 			c.token = c.previousOperator
@@ -1772,7 +1772,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error("Invalid data: " + c.token)
+				return bvNone(), Error("Invalid number: " + c.token)
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -5578,7 +5578,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.previousOperator) > 0 {
-			return bvNone(), Error("Invalid data: " + c.token)
+			return bvNone(), Error("Unexpected operator: " + c.token)
 		}
 		if rd {
 			//out.append(OC_rdreset)
@@ -5667,7 +5667,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error("Invalid data: " + c.token)
+			return bvNone(), Error("Unexpected token: " + c.token)
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -6161,7 +6161,7 @@ func (c *CharCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, err
 	}
 	if len(c.token) > 0 {
 		if c.token != "," {
-			return nil, Error("Invalid data: " + c.token)
+			return nil, Error("Unexpected '" + c.token + "' after end of expression")
 		}
 		oldin := *in
 		if c.tokenizer(in) == "" {
@@ -6179,7 +6179,7 @@ func (c *CharCompiler) fullExpression(in *string, vt ValueType) (BytecodeExp, er
 		return nil, err
 	}
 	if len(c.token) > 0 {
-		return nil, Error("Invalid data: " + c.token)
+		return nil, Error("Unexpected '" + c.token + "' after end of expression")
 	}
 	return be, nil
 }
