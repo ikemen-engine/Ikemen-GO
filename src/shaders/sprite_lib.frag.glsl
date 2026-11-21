@@ -20,6 +20,7 @@
 		vec2 iResolution;
 		float aspectRatio;
 		float sTime;
+		bool supersample; // last, so older custom shaders keep their layout
 	};
 	layout(push_constant, std430) uniform u {
 		vec4 spriteUV;
@@ -59,6 +60,7 @@
 	uniform vec4 tex1UV, tex2UV;
 	uniform float param[16];
 	uniform sampler2D tex1, tex2;
+	uniform bool supersample;
 	COMPAT_VARYING vec2 texcoord;
 #endif
 
@@ -91,6 +93,30 @@ vec2 ikemenSpriteUV() {
 	return (texcoord - spriteUV.xy) / (spriteUV.zw - spriteUV.xy);
 }
 
+// RGBA sample for sprites drawn far below their size: averages up to 4x4 taps
+// over the pixel, since atlas textures have no mipmaps.
+vec4 ikemenSampleRgba(vec2 atlasUV) {
+	vec2 dx = dFdx(atlasUV);
+	vec2 dy = dFdy(atlasUV);
+	vec2 texSize = vec2(textureSize(tex, 0));
+	float footprint = max(length(dx * texSize), length(dy * texSize)); // texels per pixel
+	if (footprint <= 1.5) {
+		return textureLod(tex, atlasUV, 0.0);
+	}
+	int n = int(min(ceil(footprint), 4.0));
+	vec4 sum = vec4(0.0);
+	for (int j = 0; j < 4; j++) {
+		if (j >= n) break;
+		for (int i = 0; i < 4; i++) {
+			if (i >= n) break;
+			vec2 o = (vec2(float(i), float(j)) + 0.5) / float(n) - 0.5;
+			vec2 p = clamp(atlasUV + dx * o.x + dy * o.y, spriteUV.xy, spriteUV.zw - 0.0001);
+			sum += textureLod(tex, p, 0.0);
+		}
+	}
+	return sum / float(n * n);
+}
+
 // The engine's sprite color at a sprite-local coordinate
 vec4 ikemenSpriteColor(vec2 uv) {
 	vec4 c;
@@ -119,7 +145,12 @@ vec4 ikemenSpriteColor(vec2 uv) {
 		// Map into the sprite's atlas area, clamped so sampling can't reach neighboring sprites
 		vec2 atlasUV = mix(spriteUV.xy, spriteUV.zw, uv);
 		atlasUV = clamp(atlasUV, spriteUV.xy, spriteUV.zw - 0.0001);
-		c = COMPAT_TEXTURE(tex, atlasUV);
+		// Palette indices can't be averaged, so only RGBA sprites supersample
+		if (isRgba && !isTrapez && supersample) {
+			c = ikemenSampleRgba(atlasUV);
+		} else {
+			c = COMPAT_TEXTURE(tex, atlasUV);
+		}
 
 		// Select with or without palette
 		if (isRgba) {

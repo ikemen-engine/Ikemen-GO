@@ -1959,6 +1959,8 @@ type VulkanSpriteProgramFragUniformBufferObject struct {
 	iResolution                   [2]float32 // 8 bytes
 	aspectRatio                   float32
 	sTime                         float32 // 4 bytes
+	supersample                   uint32
+	_padding2                     [3]uint32 // keeps the size a multiple of 16
 }
 
 type VulkanLightUniform struct {
@@ -7626,6 +7628,8 @@ func (r *Renderer_VK) SetUniformI(name string, value int) {
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.neg = uint32(value)
 	case "mask":
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.mask = int32(value)
+	case "supersample":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.supersample = uint32(value)
 	}
 }
 

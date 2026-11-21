@@ -156,6 +156,7 @@ type Config struct {
 		Fullscreen                bool     `ini:"Fullscreen"`
 		Borderless                bool     `ini:"Borderless"`
 		RGBSpriteBilinearFilter   bool     `ini:"RGBSpriteBilinearFilter"`
+		RGBSpriteSupersample      bool     `ini:"RGBSpriteSupersample"`
 		MSAA                      int32    `ini:"MSAA"`
 		WindowCentered            bool     `ini:"WindowCentered"`
 		ExternalShaders           []string `ini:"ExternalShaders"`
