@@ -1276,6 +1276,7 @@ const (
 	OC_ex3_animloopcount
 	OC_ex3_animprefix
 	OC_ex3_inrunstate
+	OC_ex3_bindid
 )
 
 type StringPool struct {
@@ -3509,7 +3510,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_guarded:
 		sys.bcStack.PushB(c.ghv.guarded)
 	case OC_ex_gethitvar_isbound:
-		sys.bcStack.PushB(c.isTargetBound())
+		sys.bcStack.PushB(c.targetBinder() != nil)
 	case OC_ex_gethitvar_fall:
 		sys.bcStack.PushB(c.ghv.fallflag)
 	case OC_ex_gethitvar_fall_damage:
@@ -4936,6 +4937,8 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex3_inrunstate:
 		sys.bcStack.PushB(c.inRunState)
+	case OC_ex3_bindid:
+		sys.bcStack.PushI(c.bindTo.id)
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")
@@ -6376,20 +6379,20 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*redirscale
 			crun.setPosX(x, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = x
+			if _, bp := crun.bindOnAxis(0); bp != nil {
+				bp.posAdd[0] = x
 			}
 		case posSet_y:
 			y := exp[0].evalF(c)*redirscale + crun.groundLevel + crun.platformPosY
 			crun.setPosY(y, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[1])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[1] = y
+			if _, bp := crun.bindOnAxis(1); bp != nil {
+				bp.posAdd[1] = y
 			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.setPosZ(z, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[2])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[2] = z
+			if _, bp := crun.bindOnAxis(2); bp != nil {
+				bp.posAdd[2] = z
 			}
 		}
 		return true
@@ -6412,20 +6415,20 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := exp[0].evalF(c) * redirscale
 			crun.addX(x)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = x
+			if _, bp := crun.bindOnAxis(0); bp != nil {
+				bp.posAdd[0] = x
 			}
 		case posSet_y:
 			y := exp[0].evalF(c) * redirscale
 			crun.addY(y)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[1])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[1] = y
+			if _, bp := crun.bindOnAxis(1); bp != nil {
+				bp.posAdd[1] = y
 			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.addZ(z)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = z
+			if _, bp := crun.bindOnAxis(2); bp != nil {
+				bp.posAdd[2] = z
 			}
 		}
 		return true
@@ -10442,7 +10445,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 
 	tid, tidx := int32(-1), int(-1)
 	time := int32(1)
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case targetBind_id:
@@ -10452,11 +10455,11 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 		case targetBind_time:
 			time = exp[0].evalI(c)
 		case targetBind_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -10464,7 +10467,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 	})
 	tar := crun.getTarget(tid, tidx)
 	if len(tar) > 0 {
-		crun.targetBind(tar, time, x, y, z)
+		crun.targetBind(tar, time, pos)
 	}
 	return false
 }
@@ -10489,7 +10492,8 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 
 	tid, tidx := int32(-1), int(0)
-	time, x, y, z, hmf := int32(1), float32(0), float32(math.NaN()), float32(math.NaN()), HMF_F
+	time, hmf := int32(1), HMF_F
+	pos := [3]float32{0, float32(math.NaN()), float32(math.NaN())}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -10500,22 +10504,22 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 		case bindToTarget_time:
 			time = exp[0].evalI(c)
 		case bindToTarget_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
 					hmf = HMF(exp[2].evalI(c))
 				}
 			}
 		case bindToTarget_posz:
-			z = exp[0].evalF(c) * redirscale
+			pos[2] = exp[0].evalF(c) * redirscale
 		}
 		return true
 	})
 
 	tar := crun.getTarget(tid, tidx)
 	if len(tar) > 0 {
-		crun.bindToTarget(tar, time, x, y, z, hmf)
+		crun.bindToTarget(tar, time, pos, hmf)
 	}
 	return false
 }
@@ -10774,7 +10778,7 @@ func (sc targetDrop) Run(c *Char, _ []int32) bool {
 	})
 	tar := crun.getTarget(-1, -1)
 	if len(tar) > 0 {
-		crun.targetDrop(eid, -1, keep)
+		crun.targetDrop(eid, keep)
 	}
 	return false
 }
@@ -12225,8 +12229,9 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	var time int32 = 1
+	var facing float32 = 0
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -12234,16 +12239,16 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 			time = exp[0].evalI(c)
 		case bindToParent_facing:
 			if f := exp[0].evalI(c); f < 0 {
-				crun.bindFacing = -1
+				facing = -1
 			} else if f > 0 {
-				crun.bindFacing = 1
+				facing = 1
 			}
 		case bindToParent_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -12255,11 +12260,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindPos[0] = x
-	crun.bindPos[1] = y
-	crun.bindPos[2] = z
-	crun.setBindToId(p, false)
-	crun.setBindTime(time)
+	crun.setBindTo(p, time, facing, pos)
 	return false
 }
 
@@ -12272,8 +12273,9 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
-	var x, y, z float32 = 0, 0, 0
+	var pos [3]float32
 	var time int32 = 1
+	var facing float32 = 0
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -12281,16 +12283,16 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 			time = exp[0].evalI(c)
 		case bindToParent_facing:
 			if f := exp[0].evalI(c); f < 0 {
-				crun.bindFacing = -1
+				facing = -1
 			} else if f > 0 {
-				crun.bindFacing = 1
+				facing = 1
 			}
 		case bindToParent_pos:
-			x = exp[0].evalF(c) * redirscale
+			pos[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				y = exp[1].evalF(c) * redirscale
+				pos[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
-					z = exp[2].evalF(c) * redirscale
+					pos[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		}
@@ -12302,11 +12304,67 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindPos[0] = x
-	crun.bindPos[1] = y
-	crun.bindPos[2] = z
-	crun.setBindToId(r, false)
-	crun.setBindTime(time)
+	crun.setBindTo(r, time, facing, pos)
+	return false
+}
+
+type bindToPlayer StateControllerBase
+
+const (
+	bindToPlayer_id byte = iota
+	bindToPlayer_time
+	bindToPlayer_facing
+	bindToPlayer_pos
+	bindToPlayer_redirectid
+)
+
+func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), bindToPlayer_redirectid, "BindToPlayer")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+	pid := int32(-1)
+	var pos [3]float32
+	var time int32 = 1
+	var facing float32 = 0
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case bindToPlayer_id:
+			pid = exp[0].evalI(c)
+		case bindToPlayer_time:
+			time = exp[0].evalI(c)
+		case bindToPlayer_facing:
+			if f := exp[0].evalI(c); f < 0 {
+				facing = -1
+			} else if f > 0 {
+				facing = 1
+			}
+		case bindToPlayer_pos:
+			pos[0] = exp[0].evalF(c) * redirscale
+			if len(exp) > 1 {
+				pos[1] = exp[1].evalF(c) * redirscale
+				if len(exp) > 2 {
+					pos[2] = exp[2].evalF(c) * redirscale
+				}
+			}
+		}
+		return true
+	})
+
+	p := sys.playerID(pid)
+	if p == nil {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("Invalid player ID for BindToPlayer: %v", pid))
+		return false
+	}
+	if p == crun {
+		sys.appendToConsole(c.warn() + "BindToPlayer cannot bind a player to itself")
+		return false
+	}
+
+	crun.setBindTo(p, time, facing, pos)
 	return false
 }
 

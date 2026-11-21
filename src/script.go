@@ -8210,6 +8210,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "bindID", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.bindTo.id))
+		return 1
+	})
 	luaRegister(l, "botBoundBodyDist", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.botBoundBodyDist()))
 		return 1
@@ -9011,7 +9015,7 @@ func triggerFunctions(l *lua.LState) {
 		case "guarded":
 			lv = lua.LBool(c.ghv.guarded)
 		case "isbound":
-			lv = lua.LBool(c.isTargetBound())
+			lv = lua.LBool(c.targetBinder() != nil)
 		case "fall":
 			lv = lua.LBool(c.ghv.fallflag)
 		case "fall.damage":

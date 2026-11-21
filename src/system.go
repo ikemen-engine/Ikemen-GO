@@ -2397,8 +2397,10 @@ func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
 	s.matchStoryboards.clear(pn, true)
 	if len(s.chars[pn]) > 0 {
 		// These aren't "assets" but we'll do it here
+		// Done before destroying helpers so they don't send their targets to 5050
 		for _, c := range s.chars[pn] {
-			c.targets = c.targets[:0]
+			c.clearTargets()
+			c.bindTo.clear()
 		}
 
 		// Destroy helpers
@@ -2788,6 +2790,7 @@ func (s *System) runIntroSkip() {
 		for i, p := range s.chars {
 			if len(p) > 0 {
 				s.clearPlayerAssets(i, false)
+				p[0].clearState()
 				p[0].posReset()
 				p[0].selfState(0, -1, -1, 0, "")
 			}

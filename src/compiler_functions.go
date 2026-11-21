@@ -4238,6 +4238,33 @@ func (c *CharCompiler) bindToRoot(is IniSection, sc *StateControllerBase) (State
 	return *ret, err
 }
 
+func (c *CharCompiler) bindToPlayer(is IniSection, sc *StateControllerBase) (StateController, error) {
+	ret, err := (*bindToPlayer)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			bindToPlayer_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			bindToPlayer_id, VT_Int, 1, true); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "time",
+			bindToPlayer_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "facing",
+			bindToPlayer_facing, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			bindToPlayer_pos, VT_Float, 3, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 func (c *CharCompiler) removeExplod(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*removeExplod)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
