@@ -132,6 +132,7 @@ type Storyboard struct {
 	id                int32
 	ownerID           int32
 	playerNo          int
+	soundOwner        *byte
 	placement         storyboardPlacement
 	fadeIn            *Fade
 	fadeOut           *Fade
@@ -203,6 +204,10 @@ func (s *Storyboard) stopVideos() {
 			}
 		}
 	}
+}
+
+func (s *Storyboard) stopSounds() {
+	sys.soundChannels.stopOwned(s.soundOwner)
 }
 
 type StoryboardManager struct {
@@ -283,6 +288,7 @@ func (m *StoryboardManager) remove(ownerID, id int32) {
 		if s.ownerID == ownerID && (id < 0 || s.id == id) {
 			s.active = false
 			s.stopVideos()
+			s.stopSounds()
 		} else {
 			active = append(active, s)
 		}
@@ -291,11 +297,14 @@ func (m *StoryboardManager) remove(ownerID, id int32) {
 	m.instances = active
 }
 
-func (m *StoryboardManager) clear(playerNo int) {
+func (m *StoryboardManager) clear(playerNo int, stopSounds bool) {
 	active := m.instances[:0]
 	for _, sb := range m.instances {
 		if playerNo < 0 || sb.playerNo == playerNo {
 			sb.stopVideos()
+			if stopSounds {
+				sb.stopSounds()
+			}
 		} else {
 			active = append(active, sb)
 		}
@@ -313,7 +322,7 @@ func (m *StoryboardManager) clearSound() {
 }
 
 func (m *StoryboardManager) destroy() {
-	m.clear(-1)
+	m.clear(-1, true)
 	for video := range m.retainedVideos {
 		video.Close()
 	}
@@ -819,11 +828,9 @@ func (s *Storyboard) revealTextLayer(lp *LayerProperties) {
 }
 
 func (s *Storyboard) init() {
-	//if !s.enabled {
-	//	co.initialized = true
-	//	return
-	//}
+	s.stopSounds()
 	s.reset()
+	s.soundOwner = new(byte)
 	s.counter = 0
 	s.active = true
 	s.initialized = true
@@ -831,6 +838,7 @@ func (s *Storyboard) init() {
 
 func (s *Storyboard) step() {
 	if s.currentSceneIndex < 0 || s.currentSceneIndex >= len(s.sceneKeys) {
+		s.stopSounds()
 		s.active = false
 		return
 	}
@@ -980,7 +988,7 @@ func (s *Storyboard) step() {
 		for _, key := range SortedKeys(sceneProps.Sound) {
 			soundProps := sceneProps.Sound[key]
 			if s.counter == soundProps.StartTime {
-				s.Snd.play(
+				s.Snd.playOwned(s.soundOwner,
 					[...]int32{soundProps.Value[0], soundProps.Value[1]},
 					soundProps.VolumeScale,
 					soundProps.Pan,
@@ -990,6 +998,9 @@ func (s *Storyboard) step() {
 				)
 			}
 		}
+	}
+	if s.canceled || skipAdvancesScene {
+		s.stopSounds()
 	}
 
 	for _, layerProps := range sceneProps.Layer {
@@ -1043,6 +1054,7 @@ func (s *Storyboard) step() {
 					cl.BufReset()
 				}
 			}
+			s.stopSounds()
 			s.active = false
 			s.loadEnding = false
 			return
@@ -1062,6 +1074,7 @@ func (s *Storyboard) step() {
 			if s.musicPlaying && s.SceneDef.StopMusic {
 				sys.bgm.Stop()
 			}
+			s.stopSounds()
 			s.active = false
 			// Do not force-reset fadeOut here; it will self-reset after its last draw.
 			return

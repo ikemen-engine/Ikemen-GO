@@ -901,11 +901,15 @@ func (s *Snd) Get(gn [2]int32) *Sound {
 }
 
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int, keepOnMatchEnd ...bool) bool {
+	return s.playOwned(nil, gn, volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd...)
+}
+
+func (s *Snd) playOwned(owner *byte, gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int, keepOnMatchEnd ...bool) bool {
 	sound := s.Get(gn)
 	if s.restart {
 		sys.soundChannels.Stop(sound)
 	}
-	return sys.soundChannels.Play(sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd...)
+	return sys.soundChannels.playOwned(owner, sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd...)
 }
 
 func (s *Snd) stop(gn [2]int32) {
@@ -1044,6 +1048,7 @@ type SoundChannel struct {
 	sfx               *SoundEffect
 	ctrl              *beep.Ctrl
 	sound             *Sound
+	storyboardOwner   *byte
 	playerID          int32
 	channelNo         int32 // Logical channel assigned by char code
 	stopOnGetHit      bool
@@ -1066,6 +1071,7 @@ func (s *SoundChannel) Reset() {
 	s.sfx = nil
 	s.ctrl = nil
 	s.sound = nil
+	s.storyboardOwner = nil
 
 	s.playerID = -1
 	s.channelNo = -1
@@ -1367,6 +1373,10 @@ func (s *SoundChannels) Get(pid int32, ch int32) *SoundChannel {
 }
 
 func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int, keepOnMatchEnd ...bool) bool {
+	return s.playOwned(nil, sound, group, number, volumescale, pan, loopStart, loopEnd, startPosition, keepOnMatchEnd...)
+}
+
+func (s *SoundChannels) playOwned(owner *byte, sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int, keepOnMatchEnd ...bool) bool {
 	if sound == nil {
 		return false
 	}
@@ -1375,6 +1385,7 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 		return false
 	}
 	c.Play(sound, group, number, 0, 1.0, loopStart, loopEnd, startPosition)
+	c.storyboardOwner = owner
 	c.keepOnMatchEnd = len(keepOnMatchEnd) > 0 && keepOnMatchEnd[0]
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 1, -1)
@@ -1402,6 +1413,17 @@ func (s *SoundChannels) Stop(sound *Sound) {
 		v := &channels[i]
 		if v.sound != nil && v.sound == sound {
 			v.Reset()
+		}
+	}
+}
+
+func (s *SoundChannels) stopOwned(owner *byte) {
+	if owner == nil {
+		return
+	}
+	for i := range *s {
+		if (*s)[i].storyboardOwner == owner {
+			(*s)[i].Reset()
 		}
 	}
 }

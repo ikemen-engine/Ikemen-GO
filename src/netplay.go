@@ -1235,22 +1235,23 @@ func (rf *ReplayFile) atReplaySyncMarker() bool {
 }
 
 // Read system variables from replay file
-func (rf *ReplayFile) Synchronize() {
-	if rf.file != nil {
-		seed, pmTime, err := rf.readReplaySync()
-		if err != nil {
-			log.Printf("Replay synchronization failed: %v", err)
-			sys.esc = true
-			rf.Close()
-			return
-		}
-		Srand(seed)
-		rf.preMatchTime = pmTime
-		sys.preMatchTime = pmTime
-		rf.Update()
-		// Log status
-		log.Printf("Replay synchronized: seed=%d pmTime=%d", seed, pmTime)
+func (rf *ReplayFile) Synchronize() error {
+	seed, pmTime, err := rf.readReplaySync()
+	if err != nil {
+		log.Printf("Replay synchronization failed: %v", err)
+		sys.esc = true
+		rf.Close()
+		return err
+ 	}
+	Srand(seed)
+	rf.preMatchTime = pmTime
+	sys.preMatchTime = pmTime
+	rf.Update()
+	if rf.file == nil {
+		return io.ErrUnexpectedEOF
 	}
+	log.Printf("Replay synchronized: seed=%d pmTime=%d", seed, pmTime)
+	return nil
 }
 
 // Read a chunk of inputs from the replay file

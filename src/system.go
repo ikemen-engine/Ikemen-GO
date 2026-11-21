@@ -138,8 +138,7 @@ type SystemStateVars struct {
 	lastInputController int
 	uiLastInputToken    string
 	uiConsumeInputFrame int32
-	uiRepeatToken       string
-	uiRepeatController  int
+	uiRepeatTokens      []menuPress
 	uiRepeatFrame       int32
 
 	endMatch       bool
@@ -201,7 +200,6 @@ var sys = System{
 		cam:                 *newCamera(),
 		keyInput:            KeyUnknown,
 		lastInputController: -1,
-		uiRepeatController:  -1,
 	},
 }
 
@@ -1271,7 +1269,7 @@ func (s *System) loadCancel() {
 
 func (s *System) synchronize() error {
 	if s.replayFile != nil {
-		s.replayFile.Synchronize()
+		return s.replayFile.Synchronize()
 	} else if s.netConnection != nil {
 		return s.netConnection.Synchronize()
 	}
@@ -1387,13 +1385,23 @@ func (s *System) uiControllerKey(controllerIdx int) int {
 	return controllerIdx
 }
 
-func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
-	if s.uiRepeatFrame == s.frameCounter && s.uiRepeatController == controller && s.uiRepeatToken == tok {
-		return true
+type menuPress struct {
+	controller int
+	token      string
+}
+
+func (s *System) uiConsumeTokenThisFrame(controller int, token string) bool {
+	if s.uiRepeatFrame != s.frameCounter {
+		s.uiRepeatFrame = s.frameCounter
+		s.uiRepeatTokens = nil
 	}
-	s.uiRepeatFrame = s.frameCounter
-	s.uiRepeatController = controller
-	s.uiRepeatToken = tok
+	for _, press := range s.uiRepeatTokens {
+		if press.controller == controller && strings.EqualFold(press.token, token) {
+			return true
+		}
+	}
+	// Rollback snapshots share this slice. Leave earlier presses intact.
+	s.uiRepeatTokens = append(slices.Clip(s.uiRepeatTokens), menuPress{controller, token})
 	return false
 }
 
@@ -2386,7 +2394,7 @@ func (s *System) clearAllSound() {
 
 // Remove the player's explods, projectiles and (optionally) helpers as well as stopping their sounds
 func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
-	s.matchStoryboards.clear(pn)
+	s.matchStoryboards.clear(pn, true)
 	if len(s.chars[pn]) > 0 {
 		// These aren't "assets" but we'll do it here
 		for _, c := range s.chars[pn] {
@@ -4467,7 +4475,7 @@ func (s *System) runNextRound() bool {
 			}
 			for i, p := range s.chars {
 				if len(p) > 0 {
-					if s.tmode[i&1] != TM_Turns || !s.effectiveLoss[i&1] {
+					if s.tmode[i&1] != TM_Turns || s.winTeam < 0 {
 						p[0].life = p[0].lifeMax
 					} else if p[0].life <= 0 {
 						p[0].life = 1

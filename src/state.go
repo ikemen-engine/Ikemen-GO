@@ -146,7 +146,7 @@ func (gs *GameState) LoadState(stateID int) {
 		sys.storyboard.dialogueLayers = nil
 		sys.storyboard.dialoguePos = 0
 	}
-	sys.matchStoryboards.clear(-1)
+	sys.matchStoryboards.clear(-1, false)
 	// Restore playback state without replacing the retained decoder set.
 	sys.matchStoryboards.instances = cloneStoryboards(gs.matchStoryboards)
 
