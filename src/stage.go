@@ -2134,6 +2134,23 @@ func (s *Stage) tick() {
 	s.stageTime++
 }
 
+// Screen area that the stage covers, after the shake offset
+// Must run even when overdraw is 0, so that the shake alone can still crop
+// TODO: This works for EnvShake, which is the main use case
+// But it hasn't yet been tested for "Overdraw pixels will also be used when the screen aspect is taller than the stage aspect"
+func (s *Stage) overdrawClip(shake [2]float32) [4]int32 {
+	odh := Max(0, float32(s.stageCamera.overdrawhigh)) * s.localscl
+	odl := Max(0, float32(s.stageCamera.overdrawlow)) * s.localscl
+	topOver := int32(Floor(Max(0, -odh-shake[1]) * sys.heightScale)) // Needs "shake" because the window itself shakes
+	botOver := int32(Ceil(Max(0, -odl+shake[1]) * sys.heightScale))
+	return [4]int32{
+		sys.scrrect[0],
+		sys.scrrect[1] + topOver,
+		sys.scrrect[2],
+		sys.scrrect[3] - topOver - botOver,
+	}
+}
+
 func (s *Stage) draw(layer int32, x, y, scl float32) {
 	bgscl := float32(1)
 	if s.hires {
@@ -2195,19 +2212,7 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	//}
 
 	// Compute overdraw clipping
-	// Must run even when overdraw is 0, so that the shake alone can still crop
-	// TODO: This works for EnvShake, which is the main use case
-	// But it hasn't yet been tested for "Overdraw pixels will also be used when the screen aspect is taller than the stage aspect"
-	odh := Max(0, float32(s.stageCamera.overdrawhigh)) * s.localscl
-	odl := Max(0, float32(s.stageCamera.overdrawlow)) * s.localscl
-	topOver := int32(Floor(Max(0, -odh-shake[1]) * sys.heightScale)) // Needs "shake" because the window itself shakes
-	botOver := int32(Ceil(Max(0, -odl+shake[1]) * sys.heightScale))
-	overdrawClip := [4]int32{
-		sys.scrrect[0],
-		sys.scrrect[1] + topOver,
-		sys.scrrect[2],
-		sys.scrrect[3] - topOver - botOver,
-	}
+	overdrawClip := s.overdrawClip(shake)
 
 	// Draw model
 	s.drawModel(pos, shake[1], scl, layer)

@@ -3745,7 +3745,15 @@ func (s *System) draw(x, y, scl float32) {
 		//}
 
 		// Draw the background fill
-		FillRect(s.scrrect, fcol, [2]int32{255, 0}, nil)
+		// Use the stage's fill color for the normally visible area and black for screen shakes
+		// If the stage's fill is also black (most common case) then we only need to fill once
+		stageRect := s.stage.overdrawClip(s.envShake.getOffset())
+		if fcol == 0 || stageRect != s.scrrect {
+			FillRect(s.scrrect, 0, [2]int32{255, 0}, nil)
+		}
+		if fcol != 0 && stageRect[3] > 0 {
+			FillRect(stageRect, fcol, [2]int32{255, 0}, nil)
+		}
 
 		// Draw stage elements with layerNo == -1
 		if !s.gsf(GSF_nobg) {
