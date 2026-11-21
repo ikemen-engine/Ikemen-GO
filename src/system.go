@@ -1271,7 +1271,7 @@ func (s *System) loadCancel() {
 
 func (s *System) synchronize() error {
 	if s.replayFile != nil {
-		s.replayFile.Synchronize()
+		return s.replayFile.Synchronize()
 	} else if s.netConnection != nil {
 		return s.netConnection.Synchronize()
 	}
