@@ -138,8 +138,7 @@ type SystemStateVars struct {
 	lastInputController int
 	uiLastInputToken    string
 	uiConsumeInputFrame int32
-	uiRepeatToken       string
-	uiRepeatController  int
+	uiRepeatTokens      []menuPress
 	uiRepeatFrame       int32
 
 	endMatch       bool
@@ -201,7 +200,6 @@ var sys = System{
 		cam:                 *newCamera(),
 		keyInput:            KeyUnknown,
 		lastInputController: -1,
-		uiRepeatController:  -1,
 	},
 }
 
@@ -1387,13 +1385,23 @@ func (s *System) uiControllerKey(controllerIdx int) int {
 	return controllerIdx
 }
 
-func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
-	if s.uiRepeatFrame == s.frameCounter && s.uiRepeatController == controller && s.uiRepeatToken == tok {
-		return true
+type menuPress struct {
+	controller int
+	token      string
+}
+
+func (s *System) uiConsumeTokenThisFrame(controller int, token string) bool {
+	if s.uiRepeatFrame != s.frameCounter {
+		s.uiRepeatFrame = s.frameCounter
+		s.uiRepeatTokens = nil
 	}
-	s.uiRepeatFrame = s.frameCounter
-	s.uiRepeatController = controller
-	s.uiRepeatToken = tok
+	for _, press := range s.uiRepeatTokens {
+		if press.controller == controller && strings.EqualFold(press.token, token) {
+			return true
+		}
+	}
+	// Rollback snapshots share this slice. Leave earlier presses intact.
+	s.uiRepeatTokens = append(slices.Clip(s.uiRepeatTokens), menuPress{controller, token})
 	return false
 }
 
