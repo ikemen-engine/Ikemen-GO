@@ -1242,7 +1242,7 @@ func (rf *ReplayFile) Synchronize() error {
 		sys.esc = true
 		rf.Close()
 		return err
- 	}
+	}
 	Srand(seed)
 	rf.preMatchTime = pmTime
 	sys.preMatchTime = pmTime
