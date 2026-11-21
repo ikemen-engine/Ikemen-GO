@@ -12468,6 +12468,12 @@ func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
+	// Negative ID (default) just clears any active bind
+	if pid < 0 {
+		crun.bindTo.clear()
+		return false
+	}
+
 	p := sys.playerID(pid)
 	if p == nil {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("Invalid player ID for BindToPlayer: %v", pid))

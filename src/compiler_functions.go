@@ -4240,7 +4240,7 @@ func (c *CharCompiler) bindToPlayer(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		if err := c.paramValue(is, sc, "id",
-			bindToPlayer_id, VT_Int, 1, true); err != nil {
+			bindToPlayer_id, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "time",
