@@ -93,28 +93,33 @@ vec2 ikemenSpriteUV() {
 	return (texcoord - spriteUV.xy) / (spriteUV.zw - spriteUV.xy);
 }
 
-// RGBA sample for sprites drawn far below their size: averages up to 4x4 taps
-// over the pixel, since atlas textures have no mipmaps.
+// Blends several samples when a sprite is drawn below about 0.65 of its size, separately for width and height.
 vec4 ikemenSampleRgba(vec2 atlasUV) {
 	vec2 dx = dFdx(atlasUV);
 	vec2 dy = dFdy(atlasUV);
 	vec2 texSize = vec2(textureSize(tex, 0));
-	float footprint = max(length(dx * texSize), length(dy * texSize)); // texels per pixel
-	if (footprint <= 1.5) {
-		return textureLod(tex, atlasUV, 0.0);
+	float width = length(dx * texSize);
+	float height = length(dy * texSize);
+	int nx = width <= 1.55 ? 1 : int(min(ceil(width), 4.0));
+	int ny = height <= 1.55 ? 1 : int(min(ceil(height), 4.0));
+
+	// Keep linear filtering inside the sprite, including one-texel sprites.
+	vec2 halfTexel = 0.5 / texSize;
+	vec2 lo = spriteUV.xy + halfTexel;
+	vec2 hi = max(lo, spriteUV.zw - halfTexel);
+	if (nx == 1 && ny == 1) {
+		return textureLod(tex, clamp(atlasUV, lo, hi), 0.0);
 	}
-	int n = int(min(ceil(footprint), 4.0));
+
 	vec4 sum = vec4(0.0);
-	for (int j = 0; j < 4; j++) {
-		if (j >= n) break;
-		for (int i = 0; i < 4; i++) {
-			if (i >= n) break;
-			vec2 o = (vec2(float(i), float(j)) + 0.5) / float(n) - 0.5;
-			vec2 p = clamp(atlasUV + dx * o.x + dy * o.y, spriteUV.xy, spriteUV.zw - 0.0001);
+	for (int j = 0; j < ny; j++) {
+		for (int i = 0; i < nx; i++) {
+			vec2 offset = (vec2(i, j) + 0.5) / vec2(nx, ny) - 0.5;
+			vec2 p = clamp(atlasUV + dx * offset.x + dy * offset.y, lo, hi);
 			sum += textureLod(tex, p, 0.0);
 		}
 	}
-	return sum / float(n * n);
+	return sum / float(nx * ny);
 }
 
 // The engine's sprite color at a sprite-local coordinate
@@ -142,14 +147,13 @@ vec4 ikemenSpriteColor(vec2 uv) {
 			uv.x = clamp((gl_FragCoord.x - bounds[0]) / gap, 0.0, 1.0);
 		}
 
-		// Map into the sprite's atlas area, clamped so sampling can't reach neighboring sprites
+		// Measure the pixel footprint before clamping samples to the sprite.
 		vec2 atlasUV = mix(spriteUV.xy, spriteUV.zw, uv);
-		atlasUV = clamp(atlasUV, spriteUV.xy, spriteUV.zw - 0.0001);
 		// Palette indices can't be averaged, so only RGBA sprites supersample
 		if (isRgba && !isTrapez && supersample) {
 			c = ikemenSampleRgba(atlasUV);
 		} else {
-			c = COMPAT_TEXTURE(tex, atlasUV);
+			c = COMPAT_TEXTURE(tex, clamp(atlasUV, spriteUV.xy, spriteUV.zw - 0.0001));
 		}
 
 		// Select with or without palette
