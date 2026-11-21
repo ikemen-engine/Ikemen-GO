@@ -1396,15 +1396,28 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		return nil
 	}
 
+	// Checks for "=" or "!=" after a trigger without consuming it
+	nextIsEqne := func() bool {
+		savedIn := *in
+		defer func() { *in = savedIn }()
+		tok := c.tokenizer(in)
+		// Mugen accepts "! =" as "=" in the special comparison triggers and the attr/hitflag comparisons
+		// We do the same in CNS mode, but log the error
+		if tok == "!" && !c.zssMode && sys.ignoreMostErrors {
+			tok = c.tokenizer(in)
+			if tok == "=" || tok == "!=" {
+				sys.appendToConsole(c.charWarn() + "Ignored '!' before '" + tok + "'")
+			}
+		}
+		return tok == "=" || tok == "!="
+	}
+
 	// For moveType, stateType and such triggers
 	// Each can either be compared against specific flags or keywords, or used bare to return a string
 	// This helper looks ahead to determine how to handle them
 	// Always leaves c.token at the next token, so callers must return right after
 	flagTrigger := func(pushSelf func(), tryKeyword func(not bool) (matched bool, err error)) error {
-		savedIn := *in
-		peekTok := c.tokenizer(in)
-		*in = savedIn
-		if peekTok != "=" && peekTok != "!=" {
+		if !nextIsEqne() {
 			pushSelf()
 			c.token = c.tokenizer(in)
 			return nil
@@ -1482,14 +1495,6 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			return text()
 		}
 		return nil
-	}
-
-	// Checks for "=" or "!=" after a trigger without consuming it
-	nextIsEqne := func() bool {
-		savedIn := *in
-		tok := c.tokenizer(in)
-		*in = savedIn
-		return tok == "=" || tok == "!="
 	}
 
 	// Parses the right side of a comparison as a string expression
