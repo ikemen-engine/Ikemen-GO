@@ -3606,11 +3606,11 @@ const (
 // Mugen instead stores self binds on the bound player and target binds on the binder, so both can be active and several binders can hold one char
 // We keep only one because a char can't be in two places, and Mugen's overlapping binds already resolve to the last one applied anyway
 type CharBind struct {
-	id           int32
-	time         int32
-	pos          [3]float32 // In the bound char's coordinate space
-	posAdd       [3]float32 // PosSet/PosAdd this frame. Only distX/distY read it. See https://github.com/ikemen-engine/Ikemen-GO/pull/799
-	facing       float32    // TODO: TargetBind and BindToTarget might as well have this too
+	id     int32
+	time   int32
+	pos    [3]float32 // In the bound char's coordinate space
+	posAdd [3]float32 // PosSet/PosAdd this frame. Only distX/distY read it. See https://github.com/ikemen-engine/Ikemen-GO/pull/799
+	facing float32    // TODO: TargetBind and BindToTarget might as well have this too
 }
 
 func (bp *CharBind) clear() {
@@ -3627,7 +3627,7 @@ type CharSystemVar struct {
 	superMovetime         int32
 	ignoreDarkenTime      int32
 	unhittableTime        int32
-	bindTo                CharBind   // The player this char follows. Set by BindTo*, TargetBind and HitDef snaps
+	bindTo                CharBind // The player this char follows. Set by BindTo*, TargetBind and HitDef snaps
 	hitPauseTime          int32
 	rot                   Rotation
 	xshear                float32
