@@ -946,6 +946,7 @@ func RenderSprite(rp RenderParams) {
 
 	if rp.paltex == nil {
 		gfx.SetUniformI("isRgba", 1)
+		gfx.SetUniformI("supersample", int(Btoi(sys.cfg.Video.RGBSpriteSupersample)))
 	} else {
 		gfx.SetUniformI("isRgba", 0)
 	}
