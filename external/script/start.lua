@@ -19,8 +19,6 @@ local t_aiRamp = {}
 local t_reservedChars = {{}, {}}
 local t_portraitPriority = {1, 1}
 local timerSelect = 0
-local cursorActive = {}
-local cursorDone = {}
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -537,32 +535,27 @@ function start.f_stageShuffleBag(id, pool)
 	return pool[idx]
 end
 
--- Resolve a menu position to the active member of its stage slot
-function start.f_stageMenuRef()
-	local group = main.t_selectableStageSlots[stageListNo]
-	return group and group.available[group.slot]
-end
-
 -- sets stage
 function start.f_setStage(num, assigned)
 	if main.stageMenu then
 		local pool = main.t_selectableStages
-		if stageListNo == 0 then
+		if stageListNo == -1 then
+			-- A hidden stage picked on the stage select screen.
+			num = start.stageScreenRef
+		elseif stageListNo == 0 then
 			num = start.f_stageShuffleBag('stageMenu', pool)
-			-- Keep the chosen variant for subsequent fights until selection resets
-			-- A stage reference is not necessarily its position in the menu
-			for i, group in ipairs(main.t_selectableStageSlots) do
-				for j, ref in ipairs(group.available) do
-					if ref == num then
-						stageListNo = i
-						group.slot = j
-						break
-					end
+			-- Keep the chosen stage for subsequent fights until selection resets,
+			-- also as the shown member of its slot on the stage select screen.
+			stageListNo = main.t_selectableStageNo[num] or 0
+			local group = main.t_stageSlots[main.t_selStages[num].stageSlot]
+			for j, ref in ipairs(group and group.available or {}) do
+				if ref == num then
+					group.slot = j
 				end
 			end
 			stageRandom = true
 		else
-			num = start.f_stageMenuRef()
+			num = main.t_selectableStages[stageListNo]
 		end
 		assigned = true
 	end
@@ -735,10 +728,10 @@ end
 
 -- Convert number to name and get rid of the ""
 function start.f_getName(ref, side)
-	if ref == nil or start.f_getCharData(ref).hidden == 2 then
+	if ref == nil or start.f_getCharData(ref).locked then
 		return ''
 	end
-	if start.f_getCharData(ref).char == 'randomselect' or start.f_getCharData(ref).hidden == 3 then
+	if start.f_getCharData(ref).char == 'randomselect' then
 		return motif.select_info['p' .. (side or 1)].name.random.text
 	end
 	return start.f_getCharData(ref).name
@@ -1066,91 +1059,149 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 	end
 end
 
+--;===========================================================
+--; CELL GRID
+--;===========================================================
+-- Character and stage selection share this grid code. A grid has its motif section,
+-- its cell rows and the rules for the cells the cursor can enter.
+start.charGrid = {
+	sec = motif.select_info,
+	cursors = {active = {}, done = {}},
+	-- Cells a cursor step can land on.
+	canEnter = function(t, side)
+		return (t.char ~= nil or motif.select_info.moveoveremptyboxes) and t.skip ~= 1
+			and (gameOption('Options.Team.Duplicates') or t.char == 'randomselect' or not t_reservedChars[side][t.char_ref]) and not t.locked
+	end,
+	-- Cells the empty box search stops at.
+	canStop = function(t, side)
+		return t.skip ~= 1 and t.char ~= nil and (t.char == 'randomselect' or not t_reservedChars[side][t.char_ref]) and not t.locked
+	end,
+}
+
+-- [Stage Select Info] grid. Cells are filled by stage slots and random cells that can be picked.
+start.stageGrid = {
+	sec = motif.stage_select_info,
+	cursors = {active = {}, done = {}},
+	canEnter = function(t)
+		return (t.filled or t.secret or motif.stage_select_info.moveoveremptyboxes) and t.skip ~= 1
+	end,
+	canStop = function(t)
+		return t.skip ~= 1 and (t.filled or t.secret)
+	end,
+}
+-- The stage cursor is shared by all players.
+start.stageCursor = {selX = 0, selY = 0}
+
 -- returns correct cell position after moving the cursor
-function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
+function start.f_gridMovement(grid, selX, selY, cmd, side, snd, dir)
+	local sec = grid.sec
+	local function cell(x, y)
+		return grid.rows[y + 1][x + 1]
+	end
+	-- With several pages, stepping past the last row (or column, with one row) shows the next page.
+	local pageAxis = (grid.pages or 1) > 1 and dir == nil and (sec.rows == 1 and 'x' or 'y') or nil
+	local page = grid.page
 	local tmpX = selX
 	local tmpY = selY
 	local found = false
-	if getAction(cmd, motif.select_info.cell.up.action) or dir == 'U' then
-		for i = 1, motif.select_info.rows do
+	if getAction(cmd, sec.cell.up.action) or dir == 'U' then
+		for i = 1, sec.rows do
 			selY = selY - 1
 			if selY < 0 then
-				if motif.select_info.wrapping or dir ~= nil then
-					selY = motif.select_info.rows - 1
+				if pageAxis == 'y' and start.f_gridPage(grid, -1) then
+					selY = sec.rows - 1
+				elseif sec.wrapping or dir ~= nil then
+					selY = sec.rows - 1
 				else
 					selY = tmpY
 				end
 			end
 			if dir ~= nil then
-				found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, -1)
+			elseif grid.canEnter(cell(selX, selY), side) then
 				break
-			elseif motif.select_info.searchemptyboxesup then
-				found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
+			elseif sec.searchemptyboxesup then
+				found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, 1)
 			end
 			if found then
 				break
 			end
 		end
-	elseif getAction(cmd, motif.select_info.cell.down.action) or dir == 'D' then
-		for i = 1, motif.select_info.rows do
+	elseif getAction(cmd, sec.cell.down.action) or dir == 'D' then
+		for i = 1, sec.rows do
 			selY = selY + 1
-			if selY >= motif.select_info.rows then
-				if motif.select_info.wrapping or dir ~= nil then
+			if selY >= sec.rows then
+				if pageAxis == 'y' and start.f_gridPage(grid, 1) then
+					selY = 0
+				elseif sec.wrapping or dir ~= nil then
 					selY = 0
 				else
 					selY = tmpY
 				end
 			end
 			if dir ~= nil then
-				found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, 1)
+			elseif grid.canEnter(cell(selX, selY), side) then
 				break
-			elseif motif.select_info.searchemptyboxesdown then
-				found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
+			elseif sec.searchemptyboxesdown then
+				found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, 1)
 			end
 			if found then
 				break
 			end
 		end
-	elseif getAction(cmd, motif.select_info.cell.left.action) or dir == 'B' then
+	elseif getAction(cmd, sec.cell.left.action) or dir == 'B' then
 		if dir ~= nil then
-			found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
+			found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, -1)
 		else
-			for i = 1, motif.select_info.columns do
+			for i = 1, sec.columns do
 				selX = selX - 1
 				if selX < 0 then
-					if motif.select_info.wrapping then
-						selX = motif.select_info.columns - 1
+					if pageAxis == 'x' and start.f_gridPage(grid, -1) then
+						selX = sec.columns - 1
+					elseif sec.wrapping then
+						selX = sec.columns - 1
 					else
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if grid.canEnter(cell(selX, selY), side) then
 					break
 				end
 			end
 		end
-	elseif getAction(cmd, motif.select_info.cell.right.action) or dir == 'F' then
+	elseif getAction(cmd, sec.cell.right.action) or dir == 'F' then
 		if dir ~= nil then
-			found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
+			found, selX = start.f_gridSearchEmptyBoxes(grid, selX, selY, side, 1)
 		else
-			for i = 1, motif.select_info.columns do
+			for i = 1, sec.columns do
 				selX = selX + 1
-				if selX >= motif.select_info.columns then
-					if motif.select_info.wrapping then
+				if selX >= sec.columns then
+					if pageAxis == 'x' and start.f_gridPage(grid, 1) then
+						selX = 0
+					elseif sec.wrapping then
 						selX = 0
 					else
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if grid.canEnter(cell(selX, selY), side) then
 					break
 				end
 			end
 		end
 	end
-	if (tmpX ~= selX or tmpY ~= selY) then
+	-- A shorter last page may have no entry under the cursor: go to its last one.
+	if grid.page ~= page and not grid.canEnter(cell(selX, selY), side) then
+		for i = selY * sec.columns + selX, 0, -1 do
+			local x, y = i % sec.columns, math.floor(i / sec.columns)
+			if grid.canEnter(cell(x, y), side) then
+				selX, selY = x, y
+				break
+			end
+		end
+	end
+	if (tmpX ~= selX or tmpY ~= selY or grid.page ~= page) then
 		if dir == nil then
 			sndPlay(motif.Snd, snd[1], snd[2])
 		end
@@ -1158,14 +1209,105 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 	return selX, selY
 end
 
--- used by above function to find valid cell in case of dummy character entries
-function start.f_searchEmptyBoxes(x, y, side, direction)
+-- Absolute 0-based entry index of the grid's first cell: the scroll position or the page start.
+local function gridFirst(grid)
+	return grid.first or (grid.page or 0) * grid.sec.rows * grid.sec.columns
+end
+
+-- Scrolling grid: the cursor stays on its home cell and the entries move through it.
+function start.f_gridScrollTo(grid, cursor, entry)
+	local sec = grid.sec
+	if sec.wrapping and grid.count > 0 then
+		entry = entry % grid.count
+	end
+	cursor.entry = entry
+	cursor.selX, cursor.selY = grid.home % sec.columns, math.floor(grid.home / sec.columns)
+	grid.first = entry - grid.home
+	start.f_gridBuild(grid)
+	grid.pageChanged = true
+end
+
+-- Scrolls by step entries, to the next one the cursor can stop on. Returns true if it moved.
+function start.f_gridScroll(grid, cursor, step)
+	local entry = cursor.entry
+	for _ = 1, grid.count do
+		entry = entry + step
+		if entry < 0 or entry >= grid.count then
+			if not grid.sec.wrapping then
+				return false
+			end
+			entry = entry % grid.count
+		end
+		if entry == cursor.entry then
+			return false
+		end
+		local t = {}
+		grid.fill(entry + 1, t)
+		if grid.canEnter(t) then
+			start.f_gridScrollTo(grid, cursor, entry)
+			return true
+		end
+	end
+	return false
+end
+
+-- Cell movement actions of a scrolling grid: one entry left or right, one row up or down.
+function start.f_gridScrollInput(grid, cursor, cmd)
+	local cell = grid.sec.cell
+	for _, entry in ipairs({{cell.left, -1}, {cell.right, 1}, {cell.up, -grid.sec.columns}, {cell.down, grid.sec.columns}}) do
+		if getAction(cmd, entry[1].action) then
+			return start.f_gridScroll(grid, cursor, entry[2])
+		end
+	end
+	return false
+end
+
+-- Shows the previous (-1) or next (1) page of a grid. Returns true if the page changed.
+function start.f_gridPage(grid, dir)
+	local pages = grid.pages or 1
+	if pages <= 1 then
+		return false
+	end
+	local page = grid.page + dir
+	if page < 0 or page >= pages then
+		if not grid.sec.wrapping then
+			return false
+		end
+		page = (page + pages) % pages
+	end
+	grid.page = page
+	start.f_gridBuild(grid)
+	grid.pageChanged = true
+	return true
+end
+
+-- Absolute 0-based entry index of a cell on the current page.
+function start.f_gridCell(grid, x, y)
+	return gridFirst(grid) + y * grid.sec.columns + x
+end
+
+-- True if the grid has a page before (-1) or after (1) the current one.
+function start.f_gridHasPage(grid, dir)
+	local pages = grid.pages or 1
+	if pages <= 1 then
+		return false
+	end
+	if grid.sec.wrapping then
+		return true
+	end
+	local page = grid.page + dir
+	return page >= 0 and page < pages
+end
+
+-- used by above function to find valid cell in case of dummy entries
+function start.f_gridSearchEmptyBoxes(grid, x, y, side, direction)
+	local columns = grid.sec.columns
 	if direction > 0 then -- right
 		while true do
 			x = x + 1
-			if x >= motif.select_info.columns then
+			if x >= columns then
 				return false, 0
-			elseif start.t_grid[y + 1][x + 1].skip ~= 1 and start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
+			elseif grid.canStop(grid.rows[y + 1][x + 1], side) then
 				return true, x
 			end
 		end
@@ -1173,12 +1315,20 @@ function start.f_searchEmptyBoxes(x, y, side, direction)
 		while true do
 			x = x - 1
 			if x < 0 then
-				return false, motif.select_info.columns - 1
-			elseif start.t_grid[y + 1][x + 1].skip ~= 1 and start.t_grid[y + 1][x + 1].char ~= nil and (start.t_grid[y + 1][x + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref]) and start.t_grid[y + 1][x + 1].hidden ~= 2 then
+				return false, columns - 1
+			elseif grid.canStop(grid.rows[y + 1][x + 1], side) then
 				return true, x
 			end
 		end
 	end
+end
+
+function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
+	return start.f_gridMovement(start.charGrid, selX, selY, cmd, side, snd, dir)
+end
+
+function start.f_searchEmptyBoxes(x, y, side, direction)
+	return start.f_gridSearchEmptyBoxes(start.charGrid, x, y, side, direction)
 end
 
 -- Returns player cursor data
@@ -1224,28 +1374,28 @@ local function cursorTween(val, target, factor)
 	return val
 end
 
-local function getCellOverride(col, row)
-	return getOverride(motif.select_info.cell, col, row)
+local function getCellOverride(col, row, cellSec)
+	return getOverride(cellSec or motif.select_info.cell, col, row)
 end
 
-function getCellFacing(default, col, row)
-	local override = getCellOverride(col, row)
+function getCellFacing(default, col, row, cellSec)
+	local override = getCellOverride(col, row, cellSec)
 	if override ~= nil and override.facing ~= 0 then
 		return override.facing
 	end
 	return default
 end
 
-function getCellOffset(col, row)
-	local override = getCellOverride(col, row)
+function getCellOffset(col, row, cellSec)
+	local override = getCellOverride(col, row, cellSec)
 	if override ~= nil and override.offset ~= nil then
 		return override.offset
 	end
 	return {0, 0}
 end
 
-function getCellSpacing(col, row)
-	local override = getCellOverride(col, row)
+function getCellSpacing(col, row, cellSec)
+	local override = getCellOverride(col, row, cellSec)
 	if override ~= nil and override.spacing ~= nil then
 		if override.spacing[1] ~= 0 then
 			if override.spacing[2] == 0 then
@@ -1257,19 +1407,19 @@ function getCellSpacing(col, row)
 			return override.spacing
 		end
 	end
-	return motif.select_info.cell.spacing
+	return (cellSec or motif.select_info.cell).spacing
 end
 
-function getCellSkip(col, row)
-	local override = getCellOverride(col, row)
+function getCellSkip(col, row, cellSec)
+	local override = getCellOverride(col, row, cellSec)
 	if override ~= nil then
 		return override.skip
 	end
 	return false
 end
 
-function getCellTransform(col, row, paramName, default)
-	local override = getCellOverride(col, row)
+function getCellTransform(col, row, paramName, default, cellSec)
+	local override = getCellOverride(col, row, cellSec)
 	if override ~= nil then
 		local val = override[paramName]
 		-- Table Validation
@@ -1293,12 +1443,12 @@ function getCellTransform(col, row, paramName, default)
 end
 
 -- draw cursor
-function start.f_drawCursor(pn, x, y, param, done)
-	local pData = start.f_getCursorData(pn)
+function start.f_gridDrawCursor(grid, key, pData, x, y, param, done)
+	local sec = grid.sec
 	-- select appropriate cursor table and initialize if needed
-	local store = done and cursorDone or cursorActive
-	store[pn] = store[pn] or {}
-	local cd = store[pn]
+	local store = done and grid.cursors.done or grid.cursors.active
+	store[key] = store[key] or {}
+	local cd = store[key]
 	cd.currentPos = cd.currentPos or {0, 0}
 	cd.targetPos = cd.targetPos or {0, 0}
 	cd.startPos = cd.startPos or {0, 0}
@@ -1308,12 +1458,12 @@ function start.f_drawCursor(pn, x, y, param, done)
 		cd.snap = cd.snap or false -- only used by active cursors
 	end
 	-- calculate target cell coordinates using the pre-calculated grid
-	local cellData = start.t_grid[y + 1] and start.t_grid[y + 1][x + 1]
+	local cellData = grid.rows[y + 1] and grid.rows[y + 1][x + 1]
 	local baseX, baseY
 	if cellData then
 		-- cellData already includes all spacing and offsets
-		baseX = motif.select_info.pos[1] + cellData.x
-		baseY = motif.select_info.pos[2] + cellData.y
+		baseX = sec.pos[1] + cellData.x
+		baseY = sec.pos[2] + cellData.y
 	end
 	-- initialization or snap: set cursor directly
 	if not cd.init or done or cd.snap then
@@ -1344,7 +1494,7 @@ function start.f_drawCursor(pn, x, y, param, done)
 	if pData.cursor.tween.wrap.snap then
 		local dx = cd.targetPos[1] - cd.startPos[1]
 		local dy = cd.targetPos[2] - cd.startPos[2]
-		if math.abs(dx) > motif.select_info.cell.size[1] * (motif.select_info.columns - 1) or math.abs(dy) > motif.select_info.cell.size[2] * (motif.select_info.rows - 1) then
+		if math.abs(dx) > sec.cell.size[1] * (sec.columns - 1) or math.abs(dy) > sec.cell.size[2] * (sec.rows - 1) then
 			cd.slideOffset[1], cd.slideOffset[2] = 0, 0
 		end
 	end
@@ -1360,22 +1510,27 @@ function start.f_drawCursor(pn, x, y, param, done)
 		cx, cy = x, y
 	end
 	local a = params.AnimData
-	local facing = getCellFacing(params.facing, cx, cy)
+	local cellSec = sec.cell
+	local facing = getCellFacing(params.facing, cx, cy, cellSec)
 	animSetFacing(a, facing)
-	local scale = getCellTransform(cx, cy, "scale", params.scale)
+	local scale = getCellTransform(cx, cy, "scale", params.scale, cellSec)
 	animSetScale(a, scale[1], scale[2])
-	animSetXShear(a, getCellTransform(cx, cy, "xshear", params.xshear))
-	animSetAngle(a, getCellTransform(cx, cy, "angle", params.angle))
-	animSetXAngle(a, getCellTransform(cx, cy, "xangle", params.xangle))
-	animSetYAngle(a, getCellTransform(cx, cy, "yangle", params.yangle))
-	animSetProjection(a, getCellTransform(cx, cy, "projection", params.projection))
-	animSetFocalLength(a, getCellTransform(cx, cy, "focallength", params.focallength))
+	animSetXShear(a, getCellTransform(cx, cy, "xshear", params.xshear, cellSec))
+	animSetAngle(a, getCellTransform(cx, cy, "angle", params.angle, cellSec))
+	animSetXAngle(a, getCellTransform(cx, cy, "xangle", params.xangle, cellSec))
+	animSetYAngle(a, getCellTransform(cx, cy, "yangle", params.yangle, cellSec))
+	animSetProjection(a, getCellTransform(cx, cy, "projection", params.projection, cellSec))
+	animSetFocalLength(a, getCellTransform(cx, cy, "focallength", params.focallength, cellSec))
 	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], facing)
 end
 
+function start.f_drawCursor(pn, x, y, param, done)
+	start.f_gridDrawCursor(start.charGrid, pn, start.f_getCursorData(pn), x, y, param, done)
+end
+
 -- snaps the cursor instantly to its target cell
-local function f_snapCursor()
-	for k, v in pairs(cursorActive) do
+local function f_snapCursor(grid)
+	for k, v in pairs((grid or start.charGrid).cursors.active) do
 		v.snap = true
 	end
 end
@@ -1585,7 +1740,7 @@ local function slotCycle(cell, dir)
 	local count = #grid.chars
 	for step = 1, count - 1 do
 		local idx = (grid.slot - 1 + dir * step) % count + 1
-		if start.f_getCharData(start.f_selGrid(cell, idx).char_ref).hidden < 2 then
+		if not start.f_getCharData(start.f_selGrid(cell, idx).char_ref).locked then
 			grid.slot = idx
 			return true
 		end
@@ -1596,7 +1751,7 @@ end
 local function updateGridSlot(cell, x, y)
 	local entry = start.f_selGrid(cell)
 	local box = start.t_grid[y + 1][x + 1]
-	box.char, box.char_ref, box.hidden, box.skip = entry.char, entry.char_ref, entry.hidden, entry.skip
+	box.char, box.char_ref, box.hidden, box.locked, box.skip = entry.char, entry.char_ref, entry.hidden, entry.locked, entry.skip
 end
 
 -- return true if slot is selected, update start.t_grid
@@ -1646,38 +1801,50 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect'), false
 end
 
--- generate start.t_grid table, assign row and cell to main.t_selChars
-local cnt = motif.select_info.columns + 1
-local row = 1
-local col = 0
-start.t_grid = {[row] = {}}
-for i = 1, motif.select_info.rows * motif.select_info.columns do
-	if i == cnt then
-		row = row + 1
-		cnt = cnt + motif.select_info.columns
-		start.t_grid[row] = {}
+-- Builds the cell rows of a grid's current page.
+function start.f_gridBuild(grid, fill)
+	grid.fill = fill or grid.fill
+	local sec = grid.sec
+	-- The row tables are reused, so references to grid.rows (start.t_grid) stay valid.
+	local rows = grid.rows or {}
+	local first = gridFirst(grid)
+	-- A wrapping scrolling grid repeats its entries around.
+	local wrap = grid.first ~= nil and sec.wrapping and (grid.count or 0) > 0
+	for i = 1, sec.rows * sec.columns do
+		local row = math.floor((i - 1) / sec.columns) + 1
+		local col = (i - 1) % sec.columns + 1
+		rows[row] = rows[row] or {}
+		local cell_spacing = getCellSpacing(col - 1, row - 1, sec.cell)
+		local cell_offset = getCellOffset(col - 1, row - 1, sec.cell)
+		rows[row][col] = {
+			x = (col - 1) * (sec.cell.size[1] + cell_spacing[1]) + cell_offset[1],
+			y = (row - 1) * (sec.cell.size[2] + cell_spacing[2]) + cell_offset[2]
+		}
+		grid.fill(wrap and (first + i - 1) % grid.count + 1 or first + i, rows[row][col], row, col)
+		if getCellSkip(col - 1, row - 1, sec.cell) then
+			rows[row][col].skip = 1
+		end
 	end
-	col = #start.t_grid[row] + 1
-	local cell_spacing = getCellSpacing(col - 1, row - 1)
-	local cell_offset = getCellOffset(col - 1, row - 1)
-	start.t_grid[row][col] = {
-		x = (col - 1) * (motif.select_info.cell.size[1] + cell_spacing[1]) + cell_offset[1],
-		y = (row - 1) * (motif.select_info.cell.size[2] + cell_spacing[2]) + cell_offset[2]
-	}
+	grid.rows = rows
+	return rows
+end
+
+-- generate start.t_grid table, assign row and cell to main.t_selChars
+start.t_grid = start.f_gridBuild(start.charGrid, function(i, t, row, col)
 	if start.f_selGrid(i).char ~= nil then
-		start.t_grid[row][col].char = start.f_selGrid(i).char
-		start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
-		start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
+		t.char = start.f_selGrid(i).char
+		t.char_ref = start.f_selGrid(i).char_ref
+		t.hidden = start.f_selGrid(i).hidden
+		t.locked = start.f_selGrid(i).locked
 		for j = 1, #main.t_selGrid[i].chars do
 			start.f_selGrid(i, j).row = row
 			start.f_selGrid(i, j).col = col
 		end
 	end
-	local overrideSkip = getCellSkip(col - 1, row - 1)
-	if start.f_selGrid(i).skip == 1 or overrideSkip then
-		start.t_grid[row][col].skip = 1
+	if start.f_selGrid(i).skip == 1 then
+		t.skip = 1
 	end
-end
+end)
 if gameOption('Debug.DumpLuaTables') then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
 
 local function updateCommon(common, add)
@@ -2038,32 +2205,22 @@ function start.f_selectReset(hardReset, preserveProgress)
 		setConsecutiveWins(1, 0)
 		setConsecutiveWins(2, 0)
 	end
-	local col = 1
-	local row = 1
 	for i = 1, #main.t_selGrid do
-		if i > motif.select_info.columns * row then
-			row = row + 1
-			col = 1
-		end
-		if main.t_selGrid[i].slot ~= 1 then
-			main.t_selGrid[i].slot = 1
-			start.t_grid[row][col].char = start.f_selGrid(i).char
-			start.t_grid[row][col].char_ref = start.f_selGrid(i).char_ref
-			start.t_grid[row][col].hidden = start.f_selGrid(i).hidden
-			start.t_grid[row][col].skip = start.f_selGrid(i).skip
-		end
-		col = col + 1
+		main.t_selGrid[i].slot = 1
 	end
+	start.f_gridBuild(start.charGrid)
 	if hardReset then
 		for _, group in ipairs(main.t_stageSlots) do
 			group.slot = 1
 		end
-		if motif.select_info.stage.randomselect == 0 or motif.select_info.stage.randomselect == 2 then
-			stageListNo = 1
-		else
-			stageListNo = 0
-		end
+		stageListNo = 0
 		restoreCursor = false
+		local ssi = motif.stage_select_info
+		start.stageCursor = {
+			selY = ssi.cursor.startcell[1] < ssi.rows and ssi.cursor.startcell[1] or 0,
+			selX = ssi.cursor.startcell[2] < ssi.columns and ssi.cursor.startcell[2] or 0,
+			page = 0,
+		}
 		-- cursor start cell
 		for i = 1, #start.c do
 			if start.f_getCursorData(i).cursor.startcell[1] < motif.select_info.rows then
@@ -2114,8 +2271,8 @@ function start.f_selectReset(hardReset, preserveProgress)
 	selScreenEnd = false
 	stageEnd = false
 	t_reservedChars = {{}, {}}
-	cursorActive = {}
-	cursorDone = {}
+	start.charGrid.cursors = {active = {}, done = {}}
+	start.stageGrid.cursors = {active = {}, done = {}}
 	if main.preload ~= nil and main.preload.charHighlight ~= nil then
 		for _, ref in pairs(main.preload.charHighlight) do
 			queueCharPreload(ref, 1)
@@ -2649,87 +2806,71 @@ local function refreshActiveFacePortraits()
 	end
 end
 
-function start.f_updateDrawList()
+-- Draw list of a grid's cell art.
+function start.f_gridDrawList(grid, art)
+	local sec = grid.sec
 	local drawList = {}
-
-	for row = 1, motif.select_info.rows do
-		for col = 1, motif.select_info.columns do
-			local cellIndex = (row - 1) * motif.select_info.columns + col
-			local t = start.t_grid[row][col]
+	for row = 1, sec.rows do
+		for col = 1, sec.columns do
+			local cellIndex = (row - 1) * sec.columns + col
+			local t = grid.rows[row][col]
 			local c = col - 1
 			local r = row - 1
 
 			if t.skip ~= 1 then
-				local charData = start.f_selGrid(cellIndex)
+				local a = art(cellIndex, t)
 				local function getTransforms(base)
 					return {
-						facing = getCellFacing(base.facing, c, r),
-						scale = getCellTransform(c, r, "scale", base.scale),
-						xshear = getCellTransform(c, r, "xshear", base.xshear),
-						angle = getCellTransform(c, r, "angle", base.angle),
-						xangle = getCellTransform(c, r, "xangle", base.xangle),
-						yangle = getCellTransform(c, r, "yangle", base.yangle),
-						projection = getCellTransform(c, r, "projection", base.projection),
-						focallength = getCellTransform(c, r, "focallength", base.focallength)
+						facing = getCellFacing(base.facing, c, r, sec.cell),
+						scale = getCellTransform(c, r, "scale", base.scale, sec.cell),
+						xshear = getCellTransform(c, r, "xshear", base.xshear, sec.cell),
+						angle = getCellTransform(c, r, "angle", base.angle, sec.cell),
+						xangle = getCellTransform(c, r, "xangle", base.xangle, sec.cell),
+						yangle = getCellTransform(c, r, "yangle", base.yangle, sec.cell),
+						projection = getCellTransform(c, r, "projection", base.projection, sec.cell),
+						focallength = getCellTransform(c, r, "focallength", base.focallength, sec.cell)
 					}
 				end
-
-				if (charData and charData.char ~= nil and (charData.hidden == 0 or charData.hidden == 3)) or motif.select_info.showemptyboxes then
-					local item = getTransforms(motif.select_info.cell.bg)
-					item.anim = motif.select_info.cell.bg.AnimData
-					item.x = motif.select_info.pos[1] + t.x
-					item.y = motif.select_info.pos[2] + t.y
+				local function add(base, anim, x, y)
+					local item = getTransforms(base)
+					item.anim = anim
+					item.x = sec.pos[1] + t.x + x
+					item.y = sec.pos[2] + t.y + y
 					table.insert(drawList, item)
+					return item
 				end
 
-				if charData and (charData.char == 'randomselect' or charData.hidden == 3) then
-					local item = getTransforms(motif.select_info.cell.random)
-					item.anim = motif.select_info.cell.random.AnimData
-					item.x = motif.select_info.pos[1] + t.x + motif.select_info.portrait.offset[1]
-					item.y = motif.select_info.pos[2] + t.y + motif.select_info.portrait.offset[2]
-					table.insert(drawList, item)
+				local lockedArt = a.locked and hasPortraitAnim(sec.cell.locked)
+				if a.filled or sec.showemptyboxes or lockedArt then
+					add(sec.cell.bg, sec.cell.bg.AnimData, 0, 0)
 				end
 
-				if charData and charData.char_ref ~= nil and charData.hidden == 0 and charData.char ~= 'randomselect' then
-					local portrait = motif.select_info.portrait
-					local loadingPortrait = false
-					if getCharPreloadStatus(charData.char_ref) ~= 'ready' and hasPortraitAnim(portrait.loading) then
-						portrait = portrait.loading
-						loadingPortrait = true
-					end
-					local item = getTransforms(portrait)
-					item.anim = loadingPortrait and portrait.AnimData or charData.cell_data
-					item.x = motif.select_info.pos[1] + t.x
-					item.y = motif.select_info.pos[2] + t.y
-					if not loadingPortrait then
-						item.x = item.x + portrait.offset[1]
-						item.y = item.y + portrait.offset[2]
-					end
-					-- apply cell scale override while preserving portrait resolution factor
-					-- loading portrait comes from system.sff, so don't apply character localcoord scaling to it
-					if item.scale ~= nil and not loadingPortrait then
-						local charInfo = main.t_selChars[charData.char_ref + 1]
-						if charInfo then
-							local portraitScale = charInfo.portraitscale or 1
-							local charLocalcoord = charInfo.localcoord or motif.info.localcoord[1]
-							-- recompute resolution compensation factor
-							local resFix = portraitScale * motif.info.localcoord[1] / charLocalcoord
+				if lockedArt then
+					add(sec.cell.locked, sec.cell.locked.AnimData, sec.portrait.offset[1], sec.portrait.offset[2])
+				end
+
+				if a.random then
+					add(sec.cell.random, sec.cell.random.AnimData, sec.portrait.offset[1], sec.portrait.offset[2])
+				end
+
+				if a.portrait ~= nil then
+					local portrait = sec.portrait
+					-- loading portrait comes from system.sff, so don't apply the portrait resolution factor to it
+					if a.loading and hasPortraitAnim(portrait.loading) then
+						add(portrait.loading, portrait.loading.AnimData, 0, 0)
+					else
+						local item = add(portrait, a.portrait, portrait.offset[1], portrait.offset[2])
+						-- apply cell scale override while preserving portrait resolution factor
+						if item.scale ~= nil and a.scale ~= nil then
 							item.scale = {
-								item.scale[1] * resFix,
-								item.scale[2] * resFix
+								item.scale[1] * a.scale,
+								item.scale[2] * a.scale
 							}
 						end
 					end
-					table.insert(drawList, item)
-					local grid = main.t_selGrid[cellIndex]
-					local hasMultipleChars = grid ~= nil and #grid.chars > 1
 					-- draw slot indicator
-					if hasMultipleChars and hasPortraitAnim(motif.select_info.cell.slot) then
-						local icon = getTransforms(motif.select_info.cell.slot)
-						icon.anim = motif.select_info.cell.slot.AnimData
-						icon.x = motif.select_info.pos[1] + t.x
-						icon.y = motif.select_info.pos[2] + t.y
-						table.insert(drawList, icon)
+					if a.slot and hasPortraitAnim(sec.cell.slot) then
+						add(sec.cell.slot, sec.cell.slot.AnimData, 0, 0)
 					end
 				end
 			end
@@ -2739,14 +2880,66 @@ function start.f_updateDrawList()
 	return drawList
 end
 
-local function tickScreenDelay(side, demo)
+-- Cell art of the character grid.
+local function charCellArt(cellIndex, t)
+	local charData = start.f_selGrid(cellIndex)
+	-- hidden = 1 cells draw nothing, locked ones only cell.locked.
+	local visible = charData and charData.char ~= nil and charData.hidden ~= 1
+	local a = {
+		filled = visible and not charData.locked,
+		random = visible and charData.char == 'randomselect',
+		locked = visible and charData.locked,
+	}
+	if a.filled and charData.char_ref ~= nil and charData.char ~= 'randomselect' then
+		a.portrait = charData.cell_data
+		a.loading = getCharPreloadStatus(charData.char_ref) ~= 'ready'
+		local charInfo = main.t_selChars[charData.char_ref + 1]
+		if charInfo then
+			local portraitScale = charInfo.portraitscale or 1
+			local charLocalcoord = charInfo.localcoord or motif.info.localcoord[1]
+			-- recompute resolution compensation factor
+			a.scale = portraitScale * motif.info.localcoord[1] / charLocalcoord
+		end
+		local grid = main.t_selGrid[cellIndex]
+		a.slot = grid ~= nil and #grid.chars > 1
+	end
+	return a
+end
+
+function start.f_updateDrawList()
+	return start.f_gridDrawList(start.charGrid, charCellArt)
+end
+
+-- Draws page.previous.arrow while there's a previous page and page.next.arrow while there's a next one.
+function start.f_gridDrawArrows(grid)
+	local sec = grid.sec
+	for _, entry in ipairs({{sec.page.previous.arrow, -1}, {sec.page.next.arrow, 1}}) do
+		if start.f_gridHasPage(grid, entry[2]) then
+			main.f_animPosDraw(entry[1].AnimData, sec.pos[1], sec.pos[2])
+		end
+	end
+end
+
+-- page.previous / page.next actions. Returns true if the page changed.
+function start.f_gridPageInput(grid, cmd)
+	local sec = grid.sec
+	if getAction(cmd, sec.page.previous.action) then
+		return start.f_gridPage(grid, -1)
+	elseif getAction(cmd, sec.page.next.action) then
+		return start.f_gridPage(grid, 1)
+	end
+	return false
+end
+
+-- stageScreen: [Stage Select Info] follows, so confirming can skip the wait as without a stage menu.
+local function tickScreenDelay(side, demo, stageScreen)
 	if start.p[side].screenDelay <= 0 then
 		return false
 	end
 	local selectComplete = start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd
 	local canSkip = not demo and not start.p[side].inPalMenu and (
 		not start.p[side].selEnd
-		or (selectComplete and (not main.stageMenu or stageEnd))
+		or (selectComplete and (not main.stageMenu or stageEnd or stageScreen))
 	)
 	if canSkip then
 		local owners = {}
@@ -2784,6 +2977,75 @@ local function resetStagePortraitAnim(stageNo, subname)
 		animReset(anim)
 		animUpdate(anim)
 	end
+end
+
+-- Stage preview of [Select Info] or [Stage Select Info]
+function start.f_drawStagePreview(stageSec, animField)
+	main.f_animPosDraw(stageSec.portrait.bg.AnimData)
+	if stageListNo == 0 then
+		main.f_animPosDraw(stageSec.portrait.random.AnimData)
+		return
+	end
+	local stageRef = main.t_selectableStages[stageListNo]
+	local portrait = stageSec.portrait
+	local anim = main.t_selStages[stageRef][animField]
+	local loadingPortrait = false
+	if getStagePreloadStatus(stageRef) ~= 'ready' and hasPortraitAnim(portrait.loading) then
+		portrait = portrait.loading
+		anim = portrait.AnimData
+		loadingPortrait = true
+	end
+	local x = stageSec.pos[1]
+	local y = stageSec.pos[2]
+	if not loadingPortrait then
+		x = x + portrait.offset[1]
+		y = y + portrait.offset[2]
+	end
+	main.f_animPosDraw(anim, x, y)
+end
+
+-- True when the stage can start. Otherwise its preload is sped up. nil (random) is always ready.
+function start.f_stageReady(ref)
+	if ref == nil then
+		return true
+	end
+	if getStagePreloadStatus(ref) ~= 'ready' then
+		main.f_preloadBoostStage(ref)
+		return false
+	end
+	if main.f_materializeStagePortrait(ref) then
+		start.needUpdateDrawList = true
+	end
+	return true
+end
+
+-- Stage name style, switching between active and active2 every active.switchtime frames.
+function start.f_stageBlink(stageSec, blink)
+	if blink.count < stageSec.active.switchtime then
+		blink.count = blink.count + 1
+	else
+		blink.on = not blink.on
+		blink.count = 0
+	end
+	return blink.on and stageSec.active.TextSpriteData or stageSec.active2.TextSpriteData
+end
+
+-- Slot icon over the preview while the stage shown shares a select.def slot.
+function start.f_drawStageSlot(stageSec, group)
+	if group ~= nil and #group.available > 1 and hasPortraitAnim(stageSec.portrait.slot) then
+		main.f_animPosDraw(stageSec.portrait.slot.AnimData)
+	end
+end
+
+-- Name of the stage at stageListNo.
+function start.f_drawStageName(stageSec, textData)
+	local stage_text = stageSec.random.text
+	if stageListNo ~= 0 then
+		stage_text = main.f_formatBySpec(stageSec.text, {i = stageListNo, s = main.t_selStages[main.t_selectableStages[stageListNo]].name})
+	end
+	textImgReset(textData)
+	textImgSetText(textData, stage_text)
+	textImgDraw(textData)
 end
 
 local function teamMenuSelectable(t)
@@ -2871,8 +3133,9 @@ end
 start.needUpdateDrawList = false
 -- Follow visible cells backwards from the target so the cursor can reach it
 -- in a few moves even when the configured starting cell is far away
-local function demoCursorPath(target, startCell, visible)
-	local columns, rows = motif.select_info.columns, motif.select_info.rows
+local function demoCursorPath(target, startCell, visible, sec)
+	sec = sec or motif.select_info
+	local columns, rows = sec.columns, sec.rows
 	local cells, depth, nextCell = {target}, {[target] = 0}, {}
 	local directions = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}
 	local origin = target
@@ -2923,14 +3186,14 @@ function start.f_demoSelect(picks, palState)
 		local x, y = (cell - 1) % cfg.columns, math.floor((cell - 1) / cfg.columns)
 		if grid and start.t_grid[y + 1][x + 1].skip ~= 1 then
 			local current = start.f_selGrid(cell)
-			if current.char == 'randomselect' or current.hidden == 3 then
+			if current.char == 'randomselect' then
 				randomCell = randomCell or cell
-			elseif current.char_ref ~= nil and current.hidden == 0 then
+			elseif current.char_ref ~= nil and current.hidden ~= 1 and not current.locked then
 				visible[cell] = true
 			end
 			for slot in ipairs(grid.chars) do
 				local entry = start.f_selGrid(cell, slot)
-				if entry.char_ref ~= nil and entry.hidden == 0 and entry.skip ~= 1 and entry.char ~= 'randomselect' then
+				if entry.char_ref ~= nil and entry.hidden ~= 1 and not entry.locked and entry.skip ~= 1 and entry.char ~= 'randomselect' then
 					if destinations[entry.char_ref] == nil or slot == grid.slot then
 						destinations[entry.char_ref] = {cell = cell, slot = slot}
 					end
@@ -2967,10 +3230,10 @@ function start.f_demoSelect(picks, palState)
 	if demoTitle and demoTitle ~= '' then
 		textImgReset(title, {'text'})
 	end
-	for cell, slot in pairs(demo.slots) do
-		main.t_selGrid[cell].slot = slot
-		updateGridSlot(cell, (cell - 1) % cfg.columns, math.floor((cell - 1) / cfg.columns))
+	for index, slot in pairs(demo.slots) do
+		main.t_selGrid[index].slot = slot
 	end
+	start.f_gridBuild(start.charGrid)
 	for side = 1, 2 do
 		main.f_preloadSetCharHighlight(side, nil)
 	end
@@ -2993,11 +3256,12 @@ local function stepDemoCursor(demo, player, frame)
 		choice.nextFrame = math.max(frame, 0) + math.random(10, 16) + (choice.step == 1 and player * 6 or 0)
 		if choice.step == #choice.path then
 			choice.confirmFrame = math.max(frame, 0) + 24 + player * 6
-			local grid = main.t_selGrid[cell]
+			local index = start.f_gridCell(start.charGrid, cursor.selX, cursor.selY) + 1
+			local grid = main.t_selGrid[index]
 			if choice.slot and grid.slot ~= choice.slot then
-				demo.slots[cell] = demo.slots[cell] or grid.slot
+				demo.slots[index] = demo.slots[index] or grid.slot
 				grid.slot = choice.slot
-				updateGridSlot(cell, cursor.selX, cursor.selY)
+				updateGridSlot(index, cursor.selX, cursor.selY)
 				start.needUpdateDrawList = true
 			end
 		end
@@ -3019,8 +3283,20 @@ function start.f_selectScreen(demo)
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true
 	end
-	bgReset(motif.selectbgdef.BGDef)
-	fadeInInit(motif.select_info.fadein.FadeData)
+	local function selectionDone()
+		return start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd
+	end
+	-- [Stage Select Info] follows character selection instead of the stage menu below.
+	local stageScreen = start.f_stageScreenEnabled(demo) and (main.stageMenu or demo ~= nil)
+	-- Reopened with every character picked (rematch menu stage select): go straight to stage selection.
+	local stageScreenPending = stageScreen and not stageEnd and selectionDone()
+	local function initSelectScreen()
+		bgReset(motif.selectbgdef.BGDef)
+		fadeInInit(motif.select_info.fadein.FadeData)
+	end
+	if not stageScreenPending then
+		initSelectScreen()
+	end
 	local fadeOutStarted = false
 	-- back is true for cancel, false for Esc and exit.
 	local function exitSelectScreen(back)
@@ -3033,8 +3309,7 @@ function start.f_selectScreen(demo)
 	playBgm({source = "motif.select", interrupt = true})
 	start.f_resetTempData(motif.select_info, 'face')
 	f_snapCursor()
-	local stageActiveCount = 0
-	local stageActiveState = false
+	local stageBlink = {count = 0, on = true}
 	timerSelect = 0
 	start.escFlag = false
 	start.selectBack = false
@@ -3043,10 +3318,10 @@ function start.f_selectScreen(demo)
 	local counter = 0 - motif.select_info.fadein.time
 	local timerReset = false
 	local stageTextData = motif.select_info.stage.active.TextSpriteData
-	if stageListNo > #main.t_selectableStageSlots then
-		stageListNo = #main.t_selectableStageSlots
+	if stageListNo > #main.t_selectableStages then
+		stageListNo = #main.t_selectableStages
 	end
-	local stageRef = start.f_stageMenuRef()
+	local stageRef = main.t_selectableStages[stageListNo]
 
 	-- Reset stage portrait animation if it was already seen when entering the select screen
 	resetStagePortraitAnim(stageRef, 'anim_data')
@@ -3105,6 +3380,30 @@ function start.f_selectScreen(demo)
 	start.needUpdateDrawList = false
 
 	while not selScreenEnd do
+		if stageScreenPending and not fadeActive() then
+			stageScreenPending = false
+			local result = start.f_stageScreen(demo)
+			if result == 'done' then
+				selScreenEnd = true
+				break
+			elseif result == 'exit' then
+				start.escFlag = true
+				start.selectBack = false
+				selScreenEnd = true
+				break
+			end
+			-- Back to character selection: undo the last pick, made by the opponent side.
+			for _, side in ipairs({main.opponentSide, main.runSide}) do
+				local cmdIndex = #start.p[side].t_selCmd
+				if (cmdIndex > 0 and cancelSelectMember(side, cmdIndex)) or cancelPreviousSide(side) then
+					break
+				end
+			end
+			timerSelect = motif.select_info.timer.displaytime
+			initSelectScreen()
+			f_snapCursor()
+			start.needUpdateDrawList = true
+		end
 		main.f_preloadTick(4)
 		refreshActiveFacePortraits()
 		counter = counter + 1
@@ -3233,7 +3532,7 @@ function start.f_selectScreen(demo)
 					-- 	t = start.t_grid[y + 1][x + 1]
 					-- end
 					-- render only if cell is not hidden
-					if t.hidden ~= 1 and t.hidden ~= 2 then
+					if t.hidden ~= 1 and not t.locked then
 						local shouldDraw = false
 						if start.f_coopSide(side) or persist then
 							shouldDraw = true
@@ -3252,7 +3551,7 @@ function start.f_selectScreen(demo)
 				end
 			end
 			-- delayed screen transition for the duration of face_done_anim or selection sound
-			if tickScreenDelay(side, demo) then
+			if tickScreenDelay(side, demo, stageScreen) then
 				screenDelayInterrupted = true
 			end
 			if start.p[side].inPalMenu then
@@ -3316,9 +3615,10 @@ function start.f_selectScreen(demo)
 					end
 				end
 			end
-			if cancelHandled and fadeOutStarted then
+			if cancelHandled and (fadeOutStarted or stageScreenPending) then
 				fadeSkip()
 				fadeOutStarted = false
+				stageScreenPending = false
 			end
 		end
 		-- draw names
@@ -3347,10 +3647,14 @@ function start.f_selectScreen(demo)
 		-- team and character selection complete
 		if start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			restoreCursor = true
-			local slotSelected, slotHandled = false, false
-			if main.stageMenu and not stageEnd then -- Stage select
+			if stageScreen and not stageEnd then
+				if not stageScreenPending and start.p[1].screenDelay <= 0 and start.p[2].screenDelay <= 0 and not fadeOutStarted then
+					stageScreenPending = true
+					fadeOutInit(motif.select_info.fadeout.FadeData)
+				end
+			elseif main.stageMenu and not stageEnd then -- Stage select
 				start.p[1].screenDelay, start.p[2].screenDelay = 0, 0
-				slotSelected, slotHandled = start.f_stageMenu()
+				start.f_stageMenu()
 				if not timerReset then
 					timerSelect = motif.select_info.timer.displaytime
 					timerReset = true
@@ -3360,48 +3664,13 @@ function start.f_selectScreen(demo)
 				fadeOutStarted = true
 			end
 			-- draw stage portrait
-			if main.stageMenu then
-				-- draw stage portrait background
-				main.f_animPosDraw(motif.select_info.stage.portrait.bg.AnimData)
-				-- draw stage portrait (random)
-				if stageListNo == 0 then
-					main.f_animPosDraw(motif.select_info.stage.portrait.random.AnimData)
-				-- draw stage portrait loaded from stage SFF
-				else
-					stageRef = start.f_stageMenuRef()
-					local portrait = motif.select_info.stage.portrait
-					local anim = main.t_selStages[stageRef].anim_data
-					local loadingPortrait = false
-					if getStagePreloadStatus(stageRef) ~= 'ready' and hasPortraitAnim(portrait.loading) then
-						portrait = portrait.loading
-						anim = portrait.AnimData
-						loadingPortrait = true
-					end
-					local x = motif.select_info.stage.pos[1]
-					local y = motif.select_info.stage.pos[2]
-					if not loadingPortrait then
-						x = x + portrait.offset[1]
-						y = y + portrait.offset[2]
-					end
-					main.f_animPosDraw(anim, x, y)
-				end
+			if main.stageMenu and not stageScreen then
+				start.f_drawStagePreview(motif.select_info.stage, 'anim_data')
 				if not stageEnd then
-					local confirmPressed = slotSelected or (not slotHandled and getAction(-1, motif.select_info.done.action))
+					local confirmPressed = getAction(-1, motif.select_info.done.action)
 					local canConfirmStage = ((confirmPressed and not screenDelayInterrupted) or timerSelect == -1) and #main.t_selectableStages > 0
 					if canConfirmStage then
-						local preloadReady = true
-						if stageListNo > 0 then
-							local stageRef = start.f_stageMenuRef()
-							local state = getStagePreloadStatus(stageRef)
-							preloadReady = state == 'ready'
-							if not preloadReady then
-								main.f_preloadBoostStage(stageRef)
-							else
-								if main.f_materializeStagePortrait(stageRef) then
-									start.needUpdateDrawList = true
-								end
-							end
-						end
+						local preloadReady = start.f_stageReady(stageListNo > 0 and main.t_selectableStages[stageListNo] or nil)
 						if not preloadReady and confirmPressed and not screenDelayInterrupted then
 							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 						end
@@ -3410,39 +3679,19 @@ function start.f_selectScreen(demo)
 							stageTextData = motif.select_info.stage.done.TextSpriteData
 							stageEnd = true
 						end
-					elseif stageActiveCount < motif.select_info.stage.active.switchtime then -- delay change
-						stageActiveCount = stageActiveCount + 1
 					else
-						if stageActiveState then
-							stageActiveState = false
-							stageTextData = motif.select_info.stage.active2.TextSpriteData
-						else
-							stageActiveState = true
-							stageTextData = motif.select_info.stage.active.TextSpriteData
-						end
-						stageActiveCount = 0
+						stageTextData = start.f_stageBlink(motif.select_info.stage, stageBlink)
 					end
 				end
-				-- stage slot indicator
-				local group = main.t_selectableStageSlots[stageListNo]
-				if not stageEnd and group ~= nil and #group.available > 1 and hasPortraitAnim(motif.select_info.stage.portrait.slot) then
-					main.f_animPosDraw(motif.select_info.stage.portrait.slot.AnimData)
-				end
 				-- draw stage name
-				local stage_text = motif.select_info.stage.random.text
-				if stageListNo ~= 0 then
-					stage_text = main.f_formatBySpec(motif.select_info.stage.text, {i = stageListNo, s = main.t_selStages[start.f_stageMenuRef()].name})
-				end
-				textImgReset(stageTextData)
-				textImgSetText(stageTextData, stage_text)
-				textImgDraw(stageTextData)
+				start.f_drawStageName(motif.select_info.stage, stageTextData)
 			end
 		else
 			-- draw record text
 			textImgDraw(motif.select_info.record.TextSpriteData)
 		end
 		-- draw timer
-		if not demo and motif.select_info.timer.count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd)) and counter >= 0 then
+		if not demo and motif.select_info.timer.count ~= -1 and (not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd or (main.stageMenu and not stageEnd and not stageScreen)) and counter >= 0 then
 			timerSelect = main.f_drawTimer(timerSelect, motif.select_info.timer)
 		end
 		-- hook
@@ -3473,9 +3722,8 @@ function start.f_selectScreen(demo)
 		if demo then
 		elseif start.p[1].teamEnd and start.p[2].teamEnd and start.p[1].selEnd and start.p[2].selEnd then
 			local hintContext = 'done'
-			if main.stageMenu and not stageEnd then
-				local group = main.t_selectableStageSlots[stageListNo]
-				hintContext = (group ~= nil and #group.available > 1) and 'stageslot' or 'stage'
+			if main.stageMenu and not stageEnd and not stageScreen then
+				hintContext = 'stage'
 				main.f_hintDraw(motif.select_info.hint2, 'stage')
 			end
 			main.f_hintDraw(motif.select_info.hint, hintContext)
@@ -4091,7 +4339,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			if not demo then
 				start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
 			end
-			start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
+			start.c[player].cell = start.f_gridCell(start.charGrid, start.c[player].selX, start.c[player].selY)
 			local demoAtTarget = demo and demo.step == #demo.path
 			start.c[player].selRef = demoAtTarget and demo.pick.ref or start.f_selGrid(start.c[player].cell + 1).char_ref
 			main.f_preloadSetCharHighlight(player, start.c[player].selRef)
@@ -4138,7 +4386,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 					updateAnim = true
 				end
 				-- cursor at randomselect cell
-				if not demo and (start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' or start.f_selGrid(start.c[player].cell + 1).hidden == 3) then
+				if not demo and start.f_selGrid(start.c[player].cell + 1).char == 'randomselect' then
 					local wasRandom = start.p[side].t_selTemp[member].inRandom
 					start.p[side].t_selTemp[member].inRandom = true
 					velCopy = wasRandom
@@ -4182,7 +4430,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 				end
 				-- cell selected or select screen timer reached 0
 				local demoConfirm = demoAtTarget and demo.frame >= demo.confirmFrame
-				local canConfirm = demoConfirm or (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired
+				local canConfirm = demoConfirm or (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and not start.f_selGrid(start.c[player].cell + 1).locked) or timerExpired
 				if canConfirm then
 					local preloadReady = true
 					if start.c[player].selRef ~= nil then
@@ -4350,7 +4598,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			local cellIdx = (start.c[player].cell or -1) + 1
 			if cellIdx > 0 then
 				local g = start.f_selGrid(cellIdx)
-				if g.char == 'randomselect' or g.hidden == 3 then
+				if g.char == 'randomselect' then
 					start.c[player].randCnt = 0
 					start.c[player].randRef = nil
 				end
@@ -4401,9 +4649,9 @@ end
 --;===========================================================
 --; STAGE MENU
 --;===========================================================
--- Stage slots work like character slots: a select.def 'select' command picks a random
--- member, [Select Info] stage.slot.next/previous cycle through them.
-function start.f_stageSlotSelected(group)
+-- Stage slots on the stage select screen work like character slots: a select.def 'select'
+-- command picks a random member, the slot actions cycle through them. snd is the slot sound.
+function start.f_stageSlotSelected(group, slot, snd)
 	if group == nil or #group.available == 0 then return false, false end
 	for command, refs in pairs(group.select or {}) do
 		for player = 1, gameOption('Config.Players') do
@@ -4421,10 +4669,10 @@ function start.f_stageSlotSelected(group)
 		end
 	end
 	if #group.available > 1 then
-		for _, entry in ipairs({{motif.select_info.stage.slot.next, 1}, {motif.select_info.stage.slot.previous, -1}}) do
+		for _, entry in ipairs({{slot.next, 1}, {slot.previous, -1}}) do
 			if #entry[1].action > 0 and getAction(-1, entry[1].action) then
 				group.slot = (group.slot - 1 + entry[2]) % #group.available + 1
-				sndPlay(motif.Snd, motif.select_info.stage.slot.snd[1], motif.select_info.stage.slot.snd[2])
+				sndPlay(motif.Snd, snd[1], snd[2])
 				return false, true
 			end
 		end
@@ -4434,22 +4682,16 @@ end
 
 function start.f_stageMenu()
 	local n = stageListNo
-	local previousRef = start.f_stageMenuRef()
-	local randomMode = {
-		[0] = {init = 1, min = 1}, -- disabled
-		[1] = {init = 0, min = 0}, -- default
-		[2] = {init = 1, min = 0}, -- random at the 'end'
-	}
-
-	local r = randomMode[motif.select_info.stage.randomselect] or randomMode[1]
-	local stageListMinIdx = r.min
-	local stageListMaxIdx = #main.t_selectableStageSlots
+	local previousRef = main.t_selectableStages[stageListNo]
+	-- Random is entry 0, the first one.
+	local stageListMinIdx = 0
+	local stageListMaxIdx = #main.t_selectableStages
 	if stageListMaxIdx == 0 then
 		stageListNo = 0
-		return false, false
+		return
 	end
 	if stageListNo < stageListMinIdx or stageListNo > stageListMaxIdx then
-		stageListNo = r.init
+		stageListNo = 0
 	end
 
 	if getAction(-1, motif.select_info.stage.previous.action) then
@@ -4473,15 +4715,335 @@ function start.f_stageMenu()
 			if stageListNo > stageListMaxIdx then stageListNo = stageListMinIdx end
 		end
 	end
-	local selected, handled = start.f_stageSlotSelected(main.t_selectableStageSlots[stageListNo])
-	local ref = start.f_stageMenuRef()
+	local ref = main.t_selectableStages[stageListNo]
 	if ref ~= nil then
 		main.f_preloadBoostStage(ref)
 		if n ~= stageListNo or previousRef ~= ref then
 			resetStagePortraitAnim(ref, 'anim_data')
 		end
 	end
-	return selected, handled
+end
+
+--;===========================================================
+--; STAGE SELECT SCREEN
+--;===========================================================
+-- [Stage Select Info] replaces the stage menu of the select screen.
+-- Demo Mode shows it when [Demo Mode] stagescreen.enabled is set.
+function start.f_stageScreenEnabled(demo)
+	if demo then
+		return motif.demo_mode.stagescreen.enabled
+	end
+	return motif.stage_select_info.enabled
+end
+
+-- Fills the stage grid. Unlocked or hidden stages change which cells are filled.
+-- With paging, entries that don't fit go to the next pages. With scroll, they move
+-- through the cursor instead.
+local function buildStageGrid()
+	local grid, sec, cursor = start.stageGrid, motif.stage_select_info, start.stageCursor
+	local pool = #main.t_selectableStages > 0
+	grid.count = #main.t_stageGrid
+	grid.pages = 1
+	grid.first = nil
+	if sec.page.enabled and not sec.scroll.enabled then
+		grid.pages = math.max(1, math.ceil(grid.count / (sec.rows * sec.columns)))
+	end
+	grid.page = math.min(cursor.page or 0, grid.pages - 1)
+	grid.fill = function(i, t)
+		local entry = main.t_stageGrid[i] or {}
+		if entry.skip then
+			t.skip = 1
+		elseif entry.random then
+			t.filled, t.random = pool, pool
+		elseif entry.group ~= nil then
+			local group = main.t_stageSlots[entry.group]
+			if group.available ~= nil and #group.available > 0 then
+				t.filled, t.group = true, group
+			else
+				-- A slot with no stage to pick takes its look from its first stage, like a
+				-- character: hidden = 1 can be picked but isn't drawn, locked shows cell.locked.
+				for _, ref in ipairs(group.stages) do
+					local st = main.t_selStages[ref]
+					if st.exclude ~= 1 then
+						if st.hidden == 1 then
+							t.secret, t.ref = not st.locked, ref
+						elseif st.locked then
+							t.locked = true
+						end
+						break
+					end
+				end
+			end
+		end
+	end
+	if not sec.scroll.enabled then
+		start.f_gridBuild(grid)
+		return
+	end
+	local home = sec.cursor.startcell
+	grid.home = (home[1] < sec.rows and home[1] or 0) * sec.columns + (home[2] < sec.columns and home[2] or 0)
+	if cursor.entry ~= nil and cursor.entry < grid.count then
+		start.f_gridScrollTo(grid, cursor, cursor.entry)
+	else
+		local startEntry = math.max(0, sec.scroll.start)
+		if sec.wrapping and grid.count > 0 then
+			startEntry = startEntry % grid.count
+		end
+		cursor.entry = math.min(startEntry, grid.count) - 1
+		if not start.f_gridScroll(grid, cursor, 1) then
+			cursor.entry = -1
+			if not start.f_gridScroll(grid, cursor, 1) then
+				start.f_gridScrollTo(grid, cursor, 0)
+			end
+		end
+	end
+end
+
+-- Cell art of the stage grid.
+local function stageCellArt(cell, t)
+	local a = {filled = t.filled, random = t.random, locked = t.locked}
+	if t.group ~= nil then
+		local ref = t.group.available[t.group.slot]
+		local st = main.t_selStages[ref]
+		a.portrait = st.cell_data
+		a.loading = getStagePreloadStatus(ref) ~= 'ready'
+		a.scale = st.portraitscale * motif.info.localcoord[1] / st.localcoord
+		a.slot = #t.group.available > 1
+	end
+	return a
+end
+
+-- Picks a filled cell and the path the demo cursor takes to it. On a scrolling grid
+-- the path lists the entries scrolled through instead.
+local function stageDemoPath(grid, cursor)
+	local sec = grid.sec
+	if sec.scroll.enabled then
+		local targets = {}
+		for entry = 0, grid.count - 1 do
+			local t = {}
+			grid.fill(entry + 1, t)
+			if t.filled then
+				table.insert(targets, entry)
+			end
+		end
+		if #targets == 0 then
+			return {}
+		end
+		local target = targets[math.random(#targets)]
+		local step = target < cursor.entry and -1 or 1
+		local path = {}
+		for entry = cursor.entry + step, target, step do
+			table.insert(path, entry)
+		end
+		return #path > 0 and path or {target}
+	end
+	local visible, targets = {}, {}
+	for cell = 1, sec.rows * sec.columns do
+		local t = grid.rows[math.floor((cell - 1) / sec.columns) + 1][(cell - 1) % sec.columns + 1]
+		if t.filled then
+			visible[cell] = true
+			table.insert(targets, cell)
+		end
+	end
+	if #targets == 0 then
+		return {}
+	end
+	local target = targets[math.random(#targets)]
+	return demoCursorPath(target, cursor.selY * sec.columns + cursor.selX + 1, visible, sec)
+end
+
+-- Runs the stage select screen. Returns 'done', 'back' or 'exit'.
+-- The picked stage is in stageListNo (0 = random) and start.stageScreenRef.
+function start.f_stageScreen(demo)
+	local sec = motif.stage_select_info
+	local bg = motif.stageselectbgdef
+	local grid = start.stageGrid
+	local cursor = start.stageCursor
+	buildStageGrid()
+	-- f_setStage reads the stage through its stage menu position
+	local function cellListNo(t)
+		return t.random and 0 or main.t_selectableStageNo[t.group.available[t.group.slot]]
+	end
+	bgReset(bg.BGDef)
+	fadeInInit(sec.fadein.FadeData)
+	f_snapCursor(grid)
+	local drawList = start.f_gridDrawList(grid, stageCellArt)
+	start.needUpdateDrawList = false
+	if hasPortraitAnim(sec.stage.portrait.slot) then
+		animReset(sec.stage.portrait.slot.AnimData)
+		animUpdate(sec.stage.portrait.slot.AnimData)
+	end
+	local textData = sec.stage.active.TextSpriteData
+	local blink = {count = 0, on = true}
+	local timer = 0
+	local counter = -sec.fadein.time
+	local path, step, nextFrame = nil, 0, 0
+	local lastRef = nil
+	local done = false
+	local result = nil
+	start.stageScreenRef = nil
+	-- Picks the stage: listNo is its stage menu position (0 = random, -1 = hidden = 1 stage).
+	-- Returns false while the stage is still loading.
+	local function pick(listNo, ref)
+		if not start.f_stageReady(ref) then
+			return false
+		end
+		if listNo == 0 then
+			ref = main.t_selectableStages[math.random(#main.t_selectableStages)]
+		end
+		sndPlay(motif.Snd, sec.stage.done.snd[1], sec.stage.done.snd[2])
+		stageListNo = listNo
+		start.stageScreenRef = ref
+		textData = sec.stage.done.TextSpriteData
+		done, stageEnd, result = true, true, 'done'
+		fadeOutInit(sec.fadeout.FadeData)
+		return true
+	end
+	while true do
+		if result ~= nil and not fadeActive() then
+			return result
+		end
+		main.f_preloadTick(4)
+		counter = counter + 1
+		if start.needUpdateDrawList then
+			drawList = start.f_gridDrawList(grid, stageCellArt)
+			start.needUpdateDrawList = false
+		end
+		local t = grid.rows[cursor.selY + 1][cursor.selX + 1]
+		-- The preview follows the cursor from the first frame, also during the fade in.
+		if t.filled then
+			stageListNo = cellListNo(t)
+		end
+		if not done and result == nil and not fadeActive() then
+			local x, y, page, entry = cursor.selX, cursor.selY, grid.page, cursor.entry
+			if demo then
+				-- The demo cursor walks to a random cell, then confirms it.
+				path = path or stageDemoPath(grid, cursor)
+				if #path == 0 then
+					-- No stage to walk to: keep the stage picked before the demo.
+					result = 'done'
+					fadeOutInit(sec.fadeout.FadeData)
+				elseif step < #path and counter >= nextFrame then
+					step = step + 1
+					if sec.scroll.enabled then
+						start.f_gridScrollTo(grid, cursor, path[step])
+					else
+						cursor.selX, cursor.selY = (path[step] - 1) % sec.columns, math.floor((path[step] - 1) / sec.columns)
+					end
+					nextFrame = math.max(counter, 0) + (step == #path and 24 or math.random(10, 16))
+				end
+			else
+				if sec.scroll.enabled then
+					start.f_gridScrollInput(grid, cursor, -1)
+				elseif not start.f_gridPageInput(grid, -1) then
+					cursor.selX, cursor.selY = start.f_gridMovement(grid, cursor.selX, cursor.selY, -1, nil, {-1, 0})
+				end
+			end
+			if grid.pageChanged then
+				grid.pageChanged = false
+				cursor.page = grid.page
+				drawList = start.f_gridDrawList(grid, stageCellArt)
+				f_snapCursor(grid)
+				-- A page shown by an arrow keeps the cursor on an entry. A scrolling cursor stays put.
+				if not sec.scroll.enabled and not grid.canEnter(grid.rows[cursor.selY + 1][cursor.selX + 1]) then
+					cursor.selX, cursor.selY = 0, 0
+				end
+			end
+			if cursor.selX ~= x or cursor.selY ~= y or grid.page ~= page or cursor.entry ~= entry then
+				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
+				if sec.cursor.reset then
+					local params = getOverride(sec.cursor.active, cursor.selX, cursor.selY) or sec.cursor.active.default
+					animReset(params.AnimData)
+					animUpdate(params.AnimData)
+				end
+				t = grid.rows[cursor.selY + 1][cursor.selX + 1]
+			end
+			-- slot cycling and select.def 'select' commands
+			local selected, handled = false, false
+			if t.group ~= nil and not demo then
+				selected, handled = start.f_stageSlotSelected(t.group, sec.cell.slot, sec.stage.slot.snd)
+				if handled then
+					drawList = start.f_gridDrawList(grid, stageCellArt)
+				end
+			end
+			if t.filled then
+				stageListNo = cellListNo(t)
+			end
+			local confirm = selected or (not handled and (demo and step == #path and counter >= nextFrame or not demo and getAction(-1, sec.done.action)))
+			local picked = true
+			if confirm and t.secret then
+				-- A hidden = 1 stage isn't in the stage menu, so f_setStage takes it from stageScreenRef.
+				picked = pick(-1, t.ref)
+			elseif (confirm or timer == -1) and t.filled then
+				picked = pick(stageListNo, stageListNo > 0 and main.t_selectableStages[stageListNo] or nil)
+			elseif timer == -1 and #main.t_selectableStages > 0 then
+				-- Time is up on an empty cell: pick a random stage.
+				pick(0)
+			end
+			if not picked and confirm then
+				sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+			end
+			if result == nil then
+				if esc() or (demo and main.f_demoCancelled()) or (not demo and getAction(-1, sec.exit.action)) then
+					sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+					result = 'exit'
+					fadeOutInit(sec.fadeout.FadeData)
+				elseif not demo and getAction(-1, sec.cancel.action) then
+					sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+					result = 'back'
+					fadeOutInit(sec.fadeout.FadeData)
+				end
+			end
+		end
+		if not done then
+			textData = start.f_stageBlink(sec.stage, blink)
+		end
+		local ref = t.filled and stageListNo > 0 and main.t_selectableStages[stageListNo] or nil
+		if ref ~= lastRef then
+			if ref ~= nil then
+				resetStagePortraitAnim(ref, 'grid_anim_data')
+				main.f_preloadBoostStage(ref)
+			end
+			lastRef = ref
+		end
+		-- draw
+		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+		bgDraw(bg.BGDef, 0)
+		textImgDraw(sec.title.TextSpriteData)
+		-- The preview goes below the cells, so a large preview can work as a background.
+		if t.filled then
+			start.f_drawStagePreview(sec.stage, 'grid_anim_data')
+		end
+		for _, item in ipairs(drawList) do
+			animUpdate(item.anim)
+		end
+		batchDraw(drawList)
+		start.f_gridDrawArrows(grid)
+		if t.filled then
+			if not done then
+				start.f_drawStageSlot(sec.stage, t.group)
+			end
+			start.f_drawStageName(sec.stage, textData)
+		end
+		-- Like hidden = 1 characters, the cursor isn't drawn on hidden = 1 stages.
+		if not t.secret then
+			start.f_gridDrawCursor(grid, 1, sec, cursor.selX, cursor.selY, done and 'done' or 'active', done)
+		end
+		if not demo and sec.timer.count ~= -1 and not done and counter >= 0 then
+			timer = main.f_drawTimer(timer, sec.timer)
+		end
+		hook.run("start.f_stageScreen")
+		bgDraw(bg.BGDef, 1)
+		if not demo then
+			-- Hint contexts: slot on stage slots, page with more than one page, slotpage for both.
+			local slot = t.group ~= nil and #t.group.available > 1
+			local paged = (grid.pages or 1) > 1
+			local context = slot and (paged and 'slotpage' or 'slot') or (paged and 'page' or nil)
+			main.f_hintDraw(sec.hint, context)
+			main.f_hintDraw(sec.hint2)
+		end
+		refresh()
+	end
 end
 
 --;===========================================================

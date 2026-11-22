@@ -823,17 +823,16 @@ type TitleInfoProperties struct {
 	Hint      HintProperties      `ini:"hint"`
 }
 
-type SelectInfoProperties struct {
-	FadeIn               FadeProperties `ini:"fadein"`
-	FadeOut              FadeProperties `ini:"fadeout"`
-	Rows                 int32          `ini:"rows" default:"2"`
-	Columns              int32          `ini:"columns" default:"5"`
-	Wrapping             bool           `ini:"wrapping"`
-	Pos                  [2]float32     `ini:"pos"`
-	ShowEmptyBoxes       bool           `ini:"showemptyboxes"`
-	MoveOverEmptyBoxes   bool           `ini:"moveoveremptyboxes"`
-	SearchEmptyBoxesUp   bool           `ini:"searchemptyboxesup"`
-	SearchEmptyBoxesDown bool           `ini:"searchemptyboxesdown"`
+// Cell grid shared by [Select Info] and [Stage Select Info].
+type SelectGridProperties struct {
+	Rows                 int32      `ini:"rows" default:"2"`
+	Columns              int32      `ini:"columns" default:"5"`
+	Wrapping             bool       `ini:"wrapping"`
+	Pos                  [2]float32 `ini:"pos"`
+	ShowEmptyBoxes       bool       `ini:"showemptyboxes"`
+	MoveOverEmptyBoxes   bool       `ini:"moveoveremptyboxes"`
+	SearchEmptyBoxesUp   bool       `ini:"searchemptyboxesup"`
+	SearchEmptyBoxesDown bool       `ini:"searchemptyboxesdown"`
 	Cell                 struct {
 		Size    [2]int32   `ini:"size"`
 		Spacing [2]float32 `ini:"spacing"`
@@ -850,6 +849,7 @@ type SelectInfoProperties struct {
 			Action []string `ini:"action"`
 		} `ini:"right"`
 		Bg     AnimationProperties `ini:"bg"`
+		Locked AnimationProperties `ini:"locked"`
 		Random struct {
 			AnimationProperties
 			SwitchTime int32 `ini:"switchtime"`
@@ -865,6 +865,57 @@ type SelectInfoProperties struct {
 			} `ini:"previous"`
 		} `ini:"slot"`
 	} `ini:"cell"`
+}
+
+// Stage preview and legacy stage menu of [Select Info], also used by [Stage Select Info].
+type SelectStageProperties struct {
+	Pos [2]float32 `ini:"pos"`
+	TextProperties
+	Random struct {
+		Text string `ini:"text"`
+	} `ini:"random"`
+	Active struct {
+		TextProperties
+		Switchtime int32 `ini:"switchtime"`
+	} `ini:"active"`
+	Active2 TextProperties `ini:"active2"`
+	Done    struct {
+		TextProperties
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Move struct { // only used by [Select Info]
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Slot struct { // only used by [Stage Select Info]
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"slot"`
+	Portrait struct {
+		AnimationStagePreloadProperties `skipinit:"true"`
+		Bg                              AnimationProperties `ini:"bg"`
+		Random                          AnimationProperties `ini:"random"`
+		Loading                         AnimationProperties `ini:"loading"`
+		Slot                            AnimationProperties `ini:"slot"` // only used by [Stage Select Info]
+	} `ini:"portrait"`
+	Previous struct { // only used by [Select Info]
+		Action []string `ini:"action"`
+	} `ini:"previous"`
+	Next struct { // only used by [Select Info]
+		Action []string `ini:"action"`
+	} `ini:"next"`
+	Skip struct { // only used by [Select Info]
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+	} `ini:"skip"`
+}
+
+type SelectInfoProperties struct {
+	FadeIn  FadeProperties `ini:"fadein"`
+	FadeOut FadeProperties `ini:"fadeout"`
+	SelectGridProperties
 	P1      PlayerSelectProperties `ini:"p1"`
 	P2      PlayerSelectProperties `ini:"p2"`
 	P3      PlayerSelectProperties `ini:"p3"`
@@ -886,56 +937,7 @@ type SelectInfoProperties struct {
 			} `ini:"snd"`
 		} `ini:"move"`
 	} `ini:"random"`
-	Stage struct {
-		Pos [2]float32 `ini:"pos"`
-		TextProperties
-		Random struct {
-			Text string `ini:"text"`
-		} `ini:"random"`
-		Randomselect int32 `ini:"randomselect"`
-		Active       struct {
-			TextProperties
-			Switchtime int32 `ini:"switchtime"`
-		} `ini:"active"`
-		Active2 TextProperties `ini:"active2"`
-		Done    struct {
-			TextProperties
-			Snd [2]int32 `ini:"snd" default:"-1,0"`
-		} `ini:"done"`
-		Move struct {
-			Snd [2]int32 `ini:"snd" default:"-1,0"`
-		} `ini:"move"`
-		Slot struct {
-			Snd [2]int32 `ini:"snd" default:"-1,0"`
-			Previous struct {
-				Action []string `ini:"action"`
-			} `ini:"previous"`
-			Next struct {
-				Action []string `ini:"action"`
-			} `ini:"next"`
-		} `ini:"slot"`
-		Portrait struct {
-			AnimationStagePreloadProperties `skipinit:"true"`
-			Bg                              AnimationProperties `ini:"bg"`
-			Random                          AnimationProperties `ini:"random"`
-			Loading                         AnimationProperties `ini:"loading"`
-			Slot                            AnimationProperties `ini:"slot"`
-		} `ini:"portrait"`
-		Previous struct {
-			Action []string `ini:"action"`
-		} `ini:"previous"`
-		Next struct {
-			Action []string `ini:"action"`
-		} `ini:"next"`
-		Skip struct {
-			Previous struct {
-				Action []string `ini:"action"`
-			} `ini:"previous"`
-			Next struct {
-				Action []string `ini:"action"`
-			} `ini:"next"`
-		} `ini:"skip"`
-	} `ini:"stage"`
+	Stage SelectStageProperties `ini:"stage"`
 	Done struct {
 		Action []string `ini:"action"`
 	} `ini:"done"`
@@ -969,6 +971,49 @@ type SelectInfoProperties struct {
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
 	Hint          HintProperties  `ini:"hint"`
 	Hint2         HintProperties  `ini:"hint2"`
+}
+
+// Stage selection on its own screen, using the same cell grid as character selection.
+type StageSelectInfoProperties struct {
+	Enabled bool           `ini:"enabled"`
+	FadeIn  FadeProperties `ini:"fadein"`
+	FadeOut FadeProperties `ini:"fadeout"`
+	SelectGridProperties
+	Page struct {
+		Enabled  bool `ini:"enabled"`
+		Previous struct {
+			Action []string            `ini:"action"`
+			Arrow  AnimationProperties `ini:"arrow"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string            `ini:"action"`
+			Arrow  AnimationProperties `ini:"arrow"`
+		} `ini:"next"`
+	} `ini:"page"`
+	Scroll struct {
+		Enabled bool  `ini:"enabled"`
+		Start   int32 `ini:"start"`
+	} `ini:"scroll"`
+	Cursor   PlayerCursorProperties `ini:"cursor"`
+	Portrait struct {
+		AnimationStagePreloadProperties `skipinit:"true"`
+		Loading                         AnimationProperties `ini:"loading"`
+	} `ini:"portrait"`
+	Stage SelectStageProperties `ini:"stage"`
+	Done  struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd    [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Exit struct {
+		Action []string `ini:"action"`
+	} `ini:"exit"`
+	Title TextProperties  `ini:"title"`
+	Timer TimerProperties `ini:"timer"`
+	Hint  HintProperties  `ini:"hint"`
+	Hint2 HintProperties  `ini:"hint2"`
 }
 
 type VsScreenProperties struct {
@@ -1047,6 +1092,9 @@ type DemoModeProperties struct {
 	VsScreen struct {
 		Enabled bool `ini:"enabled"`
 	} `ini:"vsscreen"`
+	StageScreen struct {
+		Enabled bool `ini:"enabled"`
+	} `ini:"stagescreen"`
 	Cancel struct {
 		Action []string `ini:"action"`
 	} `ini:"cancel"`
@@ -1683,6 +1731,8 @@ type Motif struct {
 	InfoBox         InfoBoxProperties                   `ini:"infobox"`
 	SelectInfo      SelectInfoProperties                `ini:"select_info"`
 	SelectBgDef     BgDefProperties                     `ini:"selectbgdef"`
+	StageSelectInfo StageSelectInfoProperties           `ini:"stage_select_info"`
+	StageBgDef      BgDefProperties                     `ini:"stageselectbgdef"`
 	VsScreen        VsScreenProperties                  `ini:"vs_screen"`
 	VersusBgDef     BgDefProperties                     `ini:"versusbgdef"`
 	DemoMode        DemoModeProperties                  `ini:"demo_mode"`
@@ -1779,14 +1829,16 @@ func preprocessINIContent(input string) string {
 func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 	// Copy the first spacing value into the second one when only a single value is defined in system.def.
 	// Only act if the user actually set the key in their system.def
-	if s, err := iniFile.GetSection("Select Info"); err == nil && s != nil {
-		if k, err := s.GetKey("cell.spacing"); err == nil {
-			raw := strings.TrimSpace(k.Value())
-			// If user specified a single value (no comma/&), duplicate it into the second slot.
-			if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
-				// At this point, the first component has already been parsed into the struct.
-				// Just mirror it to the second component.
-				m.SelectInfo.Cell.Spacing[1] = m.SelectInfo.Cell.Spacing[0]
+	for sec, grid := range map[string]*SelectGridProperties{"Select Info": &m.SelectInfo.SelectGridProperties, "Stage Select Info": &m.StageSelectInfo.SelectGridProperties} {
+		if s, err := iniFile.GetSection(sec); err == nil && s != nil {
+			if k, err := s.GetKey("cell.spacing"); err == nil {
+				raw := strings.TrimSpace(k.Value())
+				// If user specified a single value (no comma/&), duplicate it into the second slot.
+				if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
+					// At this point, the first component has already been parsed into the struct.
+					// Just mirror it to the second component.
+					grid.Cell.Spacing[1] = grid.Cell.Spacing[0]
+				}
 			}
 		}
 	}
@@ -2276,7 +2328,8 @@ func loadMotif(def string) (*Motif, error) {
 
 	m.overrideParams()
 	m.fixLocalcoordOverrides()
-	m.inheritCursorCellOverrides()
+	m.inheritCursorCellOverrides("Select Info", reflect.ValueOf(&m.SelectInfo).Elem())
+	m.inheritCursorCellOverrides("Stage Select Info", reflect.ValueOf(&m.StageSelectInfo).Elem())
 	m.populateDataPointers()
 	m.applyPostParsePosAdjustments()
 
@@ -2761,6 +2814,8 @@ func (m *Motif) overrideParams() {
 	specs := []InheritSpec{
 		// [Title Info]
 		{SrcSec: "Title Info", SrcPrefix: "loading.", DstSec: "Title Info", DstPrefix: "loading.wait."},
+		// [Select Info] stage menu takes the preview params it doesn't define from [Stage Select Info]
+		{SrcSec: "Stage Select Info", SrcPrefix: "stage.", DstSec: "Select Info", DstPrefix: "stage."},
 		// [Select Info]
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.done."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.random."},
@@ -2797,6 +2852,12 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Select Info", SrcPrefix: "stage.", DstSec: "Select Info", DstPrefix: "stage.active2."},
 		{SrcSec: "Select Info", SrcPrefix: "stage.", DstSec: "Select Info", DstPrefix: "stage.done."},
 		{SrcSec: "Select Info", SrcPrefix: "stage.portrait.", DstSec: "Select Info", DstPrefix: "stage.portrait.loading."},
+		// [Stage Select Info]
+		{SrcSec: "Stage Select Info", SrcPrefix: "portrait.", DstSec: "Stage Select Info", DstPrefix: "portrait.loading."},
+		{SrcSec: "Stage Select Info", SrcPrefix: "stage.", DstSec: "Stage Select Info", DstPrefix: "stage.active."},
+		{SrcSec: "Stage Select Info", SrcPrefix: "stage.", DstSec: "Stage Select Info", DstPrefix: "stage.active2."},
+		{SrcSec: "Stage Select Info", SrcPrefix: "stage.", DstSec: "Stage Select Info", DstPrefix: "stage.done."},
+		{SrcSec: "Stage Select Info", SrcPrefix: "stage.portrait.", DstSec: "Stage Select Info", DstPrefix: "stage.portrait.loading."},
 		// [VS Screen]
 		{SrcSec: "Title Info", SrcPrefix: "loading.", DstSec: "VS Screen", DstPrefix: "loading.wait."},
 		{SrcSec: "VS Screen", SrcPrefix: "p1.", DstSec: "VS Screen", DstPrefix: "p1.done."},
@@ -2930,16 +2991,16 @@ func (m *Motif) overrideParams() {
 	m.mergeWithInheritance(specs)
 }
 
-// Propagate p<n>.cursor.<state> parameters into their per cell "<col>-<row>" variants (wildcards included)
-func (m *Motif) inheritCursorCellOverrides() {
+// Propagate [p<n>.]cursor.<state> parameters into their per cell "<col>-<row>" variants (wildcards included)
+func (m *Motif) inheritCursorCellOverrides(secName string, si reflect.Value) {
 	if m == nil || m.IniFile == nil {
 		return
 	}
-	sec, err := m.IniFile.GetSection("Select Info")
+	sec, err := m.IniFile.GetSection(secName)
 	if err != nil || sec == nil {
 		return
 	}
-	re := regexp.MustCompile(`(?i)^(p[1-8]\.cursor\.(?:active|done|preview))\.([0-9*]+-[0-9*]+)\.(.+)$`)
+	re := regexp.MustCompile(`(?i)^((?:p[1-8]\.)?cursor\.(?:active|done|preview))\.([0-9*]+-[0-9*]+)\.(.+)$`)
 	variants := map[string]map[string]map[string]bool{}
 	for _, k := range sec.Keys() {
 		mt := re.FindStringSubmatch(k.Name())
@@ -2955,7 +3016,6 @@ func (m *Motif) inheritCursorCellOverrides() {
 		}
 		variants[state][cell][param] = true
 	}
-	si := reflect.ValueOf(&m.SelectInfo).Elem()
 	for state, cells := range variants {
 		mapVal := si
 		for _, part := range strings.Split(state, ".") {
@@ -3125,6 +3185,11 @@ func (m *Motif) loadFiles() {
 
 	m.loadBgDefProperties(&m.TitleBgDef, "titlebg", m.Files.Spr)
 	m.loadBgDefProperties(&m.SelectBgDef, "selectbg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("StageSelectBgDef"); err == nil {
+		m.loadBgDefProperties(&m.StageBgDef, "stageselectbg", m.Files.Spr)
+	} else {
+		m.StageBgDef = m.SelectBgDef
+	}
 	m.loadBgDefProperties(&m.VersusBgDef, "versusbg", m.Files.Spr)
 	m.loadBgDefProperties(&m.ContinueBgDef, "continuebg", m.Files.Spr)
 	m.loadBgDefProperties(&m.VictoryBgDef, "victorybg", m.Files.Spr)
@@ -3377,9 +3442,8 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		adjustSelect(ps)
 	}
 
-	// Select Screen: Stage
-	{
-		st := &m.SelectInfo.Stage
+	// Select Screen and Stage Select Screen: Stage
+	for _, st := range []*SelectStageProperties{&m.SelectInfo.Stage, &m.StageSelectInfo.Stage} {
 		offsetAnims(st.Pos[0], st.Pos[1], st.Portrait.Bg.AnimData, st.Portrait.Random.AnimData, st.Portrait.Slot.AnimData)
 		offsetTexts(st.Pos[0], st.Pos[1], st.TextSpriteData, st.Active.TextSpriteData, st.Active2.TextSpriteData, st.Done.TextSpriteData)
 	}

@@ -886,7 +886,9 @@ function main.f_materializeStagePortrait(stageNo)
 	end
 	local ok1 = f_makeStageAnim(motif.select_info.stage.portrait, "anim_data")
 	local ok2 = f_makeStageAnim(motif.vs_screen.stage.portrait, "vs_anim_data")
-	st.anim_data_ready = ok1 or ok2
+	local ok3 = f_makeStageAnim(motif.stage_select_info.portrait, "cell_data")
+	local ok4 = f_makeStageAnim(motif.stage_select_info.stage.portrait, "grid_anim_data")
+	st.anim_data_ready = ok1 or ok2 or ok3 or ok4
 	return st.anim_data_ready
 end
 
@@ -1467,6 +1469,14 @@ local function addOrderChar(mode, order, ref)
 	table.insert(main.t_orderChars[mode][order], ref)
 end
 
+local function setLockParams(group, row, entry, unlock)
+	entry.hidden = entry.hidden == 1 and 1 or 0
+	if unlock ~= '' then
+		entry.locked = true
+		main.t_unlockLua[group][row] = unlock
+	end
+end
+
 function main.f_addChar(line, playable, loading, slot)
 	table.insert(main.t_selChars, {})
 	local row = #main.t_selChars
@@ -1524,9 +1534,7 @@ function main.f_addChar(line, playable, loading, slot)
 			main.f_charParam(main.t_selChars[row], c)
 		end
 	end
-	if main.t_selChars[row].hidden == nil then
-		main.t_selChars[row].hidden = 0
-	end
+	setLockParams('chars', row, main.t_selChars[row], unlock)
 	if main.t_selChars[row].char ~= nil then
 		main.t_selChars[row].char_ref = main.t_charDef[main.t_selChars[row].char:lower()]
 	end
@@ -1551,10 +1559,6 @@ function main.f_addChar(line, playable, loading, slot)
 			table.insert(main.t_bonusChars, row - 1)
 		end
 		-- unlock
-		if unlock ~= '' then
-			-- main.t_selChars[row].unlock = unlock
-			main.t_unlockLua.chars[row] = unlock
-		end
 		-- cell data
 		main.t_selChars[row].cell_data = animNew(nil, '-1,0, 0,0, -1')
 		main.t_selChars[row].cell_data_ready = false
@@ -1588,7 +1592,7 @@ function main.f_addChar(line, playable, loading, slot)
 	return valid
 end
 
-function main.f_addStage(file, hidden, line)
+function main.f_addStage(file, line)
 	file = file:gsub('\\', '/')
 	if file:match('/$') then
 		return
@@ -1622,11 +1626,10 @@ function main.f_addStage(file, hidden, line)
 		end
 	end
 	-- anim data
-	if hidden ~= nil and hidden ~= 0 then
-		main.t_selStages[stageNo].hidden = hidden
-	end
 	main.t_selStages[stageNo].anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].vs_anim_data = animNew(nil, '-1,0, 0,0, -1')
+	main.t_selStages[stageNo].cell_data = animNew(nil, '-1,0, 0,0, -1')
+	main.t_selStages[stageNo].grid_anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].anim_data_ready = false
 	if gameOption('Config.BootLoadingMode') == 0 and main.preload.started then
 		main.f_materializeStagePortrait(stageNo)
@@ -1638,10 +1641,8 @@ end
 -- random and arcade pools keep every stage reference individually
 function main.f_addStageEntry(line, stageSlot)
 	local unlock = ''
-	local hidden = 0
 	line = line:gsub(',%s*unlock%s*=%s*(.-)%s*$', function(m1)
 		unlock = (m1 or ''):match('^%s*(.-)%s*$')
-		hidden = 1
 		return ''
 	end)
 	local row
@@ -1649,7 +1650,7 @@ function main.f_addStageEntry(line, stageSlot)
 		c = c:match('^%s*(.-)%s*$')
 		if i == 1 then
 			if c == '' then return end
-			row = main.f_addStage(c, hidden, line)
+			row = main.f_addStage(c, line)
 			if row == nil then return end
 			table.insert(main.t_includeStage[1], row)
 			table.insert(main.t_includeStage[2], row)
@@ -1672,9 +1673,7 @@ function main.f_addStageEntry(line, stageSlot)
 		main.t_orderStages[1] = main.t_orderStages[1] or {}
 		table.insert(main.t_orderStages[1], row)
 	end
-	if unlock ~= '' then
-		main.t_unlockLua.stages[row] = unlock
-	end
+	setLockParams('stages', row, st, unlock)
 	if stageSlot == nil then
 		table.insert(main.t_stageSlots, {stages = {}, slot = 1})
 		stageSlot = #main.t_stageSlots
@@ -1695,6 +1694,7 @@ end
 
 main.t_includeStage = {{}, {}} -- includestage = 1, includestage = -1
 main.t_stageSlots = {}
+main.t_stageGrid = {}
 main.t_orderChars = {default = {}}
 main.t_orderStages = {}
 main.t_bonusChars = {}
@@ -1708,6 +1708,7 @@ local section = 0
 local row = 0
 local slot = false
 local stageSlot
+local stageSlotCell = false
 local csCell = 0
 local content = main.f_fileRead(motif.files.select)
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
@@ -1821,10 +1822,21 @@ for line in content:gmatch('[^\r\n]+') do
 			csCell = csCell + 1
 		end
 	elseif section == 2 then -- [ExtraStages]
+		-- Each entry or slot block takes the next grid cell, after cells marked to skip.
+		if stageSlot == nil then
+			local ssi = motif.stage_select_info
+			while true do
+				local n = #main.t_stageGrid
+				local cellCfg = ssi.cell[(n % ssi.columns) .. '-' .. math.floor(n / ssi.columns)]
+				if cellCfg == nil or not cellCfg.skip then break end
+				table.insert(main.t_stageGrid, {skip = 1})
+			end
+		end
 		local slotStart = lineCase:match('^%s*slot%s*{%s*()')
 		if slotStart ~= nil then
 			table.insert(main.t_stageSlots, {stages = {}, slot = 1})
 			stageSlot = #main.t_stageSlots
+			stageSlotCell = false
 			line = line:sub(slotStart)
 		end
 		local slotEnd = false
@@ -1836,11 +1848,20 @@ for line in content:gmatch('[^\r\n]+') do
 			end
 			-- One stage per line, the trailing comma is optional.
 			line = line:gsub(',%s*$', '')
-			if line:match('%S') then
-				main.f_addStageEntry(line, stageSlot)
+			-- The slot takes a cell once it has a valid stage that isn't excluded.
+			local stageNo = line:match('%S') and main.f_addStageEntry(line, stageSlot) or nil
+			if stageNo ~= nil and main.t_selStages[stageNo].exclude ~= 1 and not stageSlotCell then
+				table.insert(main.t_stageGrid, {group = stageSlot})
+				stageSlotCell = true
 			end
+		elseif lineCase:match('^%s*randomselect%s*$') then
+			table.insert(main.t_stageGrid, {random = true})
 		elseif line:match('%S') then
-			main.f_addStageEntry(line)
+			-- Lines that aren't valid stages, or are excluded, take no cell.
+			local stageNo = main.f_addStageEntry(line)
+			if stageNo ~= nil and main.t_selStages[stageNo].exclude ~= 1 then
+				table.insert(main.t_stageGrid, {group = main.t_selStages[stageNo].stageSlot})
+			end
 		end
 		if slotEnd then stageSlot = nil end
 	elseif section == 3 then -- [Options]
@@ -1908,7 +1929,7 @@ for i = 1, #main.t_selChars do
 	end
 end
 
--- (Re)build list of characters allowed to be randomly selected. Must be called after any unlock/hidden state changes.
+-- (Re)build list of characters allowed to be randomly selected. Must be called after any unlock state changes.
 main.t_randomChars = {}
 function main.f_updateRandomChars()
 	local t = {}
@@ -1918,7 +1939,7 @@ function main.f_updateRandomChars()
 		if ch ~= nil and ch.name ~= nil then
 			-- generate table with characters allowed to be randomly selected
 			if ch.playable
-				and (ch.hidden == nil or ch.hidden <= 1)
+				and not ch.locked
 				and (ch.exclude == nil or ch.exclude == 0) then
 				table.insert(t, i - 1)
 			end
@@ -1947,24 +1968,21 @@ function main.f_updateSelectableStages()
 		group.available = {}
 	end
 	main.t_selectableStages = {}
-	main.t_selectableStageSlots = {}
-	local seen = {}
+	-- stage ref -> stage menu position
+	main.t_selectableStageNo = {}
 	for _, v in ipairs(main.t_includeStage[2]) do
 		local st = main.t_selStages[v]
-		if st.hidden == nil or st.hidden == 0 then
+		-- Locked, hidden and excluded stages stay off the stage menu and the random pool.
+		if not st.locked and st.hidden ~= 1 and st.exclude ~= 1 then
 			table.insert(main.t_selectableStages, v)
+			main.t_selectableStageNo[v] = #main.t_selectableStages
 			-- Stages supplied by character parameters or the default fallback
 			-- have no explicit menu group
 			if st.stageSlot == nil then
 				table.insert(main.t_stageSlots, {stages = {v}, available = {}, slot = 1})
 				st.stageSlot = #main.t_stageSlots
 			end
-			local group = main.t_stageSlots[st.stageSlot]
-			table.insert(group.available, v)
-			if not seen[st.stageSlot] then
-				seen[st.stageSlot] = true
-				table.insert(main.t_selectableStageSlots, group)
-			end
+			table.insert(main.t_stageSlots[st.stageSlot].available, v)
 		end
 	end
 	for i, group in ipairs(main.t_stageSlots) do
@@ -3460,7 +3478,7 @@ function main.f_unlock(permanent)
 			local bool = func()
 			if type(bool) == 'boolean' then
 				if group == 'chars' then
-					if main.f_unlockChar(k, bool, false) then
+					if main.f_unlockChar(k, bool) then
 						refreshRandom = true
 					end
 				elseif group == 'stages' then
@@ -3490,48 +3508,39 @@ function main.f_unlock(permanent)
 	end
 end
 
--- unlock characters (select screen grid only)
-function main.f_unlockChar(num, bool, reset)
-	local changed = false
-	if bool then
-		if main.t_selChars[num].hidden ~= 0 then
-			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
-			main.t_selChars[num].hidden = 0
-			for k, v in pairs(main.t_selChars[num]) do
-				local mode = orderParamMode(k)
-				local order = tonumber(v)
-				if mode ~= nil and order ~= nil and order < 0 then
-					main.t_selChars[num][k] = 0 - order
-					addOrderChar(mode, main.t_selChars[num][k], main.t_selChars[num].char_ref)
-				end
-			end
-			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
-			if reset then start.f_resetGrid() end
-			changed = true
-		end
-	elseif main.t_selChars[num].hidden_default == nil then
+-- Sets a character or stage as locked or unlocked. Returns true if that changed.
+local function setUnlocked(entry, bool)
+	if (entry.locked == true) == not bool then
 		return false
-	elseif main.t_selChars[num].hidden ~= main.t_selChars[num].hidden_default then
-		main.t_selChars[num].hidden = main.t_selChars[num].hidden_default
-		start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
-		if reset then start.f_resetGrid() end
-		changed = true
 	end
-	return changed
+	entry.locked = not bool
+	return true
 end
 
--- unlock stages (stage selection menu only)
-function main.f_unlockStage(num, bool)
+-- Locks or unlocks a character. Returns true if that changed.
+function main.f_unlockChar(num, bool)
+	local ch = main.t_selChars[num]
+	if not setUnlocked(ch, bool) then
+		return false
+	end
 	if bool then
-		if main.t_selStages[num].hidden ~= 0 then
-			main.t_selStages[num].hidden_default = main.t_selStages[num].hidden
-			main.t_selStages[num].hidden = 0
-			main.f_updateSelectableStages()
+		-- Negative order params become positive once the character is unlocked.
+		for k, v in pairs(ch) do
+			local mode = orderParamMode(k)
+			local order = tonumber(v)
+			if mode ~= nil and order ~= nil and order < 0 then
+				ch[k] = 0 - order
+				addOrderChar(mode, ch[k], ch.char_ref)
+			end
 		end
-	elseif main.t_selStages[num].hidden_default == nil then
-		return
-	elseif main.t_selStages[num].hidden ~= main.t_selStages[num].hidden_default then
-		main.t_selStages[num].hidden = main.t_selStages[num].hidden_default
+	end
+	start.f_gridBuild(start.charGrid)
+	return true
+end
+
+-- Locks or unlocks a stage.
+function main.f_unlockStage(num, bool)
+	if setUnlocked(main.t_selStages[num], bool) then
 		main.f_updateSelectableStages()
 	end
 end
@@ -3805,6 +3814,7 @@ function main.f_demoStart()
 		picks[side] = {ref = ch}
 	end
 	start.f_setStage()
+	start.stageScreenRef = nil
 	local proceed = true
 	local previousPlayers
 	if demo.select.enabled or demo.vsscreen.enabled then
@@ -3814,6 +3824,15 @@ function main.f_demoStart()
 			main.selectMenu = {true, true}
 			start.f_selectReset(true, true)
 			proceed = start.f_demoSelect(picks, palState)
+		end
+	end
+	-- [Demo Mode] stagescreen.enabled walks the stage grid, here or after the select screen.
+	if proceed and demo.stagescreen.enabled then
+		if not demo.select.enabled then
+			proceed = start.f_stageScreen(true) == 'done'
+		end
+		if proceed and start.stageScreenRef ~= nil then
+			start.f_setStage(start.stageScreenRef, true)
 		end
 	end
 	if proceed then
@@ -4456,7 +4475,7 @@ if gameOption('Debug.DumpLuaTables') then
 	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
 	main.f_printTable(main.t_selectableStages, "debug/t_selectableStages.txt")
 	main.f_printTable(main.t_stageSlots, "debug/t_stageSlots.txt")
-	main.f_printTable(main.t_selectableStageSlots, "debug/t_selectableStageSlots.txt")
+	main.f_printTable(main.t_stageGrid, "debug/t_stageGrid.txt")
 	main.f_printTable(main.t_selGrid, "debug/t_selGrid.txt")
 	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
 	main.f_printTable(loadGameOption(), "debug/config.txt")
