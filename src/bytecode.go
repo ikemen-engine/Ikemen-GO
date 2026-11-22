@@ -6379,21 +6379,12 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*redirscale
 			crun.setPosX(x, true)
-			if _, bp := crun.bindOnAxis(0); bp != nil {
-				bp.posAdd[0] = x
-			}
 		case posSet_y:
 			y := exp[0].evalF(c)*redirscale + crun.groundLevel + crun.platformPosY
 			crun.setPosY(y, true)
-			if _, bp := crun.bindOnAxis(1); bp != nil {
-				bp.posAdd[1] = y
-			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.setPosZ(z, true)
-			if _, bp := crun.bindOnAxis(2); bp != nil {
-				bp.posAdd[2] = z
-			}
 		}
 		return true
 	})
@@ -6415,21 +6406,12 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := exp[0].evalF(c) * redirscale
 			crun.addX(x)
-			if _, bp := crun.bindOnAxis(0); bp != nil {
-				bp.posAdd[0] = x
-			}
 		case posSet_y:
 			y := exp[0].evalF(c) * redirscale
 			crun.addY(y)
-			if _, bp := crun.bindOnAxis(1); bp != nil {
-				bp.posAdd[1] = y
-			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.addZ(z)
-			if _, bp := crun.bindOnAxis(2); bp != nil {
-				bp.posAdd[2] = z
-			}
 		}
 		return true
 	})
@@ -6738,7 +6720,6 @@ const (
 	explod_bindid
 	explod_space
 	explod_window
-	explod_interpolation
 	explod_interpolation_time
 	explod_interpolation_animelem
 	explod_interpolation_pos
@@ -7052,6 +7033,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				palFX(sc).runSub(c, &e.palfxdef, paramID, exp)
 			}
 			explod(sc).parseInterpolation(c, e, paramID, exp, &e.palfxdef)
+			// Time also starts the interpolation
+			if paramID == explod_interpolation_time && e.interpolate_time[0] > 0 {
+				e.startInterpolation(&e.palfxdef)
+			}
 		}
 		return true
 	})
@@ -7078,7 +7063,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []BytecodeExp, pfd *PalFXDef) bool {
+func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []BytecodeExp, pfd *PalFXDef) {
 	switch paramID {
 	case explod_interpolation_time:
 		e.interpolate_time[0] = exp[0].evalI(c)
@@ -7086,18 +7071,9 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 			e.interpolate_time[0] = e.removetime
 		}
 		e.interpolate_time[1] = e.interpolate_time[0]
-		if e.interpolate_time[0] > 0 {
-			e.resetInterpolation(pfd)
-			e.interpolate = true
-			if e.ownpal {
-				pfd.interpolate = true
-				pfd.itime = e.interpolate_time[0]
-			}
-		}
 	case explod_interpolation_animelem:
 		e.interpolate_animelem[1] = exp[0].evalI(c)
 		e.interpolate_animelem[0] = e.animelem
-		e.interpolate_animelem[2] = e.interpolate_animelem[1]
 	case explod_interpolation_pos:
 		e.interpolate_pos[3] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -7148,7 +7124,6 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		pfd.ihue[0] = exp[0].evalF(c) / 512
 	default:
 	}
-	return true
 }
 
 type modifyExplod explod
@@ -7690,24 +7665,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			modifiers = append(modifiers, func(e *Explod) {
 				e.customShader.afterimage = v1
 			})
-		case explod_interpolation:
-			// You could not modify this one in Mugen
-			if hasIkemenVer {
-				interpolation := exp[0].evalB(c)
-				modifiers = append(modifiers, func(e *Explod) {
-					if e.interpolate != interpolation && e.interpolate_time[0] > 0 {
-						e.interpolate_animelem[0] = e.start_animelem
-						e.interpolate_animelem[1] = e.interpolate_animelem[2]
-						if e.ownpal {
-							pfd := e.palfx
-							pfd.interpolate = interpolation
-							pfd.itime = e.interpolate_time[0]
-						}
-						e.interpolate_time[1] = e.interpolate_time[0]
-						e.interpolate = interpolation
-					}
-				})
-			}
 		default:
 			switch {
 			case isPalFXParam(paramID):
@@ -7716,6 +7673,29 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				modifiers = append(modifiers, func(e *Explod) {
 					if e.ownpal {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
+					}
+				})
+			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_hue:
+				modifiers = append(modifiers, func(e *Explod) {
+					pfd := &PalFXDef{} // Discarded when the explod has no PalFX of its own
+					if e.ownpal {
+						pfd = &e.palfx.PalFXDef
+					}
+					explod(sc).parseInterpolation(c, e, paramID, exp, pfd)
+					if paramID != explod_interpolation_time {
+						return
+					}
+					if e.interpolate {
+						e.bakeInterpolation()
+						e.interpolate = false
+						pfd.interpolate = false
+					}
+					// Time replaces the running interpolation with a new one that starts from the current look, or just stops it when 0
+					if e.interpolate_time[0] > 0 {
+						e.startInterpolation(pfd)
+						if e.ownpal {
+							e.palfx.eiTime = 0 // Only here, since new explods get a new PalFX
+						}
 					}
 				})
 			case isAfterImageParam(paramID):
@@ -7757,7 +7737,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			if e.bindtime == 0 {
 				e.bindtime = 1
 			}
-			e.space = Space_none
 			// Facing is also defaulted
 			// https://github.com/ikemen-engine/Ikemen-GO/issues/3813
 			if !facingSet && e.trueFacing() >= 0 { // See explod_facing
@@ -10262,8 +10241,13 @@ func (sc width) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
+	redirscale := c.localscl / crun.localscl
+
+	// Mugen has a bug here where these values are in the char's own localcoord, even in custom states
+	// However there's no reason for us to do the same
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	//	redirscale = c.baselocalscl / crun.localscl
+	//}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -10289,6 +10273,83 @@ func (sc width) Run(c *Char, _ []int32) bool {
 			}
 			crun.widthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
 			crun.widthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
+		}
+		return true
+	})
+	return false
+}
+
+type height StateControllerBase
+
+const (
+	height_value byte = iota
+	height_redirectid
+)
+
+func (sc height) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), height_redirectid, "Height")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case height_value:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.heightPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+		}
+		return true
+	})
+	return false
+}
+
+type depth StateControllerBase
+
+const (
+	depth_edge byte = iota
+	depth_player
+	depth_value
+	depth_redirectid
+)
+
+func (sc depth) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depth_redirectid, "Depth")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depth_player:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+		case depth_edge:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
+		case depth_value:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
 		}
 		return true
 	})
@@ -10958,6 +11019,40 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 	crun.setCSF(CSF_screenbound, value)
 	crun.setCSF(CSF_movecamera_x, movex)
 	crun.setCSF(CSF_movecamera_y, movey)
+
+	return false
+}
+
+type depthBound StateControllerBase
+
+const (
+	depthBound_value byte = iota
+	depthBound_movecamera
+	depthBound_redirectid
+)
+
+func (sc depthBound) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
+	if crun == nil {
+		return false
+	}
+
+	// Everything defaults to false, like in ScreenBound
+	value := false
+	movez := false
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depthBound_value:
+			value = exp[0].evalB(c)
+		case depthBound_movecamera:
+			movez = exp[0].evalB(c)
+		}
+		return true
+	})
+
+	crun.setCSF(CSF_depthbound, value)
+	crun.setCSF(CSF_movecamera_z, movez)
 
 	return false
 }
@@ -12150,7 +12245,8 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	// TODO: Check if Mugen allowed negative (all) channels here. Ikemen didn't
+	// Negative channel pans all channels, as usual
+	// This doesn't work in Mugen, where negative channels are just rejected
 	for _, s := range crun.getOwnChannels(ch) {
 		s.SetPan(pan, ls, sourceID)
 	}
@@ -12353,6 +12449,12 @@ func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+
+	// Negative ID (default) just clears any active bind
+	if pid < 0 {
+		crun.bindTo.clear()
+		return false
+	}
 
 	p := sys.playerID(pid)
 	if p == nil {
@@ -13832,7 +13934,7 @@ func (sc storyboard) Run(c *Char, _ []int32) bool {
 	var s *Storyboard
 	var sid int32
 	p := storyboardPlacement{
-		space:    Space_none,
+		space:    Space_motif,
 		scale:    [2]float32{1, 1},
 		facing:   1,
 		bindID:   -2,
@@ -15780,119 +15882,6 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return false
-}
-
-type height StateControllerBase
-
-const (
-	height_value byte = iota
-	height_redirectid
-)
-
-func (sc height) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), height_redirectid, "Height")
-	if crun == nil {
-		return false
-	}
-
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case height_value:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.heightPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-		}
-		return true
-	})
-	return false
-}
-
-type depth StateControllerBase
-
-const (
-	depth_edge byte = iota
-	depth_player
-	depth_value
-	depth_redirectid
-)
-
-func (sc depth) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), depth_redirectid, "Depth")
-	if crun == nil {
-		return false
-	}
-
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case depth_player:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-		case depth_edge:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
-		case depth_value:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
-		}
-		return true
-	})
-	return false
-}
-
-type depthBound StateControllerBase
-
-const (
-	depthBound_value byte = iota
-	depthBound_movecamera
-	depthBound_redirectid
-)
-
-func (sc depthBound) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
-	if crun == nil {
-		return false
-	}
-
-	// Everything defaults to false, like in ScreenBound
-	value := false
-	movez := false
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case depthBound_value:
-			value = exp[0].evalB(c)
-		case depthBound_movecamera:
-			movez = exp[0].evalB(c)
-		}
-		return true
-	})
-
-	crun.setCSF(CSF_depthbound, value)
-	crun.setCSF(CSF_movecamera_z, movez)
-
 	return false
 }
 

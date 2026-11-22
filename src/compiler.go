@@ -683,7 +683,7 @@ func (c *CharCompiler) operator(in *string) error {
 			if opp < 0 || ((!c.reverseOrder || c.token[0] != '(') &&
 				(c.token[0] < 'A' || c.token[0] > 'Z') &&
 				(c.token[0] < 'a' || c.token[0] > 'z')) {
-				return Error("Invalid data: " + c.previousOperator)
+				return Error("Unexpected operator: " + c.previousOperator)
 			}
 			*in = c.token + " " + *in
 			c.token = c.previousOperator
@@ -1406,15 +1406,28 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		return nil
 	}
 
+	// Checks for "=" or "!=" after a trigger without consuming it
+	nextIsEqne := func() bool {
+		savedIn := *in
+		defer func() { *in = savedIn }()
+		tok := c.tokenizer(in)
+		// Mugen accepts "! =" as "=" in the special comparison triggers and the attr/hitflag comparisons
+		// We do the same in CNS mode, but log the error
+		if tok == "!" && !c.zssMode && sys.ignoreMostErrors {
+			tok = c.tokenizer(in)
+			if tok == "=" || tok == "!=" {
+				sys.appendToConsole(c.charWarn() + "Ignored '!' before '" + tok + "'")
+			}
+		}
+		return tok == "=" || tok == "!="
+	}
+
 	// For moveType, stateType and such triggers
 	// Each can either be compared against specific flags or keywords, or used bare to return a string
 	// This helper looks ahead to determine how to handle them
 	// Always leaves c.token at the next token, so callers must return right after
 	flagTrigger := func(pushSelf func(), tryKeyword func(not bool) (matched bool, err error)) error {
-		savedIn := *in
-		peekTok := c.tokenizer(in)
-		*in = savedIn
-		if peekTok != "=" && peekTok != "!=" {
+		if !nextIsEqne() {
 			pushSelf()
 			c.token = c.tokenizer(in)
 			return nil
@@ -1492,14 +1505,6 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			return text()
 		}
 		return nil
-	}
-
-	// Checks for "=" or "!=" after a trigger without consuming it
-	nextIsEqne := func() bool {
-		savedIn := *in
-		tok := c.tokenizer(in)
-		*in = savedIn
-		return tok == "=" || tok == "!="
 	}
 
 	// Parses the right side of a comparison as a string expression
@@ -1782,7 +1787,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			c.token += c.tokenizer(in)
 			bv = c.number(c.token)
 			if bv.IsNone() {
-				return bvNone(), Error("Invalid data: " + c.token)
+				return bvNone(), Error("Invalid number: " + c.token)
 			}
 		} else {
 			c.token = c.tokenizer(in)
@@ -5588,7 +5593,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.previousOperator) > 0 {
-			return bvNone(), Error("Invalid data: " + c.token)
+			return bvNone(), Error("Unexpected operator: " + c.token)
 		}
 		if rd {
 			//out.append(OC_rdreset)
@@ -5677,7 +5682,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(OC_localvar, OpCode(vi))
 		} else {
-			return bvNone(), Error("Invalid data: " + c.token)
+			return bvNone(), Error("Unexpected token: " + c.token)
 		}
 	}
 	c.token = c.tokenizer(in)
@@ -6171,7 +6176,7 @@ func (c *CharCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, err
 	}
 	if len(c.token) > 0 {
 		if c.token != "," {
-			return nil, Error("Invalid data: " + c.token)
+			return nil, Error("Unexpected '" + c.token + "' after end of expression")
 		}
 		oldin := *in
 		if c.tokenizer(in) == "" {
@@ -6189,7 +6194,7 @@ func (c *CharCompiler) fullExpression(in *string, vt ValueType) (BytecodeExp, er
 		return nil, err
 	}
 	if len(c.token) > 0 {
-		return nil, Error("Invalid data: " + c.token)
+		return nil, Error("Unexpected '" + c.token + "' after end of expression")
 	}
 	return be, nil
 }
@@ -6782,31 +6787,34 @@ func (c *CharCompiler) paramPostype(is IniSection, sc *StateControllerBase, id b
 	})
 }
 
-func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte, allowNone bool) error {
+func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte, storyboard bool) error {
 	return c.stateParam(is, "space", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("space not specified")
 		}
 		var spc Space
+		invalid := false
 		switch strings.ToLower(data) {
-		case "none":
-			if allowNone {
-				spc = Space_none
-			} else if c.zssMode && !sys.ignoreMostErrors {
-				return Error("Invalid space type: " + data)
-			} else {
-				sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
-			}
+		case "auto":
+			spc = Space_auto
+			invalid = storyboard
 		case "stage":
 			spc = Space_stage
 		case "screen":
 			spc = Space_screen
+		case "motif":
+			spc = Space_motif
+			invalid = !storyboard
 		default:
+			invalid = true
+		}
+		if invalid {
 			if c.zssMode && !sys.ignoreMostErrors {
 				return Error("Invalid space type: " + data)
-			} else {
-				sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
 			}
+			// Invalid values are ignored, like in Mugen
+			sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
+			return nil
 		}
 		sc.add(id, sc.iToExp(int32(spc)))
 		return nil

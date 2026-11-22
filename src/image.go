@@ -294,18 +294,7 @@ func (pf *PalFX) refresh() {
 
 	if pf.eInterpolate {
 		// Calculate interpolated values
-		t := float32(0)
-		if pf.itime > 0 {
-			t = float32(pf.eiTime) / float32(pf.itime)
-		}
-		for i := 0; i < 3; i++ {
-			iMul := int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
-			pf.eMul[i] = int32(float32(iMul) * float32(pf.mul[i]) / 256)
-			iAdd := int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
-			pf.eAdd[i] = iAdd + pf.add[i]
-		}
-		pf.eColor = Lerp(pf.icolor[1], pf.icolor[0], t) * pf.color
-		pf.eHue = Lerp(pf.ihue[1], pf.ihue[0], t) + pf.hue
+		pf.eMul, pf.eAdd, pf.eColor, pf.eHue = pf.interpolatedValues()
 	} else {
 		// Static values
 		pf.eMul = pf.mul
@@ -327,6 +316,22 @@ func (pf *PalFX) refresh() {
 	pf.sinMul(&pf.eMul)
 	pf.sinColor(&pf.eColor)
 	pf.sinHueshift(&pf.eHue)
+}
+
+// Interpolated values at the current time, before sin effects. Explods also use it to bake their interpolation
+func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue float32) {
+	t := float32(0)
+	if pf.itime > 0 {
+		t = float32(pf.eiTime) / float32(pf.itime)
+	}
+	for i := 0; i < 3; i++ {
+		iMul := int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
+		mul[i] = int32(float32(iMul) * float32(pf.mul[i]) / 256)
+		add[i] = int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t)) + pf.add[i]
+	}
+	color = Lerp(pf.icolor[1], pf.icolor[0], t) * pf.color
+	hue = Lerp(pf.ihue[1], pf.ihue[0], t) + pf.hue
+	return
 }
 
 // Only responsible for stepping the timers

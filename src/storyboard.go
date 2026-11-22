@@ -163,8 +163,8 @@ func (p *storyboardPlacement) update() {
 func (p *storyboardPlacement) transform() *bgDrawTransform {
 	// Preserve the standard storyboard rendering without applying
 	// placement, camera transforms or fight viewport offsets.
-	if p.space == Space_none {
-		return &bgDrawTransform{space: Space_none}
+	if p.space == Space_motif {
+		return &bgDrawTransform{space: Space_motif}
 	}
 	pos := [2]float32{p.pos[0] + p.offset[0], p.pos[1] + p.offset[1]}
 	scl := float32(1)
@@ -1123,7 +1123,7 @@ func (s *Storyboard) draw(layerno int16) {
 }
 
 func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDrawTransform) {
-	applyTransform := transform != nil && transform.space != Space_none
+	applyTransform := transform != nil && transform.space != Space_motif
 	localScl := 2 * sys.cam.halfWidth / float32(lp.Localcoord[0])
 	// Draw copies so changing position or camera space never restarts playback.
 	if lp.AnimData != nil {

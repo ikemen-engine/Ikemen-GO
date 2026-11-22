@@ -1281,6 +1281,12 @@ func (is IniSection) ReadAutoType(name string) (any, bool, error) {
 
 func (is IniSection) ReadAutoTypeMap(dst map[string]TypedValue, kind string) error {
 	for key := range is {
+		// Skip keys with no value like ReadI32 and ReadF32 already did
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/4157
+		if is[key] == "" {
+			sys.appendToConsole(fmt.Sprintf("WARNING: Ignoring %s %q with no value", kind, key))
+			continue
+		}
 		value, ok, err := is.ReadAutoType(key)
 		if err != nil {
 			return err

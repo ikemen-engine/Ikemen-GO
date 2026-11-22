@@ -152,9 +152,10 @@ const (
 type Space int32
 
 const (
-	Space_none Space = iota
+	Space_auto Space = iota
 	Space_stage
 	Space_screen
+	Space_motif
 )
 
 type Projection int32
@@ -711,7 +712,6 @@ type HitDef struct {
 	kill                       bool
 	guard_kill                 bool
 	forcenofall                bool
-	ltypehit                   bool
 	dizzypoints                int32
 	guardpoints                int32
 	hitredlife                 int32
@@ -1092,13 +1092,10 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	//}
 }
 
-// When a Hitdef connects, its statetype attribute will be updated to the character's current type
-// Even if the Hitdef has multiple statetype attributes
-// TODO: This is an oddly specific Mugen thing that might not be needed in future Ikemen characters
-func (hd *HitDef) updateStateType(stateType StateType) {
-	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
+// The sign bit disables the HitDef but keeps its attributes readable by HitDefAttr
+func (hd *HitDef) disableAttr() {
+	hd.attr |= -1 << 31
 	hd.reversal_attr |= -1 << 31
-	hd.ltypehit = false
 }
 
 func (hd *HitDef) testAttr(attr int32) bool {
@@ -1851,15 +1848,15 @@ type Explod struct {
 	aimg                 *AfterImage
 	localscl             float32
 	baselocalscl         float32
-	start_animelem       int32
 	start_scale          [2]float32
 	start_alpha          [2]int32
 	start_rot            Rotation
 	start_fLength        float32
 	start_xshear         float32
+	start_pos            [3]float32
 	interpolate          bool
 	interpolate_time     [2]int32
-	interpolate_animelem [3]int32
+	interpolate_animelem [2]int32
 	interpolate_scale    [4]float32
 	interpolate_alpha    [4]int32
 	interpolate_pos      [6]float32
@@ -1896,7 +1893,7 @@ func (e *Explod) initFromChar(c *Char) *Explod {
 		scale:             [2]float32{1, 1},
 		removetime:        -2,
 		postype:           PT_P1,
-		space:             Space_none,
+		space:             Space_auto,
 		relativef:         1,
 		facing:            1,
 		vfacing:           1,
@@ -1993,7 +1990,7 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 	// Set space based on postype in case it's missing
-	if e.space == Space_none {
+	if e.space == Space_auto {
 		switch e.postype {
 		case PT_Front, PT_Back, PT_Left, PT_Right:
 			e.space = Space_screen
@@ -2272,7 +2269,7 @@ func (e *Explod) update() {
 	}
 
 	//if e.space == Space_screen && e.bindtime == 0 {
-	//	if e.space <= Space_none {
+	//	if e.space <= Space_motif {
 	//		switch e.postype {
 	//		case PT_Left:
 	//			for i := range e.pos {
@@ -2566,7 +2563,7 @@ func (e *Explod) stepInterpolation() {
 
 	// Interpolate properties with 3 values
 	for i := 0; i < 3; i++ {
-		e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
+		e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], e.start_pos[i], t)
 	}
 
 	// Step timer
@@ -2591,11 +2588,15 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 		}
 	}
 
+	// 3 values. Offset targets its current value
+	for i := 0; i < 3; i++ {
+		e.interpolate_pos[i+3] = e.interpolate_pos[i]
+	}
+
 	// 2 values
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 2; j++ {
 			idx := i + j*2
-			e.interpolate_pos[idx] = 0
 			e.interpolate_scale[idx] = e.scale[i]
 			e.interpolate_alpha[idx] = e.alpha[i]
 		}
@@ -2607,6 +2608,56 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 		e.interpolate_rot[i] = e.rot
 		e.interpolate_fLength[i] = e.fLength
 		e.interpolate_xshear[i] = e.xshear
+	}
+}
+
+// Bakes the current interpolated look into the starting values
+func (e *Explod) bakeInterpolation() {
+	for i := 0; i < 2; i++ {
+		e.scale[i] *= e.interpolate_scale[i]
+		e.alpha[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+	}
+	e.rot.angle += e.interpolate_rot[0].angle
+	e.rot.xangle += e.interpolate_rot[0].xangle
+	e.rot.yangle += e.interpolate_rot[0].yangle
+	e.fLength += e.interpolate_fLength[0]
+	e.xshear += e.interpolate_xshear[0]
+	// Offset needs no baking because it is always applied
+
+	if e.ownpal && e.palfx.interpolate {
+		pf := e.palfx
+		pf.mul, pf.add, pf.color, pf.hue = pf.interpolatedValues()
+	}
+}
+
+// Starts a new interpolation from the current look. Used by Explod and ModifyExplod
+// Targets default to the current look and can be set afterwards
+func (e *Explod) startInterpolation(pfd *PalFXDef) {
+	e.resetInterpolation(pfd)
+	e.interpolate = true
+
+	// Save the current look as the start
+	e.start_fLength = e.fLength
+	e.start_xshear = e.xshear
+	e.start_rot = e.rot
+	e.start_pos = [3]float32{e.interpolate_pos[0], e.interpolate_pos[1], e.interpolate_pos[2]}
+	e.start_scale = e.scale
+	e.start_alpha = e.alpha
+
+	// Reset the base values, since drawing applies the interpolated values on top of them
+	e.scale = [2]float32{1, 1}
+	e.alpha = [2]int32{255, 255}
+	e.rot = Rotation{}
+	e.fLength = 0
+	e.xshear = 0
+
+	if e.ownpal {
+		pfd.interpolate = true
+		pfd.itime = e.interpolate_time[0]
+		pfd.mul = [3]int32{256, 256, 256}
+		pfd.add = [3]int32{0, 0, 0}
+		pfd.color = 1
+		pfd.hue = 0
 	}
 }
 
@@ -3601,15 +3652,14 @@ const (
 )
 
 // Each char follows at most one other player, through bindTo. Each new bind overwrites the last
-// If that player has this char as a target, the bind is considered a grab. See targetBinder()
 // Grabs have special properties like copying velocity, getHitVar(isbound), state 5050, etc
 // Mugen instead stores self binds on the bound player and target binds on the binder, so both can be active and several binders can hold one char
 // We keep only one because a char can't be in two places, and Mugen's overlapping binds already resolve to the last one applied anyway
 type CharBind struct {
 	id     int32
+	isGrab bool       // Set when the binder made the bind (TargetBind, etc)
 	time   int32
 	pos    [3]float32 // In the bound char's coordinate space
-	posAdd [3]float32 // PosSet/PosAdd this frame. Only distX/distY read it. See https://github.com/ikemen-engine/Ikemen-GO/pull/799
 	facing float32    // TODO: TargetBind and BindToTarget might as well have this too
 }
 
@@ -4922,7 +4972,8 @@ func (c *Char) loadPalettes() {
 	}
 
 	// Update RemapPal to selected palette
-	// TODO: Confirm if this is true for all characters in Mugen. Defaulting to color 1 would be useless, regardless
+	// Mugen only does this for SFF v1 root players, at the start of each round
+	// Ikemen does it for all chars since defaulting to color 1 would be useless
 	gi.remappedpal = [2]int32{1, gi.palno}
 }
 
@@ -7415,38 +7466,6 @@ func (c *Char) commitExplod(i int) {
 		return
 	}
 
-	// Set up interpolation
-	e.start_animelem = e.animelem
-	e.start_fLength = e.fLength
-	e.start_xshear = e.xshear
-	e.start_rot = e.rot
-
-	for j := 0; j < 3; j++ {
-		if j < 2 {
-			e.start_scale[j] = e.scale[j]
-			e.start_alpha[j] = e.alpha[j]
-		}
-	}
-
-	if e.interpolate {
-		e.fLength = 0
-		for j := 0; j < 3; j++ {
-			if e.ownpal {
-				e.palfxdef.mul[j] = 256
-				e.palfxdef.add[j] = 0
-			}
-			if j < 2 {
-				e.scale[j] = 1
-				e.alpha[j] = 255
-			}
-			e.rot = Rotation{}
-		}
-		if e.ownpal {
-			e.palfxdef.color = 1
-			e.palfxdef.hue = 0
-		}
-	}
-
 	// Init "ownpal" PalFX and RemapPal
 	// Note: Must be placed after setting up interpolation
 	if e.ownpal {
@@ -8653,8 +8672,8 @@ func (c *Char) bindToTarget(tar []int32, time int32, offset [3]float32, hmf HMF)
 			// Then bind the target like TargetBind would
 			c.targetBind(tar[:1], time, [3]float32{
 				c.facing * c.distX(t, c),
-				t.pos[1]*(t.localscl/c.localscl) - c.pos[1],
-				t.pos[2]*(t.localscl/c.localscl) - c.pos[2],
+				c.distY(t, c),
+				c.distZ(t, c),
 			})
 		}
 	}
@@ -8828,8 +8847,8 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 				if t.ghv.hitid == excludeid {
 					tg = append(tg, tid)
 				} else {
-					// Only clear a bind from this char. Other players may still be binding this target
-					t.unbindFrom(c.id)
+					// Only end this char's grab. A self bind to this char stays
+					t.unbindGrabFrom(c.id)
 					t.ghv.dropPlayerId(c.id)
 				}
 			}
@@ -8847,7 +8866,7 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 				c.targets = append(c.targets, tid)
 			} else if t := sys.playerID(tid); t != nil {
 				// Bound targets already went to 5050 if this char was hit
-				t.unbindFrom(c.id)
+				t.unbindGrabFrom(c.id)
 				t.ghv.dropPlayerId(c.id)
 			}
 		}
@@ -9194,14 +9213,20 @@ func (c *Char) redLifeEnabled() bool {
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
-	// Update distance while bound. Mugen chars only
-	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if bc, bp := c.bindOnAxis(0); bp != nil {
-			cpos = (c.boundPos(bc, bp, 0) + bc.facing*bp.posAdd[0]) * c.localscl
-		}
-	}
+
+	// Mugen chars used to read the position their bind would give them, plus PosSet/PosAdd while bound
+	// Binds now run at the same points in the frame as in Mugen, so the plain position already matches it and this was wrong
+	// See https://github.com/ikemen-engine/Ikemen-GO/pull/799
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	//	if bc := c.bindOnAxis(0); bc != nil {
+	//		cpos = (c.boundPos(bc, 0) + bc.facing*c.bindTo.posAdd[0]) * c.localscl
+	//	}
+	//}
+
 	dist := (opos - cpos) / oc.localscl
+
+	// A lot depends on distance 0, so we fix rounding errors here
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1380
 	if Abs(dist) < 0.0001 {
 		dist = 0
 	}
@@ -9211,13 +9236,6 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
-	// Update distance while bound. Mugen chars only
-	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if bc, bp := c.bindOnAxis(1); bp != nil {
-			cpos = (c.boundPos(bc, bp, 1) + bp.posAdd[1]) * c.localscl
-		}
-	}
 	return (opos - cpos) / oc.localscl
 }
 
@@ -10066,15 +10084,9 @@ func (c *Char) posUpdate() {
 
 	// Check if the player is bound
 	var nobind [3]bool
+	bc := c.activeBinder()
 	for i := range nobind {
-		_, bp := c.bindOnAxis(i)
-		nobind[i] = bp == nil
-		// Reset these while we're at it
-		if bp != nil {
-			bp.posAdd[i] = 0
-		}
-	}
-	for i := range nobind {
+		nobind[i] = bc == nil || math.IsNaN(float64(c.bindTo.pos[i]))
 		if nobind[i] {
 			c.oldPos[i], c.interPos[i] = c.pos[i], c.pos[i]
 		}
@@ -10180,7 +10192,7 @@ func (c *Char) targetAddSctrl(id int32) {
 	t.ghv.addId(c.id, c.gi().data.airjuggle)
 }
 
-// Me to other. Used by BindToParent, BindToRoot and BindToPlayer
+// Bind this char to another. Used by BindToParent, BindToRoot and BindToPlayer
 func (c *Char) setBindTo(to *Char, time int32, facing float32, pos [3]float32) {
 	// Prevent mutual binding
 	to.unbindFrom(c.id)
@@ -10188,14 +10200,7 @@ func (c *Char) setBindTo(to *Char, time int32, facing float32, pos [3]float32) {
 		c.bindTo.clear()
 		return
 	}
-	// Keep posAdd only if the anchor is the same
-	if c.bindTo.id != to.id {
-		c.bindTo.posAdd = [3]float32{}
-	}
-	c.bindTo.id = to.id
-	c.bindTo.time = time
-	c.bindTo.facing = facing
-	c.bindTo.pos = pos
+	c.bindTo = CharBind{id: to.id, time: time, pos: pos, facing: facing}
 }
 
 // Bind another char to this one
@@ -10206,15 +10211,15 @@ func (c *Char) bindOther(t *Char, time int32, facing float32, pos [3]float32) {
 		t.unbindFrom(c.id)
 		return
 	}
-	// Keep posAdd if this char already binds it
-	if t.bindTo.id != c.id {
-		t.bindTo = CharBind{id: c.id}
-	}
-	t.bindTo.time = time
-	t.bindTo.facing = facing
 	// Convert the offsets to the bound char's local scale
 	ls := c.localscl / t.localscl
-	t.bindTo.pos = [3]float32{pos[0] * ls, pos[1] * ls, pos[2] * ls}
+	t.bindTo = CharBind{
+		id:     c.id,
+		isGrab: true,
+		time:   time,
+		pos:    [3]float32{pos[0] * ls, pos[1] * ls, pos[2] * ls},
+		facing: facing,
+	}
 }
 
 // Release every bind to this char
@@ -10231,6 +10236,13 @@ func (c *Char) unbindFrom(id int32) {
 	}
 }
 
+// End this char's bind if the given player grabs it. Self binds to that player stay
+func (c *Char) unbindGrabFrom(id int32) {
+	if c.bindTo.isGrab {
+		c.unbindFrom(id)
+	}
+}
+
 // The player this char follows while the bind is active
 func (c *Char) activeBinder() *Char {
 	// Unlike targetBinder(), this ignores time 0, the frame a bind lingers after it ends
@@ -10243,69 +10255,53 @@ func (c *Char) activeBinder() *Char {
 	return nil
 }
 
-// The player this char follows, if that player also has this char as a target
-// This is what tells a TargetBind or HitDef snap apart from other binds
+// The player that grabs this char (TargetBind, BindToTarget, HitDef snap)
 func (c *Char) targetBinder() *Char {
-	// No bind time check on purpose, so it stays true at time 0 until the bind is cleared the next frame
-	// This makes getHitVar(isbound) linger, like in Mugen
-	if bc := sys.playerID(c.bindTo.id); bc != nil && bc.hasTarget(c.id) {
+	// No time check, so getHitVar(isbound) lingers one frame after the grab ends, like Mugen
+	if bc := sys.playerID(c.bindTo.id); bc != nil && c.bindTo.isGrab {
 		return bc
 	}
 	return nil
 }
 
 // Where a bind places this char on an axis, in this char's units
-func (c *Char) boundPos(bc *Char, bp *CharBind, i int) float32 {
-	off := bp.pos[i]
+func (c *Char) boundPos(bc *Char, i int) float32 {
+	off := c.bindTo.pos[i]
 	if i == 0 {
 		off *= bc.facing
 	}
 	return bc.pos[i]*bc.localscl/c.localscl + off
 }
 
-// The active bind that sets this axis and the player it follows
-func (c *Char) bindOnAxis(i int) (*Char, *CharBind) {
+// The player this char follows on this axis, while the bind is active
+func (c *Char) bindOnAxis(i int) *Char {
 	if math.IsNaN(float64(c.bindTo.pos[i])) {
-		return nil, nil
+		return nil
 	}
-	if bc := c.activeBinder(); bc != nil {
-		return bc, &c.bindTo
-	}
-	return nil, nil
-}
-
-// Runs in the char's own update()
-func (c *Char) updateBindTo() {
-	bc := c.activeBinder()
-	if bc == nil {
-		return
-	}
-	// Unlike Mugen, a paused char keeps following its anchor, so a bind that lasts through the pause doesn't snap afterwards
-	// No velocity copy here, like Mugen's self binds
-	c.applyBind(bc, &c.bindTo)
+	return c.activeBinder()
 }
 
 // Runs in the binder's actionRun()
-func (c *Char) followBinder(bc *Char, bp *CharBind) {
+func (c *Char) followBinder(bc *Char) {
 	// The binder moves this player, so copy its velocity
-	if !math.IsNaN(float64(bp.pos[0])) {
+	if !math.IsNaN(float64(c.bindTo.pos[0])) {
 		c.vel[0] = c.facing * bc.facing * bc.vel[0]
 	}
-	if !math.IsNaN(float64(bp.pos[1])) {
+	if !math.IsNaN(float64(c.bindTo.pos[1])) {
 		c.vel[1] = bc.vel[1]
 	}
-	if !math.IsNaN(float64(bp.pos[2])) {
+	if !math.IsNaN(float64(c.bindTo.pos[2])) {
 		c.vel[2] = bc.vel[2]
 	}
 
-	c.applyBind(bc, bp)
+	c.applyBind(bc)
 }
 
 // Does the actual position binding. Extracted so it can run twice in the same frame if necessary
-func (c *Char) applyBind(bc *Char, bp *CharBind) {
+func (c *Char) applyBind(bc *Char) {
 	// X
-	if !math.IsNaN(float64(bp.pos[0])) {
-		c.setPosX(c.boundPos(bc, bp, 0), true)
+	if !math.IsNaN(float64(c.bindTo.pos[0])) {
+		c.setPosX(c.boundPos(bc, 0), true)
 		c.interPos[0] += bc.interPos[0] - bc.pos[0]
 		c.oldPos[0] += bc.oldPos[0] - bc.pos[0]
 		c.pushed = c.pushed || bc.pushed
@@ -10313,8 +10309,8 @@ func (c *Char) applyBind(bc *Char, bp *CharBind) {
 	}
 
 	// Y
-	if !math.IsNaN(float64(bp.pos[1])) {
-		c.setPosY(c.boundPos(bc, bp, 1), true)
+	if !math.IsNaN(float64(c.bindTo.pos[1])) {
+		c.setPosY(c.boundPos(bc, 1), true)
 		c.interPos[1] += bc.interPos[1] - bc.pos[1]
 		c.oldPos[1] += bc.oldPos[1] - bc.pos[1]
 		//c.pushed = c.pushed || bc.pushed // No pushing happens on y-axis
@@ -10322,8 +10318,8 @@ func (c *Char) applyBind(bc *Char, bp *CharBind) {
 	}
 
 	// Z
-	if !math.IsNaN(float64(bp.pos[2])) {
-		c.setPosZ(c.boundPos(bc, bp, 2), true)
+	if !math.IsNaN(float64(c.bindTo.pos[2])) {
+		c.setPosZ(c.boundPos(bc, 2), true)
 		c.interPos[2] += bc.interPos[2] - bc.pos[2]
 		c.oldPos[2] += bc.oldPos[2] - bc.pos[2]
 		c.pushed = c.pushed || bc.pushed
@@ -10331,8 +10327,8 @@ func (c *Char) applyBind(bc *Char, bp *CharBind) {
 	}
 
 	// Facing
-	if Abs(bp.facing) == 1 {
-		if bp.facing > 0 {
+	if Abs(c.bindTo.facing) == 1 {
+		if c.bindTo.facing > 0 {
 			c.setFacing(bc.facing)
 		} else {
 			c.setFacing(-bc.facing)
@@ -10410,17 +10406,16 @@ func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	c.xScreenBound()
 }
 
-// End a target bind on this char, thus clearing getHitVar(isbound)
+// End a grab on this char, which also clears getHitVar(isbound)
 func (c *Char) clearTargetBind() {
-	if c.targetBinder() != nil {
+	if c.bindTo.isGrab {
 		c.bindTo.clear()
 	}
 }
 
-// Callers only pass this char's targets, so a bind to this char is a target bind
 // Reads bindTo directly so a bind on its linger frame also sends the target to 5050, like Mugen
 func (c *Char) releaseBoundTarget(t *Char, log bool) {
-	if t.bindTo.id != c.id {
+	if t.bindTo.id != c.id || !t.bindTo.isGrab {
 		return
 	}
 	// This is the only place a bound target is sent to state 5050
@@ -10442,7 +10437,7 @@ func (c *Char) releaseAllBoundTargets() {
 	}
 }
 
-// Drop this char's targets and end binds to it, plus any grab on it. Its self binds survive
+// Drop this char's targets and end every bind to it
 func (c *Char) releaseLinks() {
 	c.releaseTargets(-1)
 	c.unbindFollowers()
@@ -10450,11 +10445,11 @@ func (c *Char) releaseLinks() {
 	c.clearTargetBind()
 }
 
-// Drop all targets without releasing them, and end this char's binds on them
+// Drop all targets without releasing them, and end this char's grabs on them
 func (c *Char) clearTargets() {
 	for _, tid := range c.targets {
 		if t := sys.playerID(tid); t != nil {
-			t.unbindFrom(c.id)
+			t.unbindGrabFrom(c.id)
 		}
 	}
 	c.targets = c.targets[:0]
@@ -10491,8 +10486,8 @@ func (c *Char) dropTargets() {
 				if t.ss.moveType != MT_H && !t.stchtmp {
 					c.targets[i] = c.targets[len(c.targets)-1]
 					c.targets = c.targets[:len(c.targets)-1]
-					// End this char's bind on the target. exitTarget() usually did it already, but not on every path
-					t.unbindFrom(c.id)
+					// End this char's grab on the target. exitTarget() usually did it already, but not on every path
+					t.unbindGrabFrom(c.id)
 					if t.ghv._type != 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1268
 						t.ghv.hitid = -1
 					}
@@ -10512,7 +10507,7 @@ func (c *Char) removeTarget(pid int32) {
 		if t == pid {
 			c.targets = SliceDelete(c.targets, i)
 			if tc := sys.playerID(pid); tc != nil {
-				tc.unbindFrom(c.id)
+				tc.unbindGrabFrom(c.id)
 			}
 			return
 		}
@@ -10888,7 +10883,7 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32, fromHitdef b
 		if owner := p.owner(); owner != nil {
 			buf := c.clsnFilterBuf[:0]
 			for i, b := range boxes2 {
-				if c.attrCheckBox(owner, &p.hitdef, ST_N, cbox, int32(i)) {
+				if c.attrCheckBox(owner, &p.hitdef, cbox, int32(i)) {
 					buf = append(buf, b)
 				}
 			}
@@ -11028,7 +11023,7 @@ func (c *Char) clsnCheckSingle(getter *Char, charbox, getterbox int32, fromHitde
 	if fromHitdef && c.hitdef.reversal_attr <= 0 && getterbox > 0 && getter.hasBoxHitBy() {
 		buf := getter.clsnFilterBuf[:0]
 		for i, b := range boxes2 {
-			if getter.attrCheckBox(c, &c.hitdef, c.ss.stateType, getterbox, int32(i)) {
+			if getter.attrCheckBox(c, &c.hitdef, getterbox, int32(i)) {
 				buf = append(buf, b)
 			}
 		}
@@ -11096,6 +11091,11 @@ func (c *Char) checkHitBySlot(hb HitBy, getterno int, getterid, ghdattr, attrsca
 // checkHitByAllSlots evaluates all of the character's HitBy/NotHitBy slots
 // to determine if the character is vulnerable to the current attack.
 func (c *Char) checkHitByAllSlots(getterno int, getterid, ghdattr, attrsca, boxgroup, boxindex int32) bool {
+	// No HitBy works like "HitBy everything", which still needs an SCA flag
+	if attrsca == 0 {
+		return false
+	}
+
 	stackHit := false
 	hasStackSlot := false
 	nonStackHit := true
@@ -11135,7 +11135,7 @@ func (c *Char) checkHitByAllSlots(getterno int, getterid, ghdattr, attrsca, boxg
 }
 
 // Check if HitDef attributes can hit a player
-func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
+func (c *Char) attrCheck(getter *Char, ghd *HitDef) bool {
 	// Unhittable time invalidates anything
 	if c.unhittableTime > 0 {
 		return false
@@ -11176,9 +11176,19 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 			return false
 		}
 
-		// Check attributes
-		if (c.hitdef.attr&ghd.reversal_attr&int32(ST_MASK)) == 0 ||
-			(c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK)) == 0 {
+		// Attack type must match
+		if c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK) == 0 {
+			return false
+		}
+
+		// SCA must match
+		scaMatch := c.hitdef.attr&ghd.reversal_attr&int32(ST_MASK) != 0
+		// Mugen fallback
+		// Mugen swaps the attacker's statetype into a HitDef's SCA on Clsn contact, but not a ReversalDef's
+		if !scaMatch && c.hitdef.reversal_attr <= 0 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+			scaMatch = int32(c.ss.stateType)&ghd.reversal_attr&int32(ST_SCA) != 0
+		}
+		if !scaMatch {
 			return false
 		}
 
@@ -11220,21 +11230,8 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 		return false
 	}
 
-	// Get state type (SCA) from among the Hitdef attributes
-	attrsca := ghd.attr & int32(ST_MASK)
-
-	// Note: In Mugen, invincibility is checked against the enemy's actual statetype instead of the Hitdef's SCA attribute
-	// Exception for projectiles, where it respects the SCA attribute
-	// Ikemen characters work as documented. Invincibility only cares about the HitDef's SCA attribute
-	if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
-		if gstyp == ST_N { // Projectiles mostly
-			attrsca = ghd.attr & int32(ST_MASK)
-		} else {
-			attrsca = int32(gstyp)
-		}
-	}
-
 	// HitBy and NotHitBy checks
+	attrsca := hitAttrSCA(getter, ghd)
 	if !c.checkHitByAllSlots(getter.playerNo, getter.id, ghd.attr, attrsca, -1, -1) {
 		return false
 	}
@@ -11243,15 +11240,24 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 }
 
 // Run HitBy checks with Clsn filters enabled
-func (c *Char) attrCheckBox(getter *Char, ghd *HitDef, gstyp StateType, boxgroup, boxindex int32) bool {
-	attrsca := ghd.attr & int32(ST_MASK)
-
-	// See attrCheck()
-	if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 && gstyp != ST_N {
-		attrsca = int32(gstyp)
-	}
-
+func (c *Char) attrCheckBox(getter *Char, ghd *HitDef, boxgroup, boxindex int32) bool {
+	attrsca := hitAttrSCA(getter, ghd)
 	return c.checkHitByAllSlots(getter.playerNo, getter.id, ghd.attr, attrsca, boxgroup, boxindex)
+}
+
+// Mugen compatibility for the SCA checks of HitBy, NotHitBy and HitOverride
+func hitAttrSCA(getter *Char, ghd *HitDef) int32 {
+	// Mugen replaces the HitDef's SCA attribute with the attacker's statetype right before the HitBy check
+	// The new SCA is kept, so ReversalDef sees it too (handled in attrCheck)
+	// Ikemen emulates this for Mugen chars by using the statetype for the check instead
+	// This leaves the attribute itself unchanged, so HitDefAttr differs from Mugen once it swaps
+	// Ikemen chars just use the SCA attribute as documented
+	// Mugen only swaps a char's own HitDef, not projectiles or ReversalDefs
+	if !ghd.isprojectile && ghd.reversal_attr <= 0 && getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
+		// Statetype L leaves no SCA flags, so the HitDef can't hit while lying down
+		return int32(getter.ss.stateType) & int32(ST_SCA)
+	}
+	return ghd.attr & int32(ST_MASK)
 }
 
 // Whether any active slot is box specific, so the filtering can be skipped in the common case
@@ -11297,7 +11303,7 @@ func (c *Char) hitPrecheck(getter *Char) bool {
 	}
 
 	// Getter can't be hit by the HitDef attributes at all
-	if !getter.attrCheck(c, &c.hitdef, c.ss.stateType) {
+	if !getter.attrCheck(c, &c.hitdef) {
 		return false
 	}
 
@@ -11388,8 +11394,8 @@ func (c *Char) clsnTradeCheck(getter *Char) (hitLanded, hitTraded bool) {
 	}
 
 	// Check if the chars have valid attack definitions
-	cValid := c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0
-	getterValid := getter.hitdef.attr > 0 && getter.ss.stateType != ST_L || getter.hitdef.reversal_attr > 0
+	cValid := c.hitdef.attr > 0 || c.hitdef.reversal_attr > 0
+	getterValid := getter.hitdef.attr > 0 || getter.hitdef.reversal_attr > 0
 
 	// No trade if either attack is invalid or getter can't hit back
 	// For instance, a lower priority exchanging with a higher priority whose Clsn1 misses is not a trade
@@ -11533,12 +11539,6 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 		}
 	}
 
-	// If attacking while statetype L
-	if isProjectile && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
-		c.hitdef.ltypehit = true
-		return 0
-	}
-
 	// If using p2stateno but the enemy is already changing states
 	if getter.stchtmp && getter.ss.sb.playerNo != hd.statePN {
 		if getter.csf(CSF_gethit) {
@@ -11634,14 +11634,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 				continue
 			}
 			// Check SCA attributes
-			if isProjectile {
-				if ho.attr&hd.attr&int32(ST_MASK) == 0 {
-					continue
-				}
-			} else {
-				if ho.attr&int32(c.ss.stateType) == 0 {
-					continue
-				}
+			if ho.attr&hitAttrSCA(c, hd) == 0 {
+				continue
 			}
 			// Check guardflag
 			if ho.guardflag != IErr && (ho.guardflag&hd.guardflag == 0 || c.asf(ASF_unguardable)) {
@@ -11776,10 +11770,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 				}
 			}
 		}
-		// Only the attacker's target bind on the getter. Mugen keeps self binds through hits
-		if c.hasTarget(getter.id) {
-			getter.unbindFrom(c.id)
-		}
+		// End only the attacker's grab on the getter. Mugen keeps self binds through hits
+		getter.unbindGrabFrom(c.id)
 		if hd.KeepState && ghvset {
 			getter.ghv.keepstate = hd.KeepState
 			if hitResult == 2 {
@@ -12833,14 +12825,14 @@ func (c *Char) actionRun() {
 	c.xScreenBound()
 	c.zDepthBound()
 
-	// First bind pass: place the targets this char binds. The second pass is in the bound char's update()
+	// First bind pass: place the targets this char grabs. Self binds are placed in update()
 	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	// A destroyed helper skips this so that destroy() can still find its bound targets and send them to state 5050
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/4151
 	if !c.csf(CSF_destroy) {
 		for _, tid := range c.targets {
 			t := sys.playerID(tid)
-			if t == nil || t.bindTo.id != c.id {
+			if t == nil || t.bindTo.id != c.id || !t.bindTo.isGrab {
 				continue
 			}
 			if t.bindTo.time == 0 {
@@ -12851,7 +12843,7 @@ func (c *Char) actionRun() {
 			}
 			// Grabs freeze while the binder is paused, like Mugen
 			if !c.pauseBool {
-				t.followBinder(c, &t.bindTo)
+				t.followBinder(c)
 			}
 		}
 	}
@@ -12944,36 +12936,22 @@ func (c *Char) track() {
 
 		charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
 		charright := c.interPos[0]*c.localscl + edgeright*c.localscl
-		xbc, xbp := c.bindOnAxis(0)
-		canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && xbp == nil
-		// Keep following the binder on the frame after a target bind ends
-		bindToCharacter := c.targetBinder()
-		if xbp != nil {
-			bindToCharacter = xbc
+		canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && c.bindOnAxis(0) == nil
+		// Camera velocity follows the char, or its binder if it can't move on its own
+		bc := sys.playerID(c.bindTo.id)
+		var vel float32
+		if canmove {
+			vel = c.vel[0] * c.localscl * c.facing
+		} else if bc != nil {
+			vel = bc.vel[0] * bc.localscl * bc.facing
 		}
 		if charleft < sys.cam.leftest {
 			sys.cam.leftest = charleft
-			if canmove {
-				sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
-			} else {
-				if bindToCharacter != nil {
-					sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-				} else {
-					sys.cam.leftestvel = 0
-				}
-			}
+			sys.cam.leftestvel = vel
 		}
 		if charright > sys.cam.rightest {
 			sys.cam.rightest = charright
-			if canmove {
-				sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
-			} else {
-				if bindToCharacter != nil {
-					sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-				} else {
-					sys.cam.rightestvel = 0
-				}
-			}
+			sys.cam.rightestvel = vel
 		}
 	}
 
@@ -13005,12 +12983,15 @@ func (c *Char) update() {
 			}
 		*/
 
-		// Self binds are applied here
-		// Target binds are applied by the binder in their actionRun() instead
+		// Second bind pass, for self binds. Grabs are placed in the binder's actionRun()
 		// Merging into one shared pass causes timing issues and as such is not possible
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/3915
-		if c.targetBinder() == nil {
-			c.updateBindTo()
+		if !c.bindTo.isGrab {
+			// Unlike Mugen, a paused char keeps following, so it doesn't snap when the pause ends
+			// No velocity copy, like Mugen's self binds
+			if bc := c.activeBinder(); bc != nil {
+				c.applyBind(bc)
+			}
 		}
 
 		if c.acttmp > 0 {
@@ -13188,15 +13169,15 @@ func (c *Char) tick() {
 		c.animBackup = c.anim
 	}
 
-	// Remove a bind that ran out on the previous frame, or whose anchor no longer exists
-	// Grabs skip this. The grabbing player removes them instead, also one frame after they run out
+	// Remove a bind that ran out last frame, or whose anchor is gone
+	// A grab is removed by its binder instead, also one frame after it runs out
 	if c.activeBinder() == nil && c.targetBinder() == nil {
 		c.bindTo.clear()
 	}
 
 	// Step the bind timer
 	// Runs after the clear above, so an ending bind's data lingers until the next tick
-	// Pause/SuperPause stops it, like Mugen. Hitpause does not
+	// Pause and SuperPause stop it, like Mugen. Hitpause doesn't
 	if c.bindTo.time > 0 {
 		if bt := c.targetBinder(); bt != nil {
 			// A grab timer pauses with the binder
@@ -13223,12 +13204,9 @@ func (c *Char) tick() {
 	}
 	if c.hitdefContact {
 		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
-			c.hitdef.updateStateType(c.ss.stateType)
+			c.hitdef.disableAttr()
 		}
 		c.hitdefContact = false
-	} else if c.hitdef.ltypehit {
-		c.hitdef.attr = c.hitdef.attr&^int32(ST_MASK) | int32(c.ss.stateType)
-		c.hitdef.ltypehit = false
 	}
 	// Get Hitdef targets from the buffer. Using a buffer mitigates processing order errors
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1798
@@ -14623,7 +14601,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			if canJuggle && !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
 				(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 				(p.hitpause <= 0 || p.contactflag) && p.curmisstime <= 0 && p.hitdef.hitonce >= 0 &&
-				getter.attrCheck(c, &p.hitdef, ST_N) {
+				getter.attrCheck(c, &p.hitdef) {
 
 				// Save enemy's hittmp var so we can temporarily modify it
 				// Maybe this is no longer necessary
@@ -15023,7 +15001,7 @@ func (cl *CharList) rebindIfPushed() {
 			continue
 		}
 		if bc := c.activeBinder(); bc != nil && bc.pushed {
-			c.applyBind(bc, &c.bindTo)
+			c.applyBind(bc)
 		}
 	}
 }

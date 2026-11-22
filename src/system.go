@@ -174,7 +174,7 @@ var sys = System{
 	ignoreMostErrors: true,
 	stageList:        make(map[int32]*Stage),
 	stageLocalcoords: make(map[string][2]int32),
-	commandLine:      make(chan string),
+	terminalLua:      make(chan string),
 	mainThreadTask:   make(chan func(), 65536),
 	workpal:          make([]uint32, 256),
 	saveState:        NewGameState(),
@@ -284,7 +284,7 @@ type System struct {
 	stageLocalcoords    map[string][2]int32
 	wireframeDisplay    bool
 	shortcutScripts     map[ShortcutKey]*ShortcutScript
-	commandLine         chan string
+	terminalLua         chan string
 	debugWC             *Char
 	projs               [MaxPlayerNo][]*Projectile
 	explods             [MaxPlayerNo][]*Explod
@@ -558,7 +558,7 @@ func (s *System) init(w, h int32) *lua.LState {
 					LogMessage(err.Error())
 					return
 				}
-				s.commandLine <- stdin.Text()
+				s.terminalLua <- stdin.Text()
 			}
 		})
 	}
@@ -839,6 +839,17 @@ func (s *System) eventUpdate() bool {
 	s.window.pollEvents()
 	s.gameEnd = s.window.shouldClose()
 	return !s.gameEnd
+}
+
+// Runs one line of Lua typed into the terminal
+func (s *System) runTerminalLua() {
+	select {
+	case cl := <-s.terminalLua:
+		if err := s.luaLState.DoString(cl); err != nil {
+			s.luaLState.RaiseError("Error during terminal Lua execution:\nCode: %s\nDetails: %s", cl, err.Error())
+		}
+	default:
+	}
 }
 
 func (s *System) runMainThreadTask() {
@@ -3734,7 +3745,15 @@ func (s *System) draw(x, y, scl float32) {
 		//}
 
 		// Draw the background fill
-		FillRect(s.scrrect, fcol, [2]int32{255, 0}, nil)
+		// Use the stage's fill color for the normally visible area and black for screen shakes
+		// If the stage's fill is also black (most common case) then we only need to fill once
+		stageRect := s.stage.overdrawClip(s.envShake.getOffset())
+		if fcol == 0 || stageRect != s.scrrect {
+			FillRect(s.scrrect, 0, [2]int32{255, 0}, nil)
+		}
+		if fcol != 0 && stageRect[3] > 0 {
+			FillRect(stageRect, fcol, [2]int32{255, 0}, nil)
+		}
 
 		// Draw stage elements with layerNo == -1
 		if !s.gsf(GSF_nobg) {
@@ -4114,15 +4133,6 @@ func (s *System) runMatch() (reload bool) {
 
 	// Default debug/scripts to any found char
 	s.debugWC = s.anyChar()
-	debugInput := func() {
-		select {
-		case cl := <-s.commandLine:
-			if err := s.luaLState.DoString(cl); err != nil {
-				s.luaLState.RaiseError("Error during Debug Input Lua execution:\nCode: %s\nDetails: %s", cl, err.Error())
-			}
-		default:
-		}
-	}
 
 	// Reset round state
 	s.resetRound()
@@ -4158,6 +4168,8 @@ func (s *System) runMatch() (reload bool) {
 		// Load the next opponent once no Turns member is waiting to load
 		s.startNextMatchPreload()
 
+		// Run Lua from pressed hotkeys
+		// This happens before game logic, so that a frame step covers a whole frame
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := s.luaLState.DoString(v.Script); err != nil {
@@ -4165,6 +4177,10 @@ func (s *System) runMatch() (reload bool) {
 				}
 			}
 		}
+
+		// Run Lua typed into the terminal
+		// Next to hotkeys so they happen with the same logical timing
+		s.runTerminalLua()
 
 		// Save/load state
 		// TODO: Confirm at which exact point rollback does its own save/restore and match that
@@ -4201,9 +4217,6 @@ func (s *System) runMatch() (reload bool) {
 		// Step sounds after both the core game and motif have updated
 		s.tickSound()
 
-		s.frameStepFlag = false
-		debugInput()
-
 		// Output debug data provided by an external Lua script.
 		if _, enabled := s.cmdFlags["-debugdump"]; enabled {
 			if fn, ok := s.luaLState.GetGlobal("__ikemen_debug_dump").(*lua.LFunction); ok {
@@ -4235,6 +4248,8 @@ func (s *System) runMatch() (reload bool) {
 		}
 
 		if !s.addFrameTime(s.turbo) {
+			// The iteration ends early, so end the step here or the next iteration steps again
+			s.frameStepFlag = false
 			if !s.eventUpdate() {
 				return false
 			}
@@ -4307,6 +4322,9 @@ func (s *System) runMatch() (reload bool) {
 		// Cue sprites, then render
 		s.cueDraw()
 		s.renderFrame()
+
+		// End the step only after drawing, so sprites and afterimages update like on a normal frame
+		s.frameStepFlag = false
 
 		// Update system. Break if update returns false (engine shutdown).
 		if !s.update() {
