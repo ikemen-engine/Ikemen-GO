@@ -6517,6 +6517,7 @@ const (
 	palFX_hue
 	palFX_scroll
 	palFX_sinscroll
+	palFX_waveform
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -6598,6 +6599,12 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef, paramID byte, exp []BytecodeExp) 
 			}
 		}
 		pfd.sinscroll = exp[0].evalI(c) * side
+	case palFX_waveform:
+		wf := exp[0].evalSLower(c)
+		var ok bool
+		if pfd.waveform, ok = palFXWaveform(wf); !ok {
+			sys.appendToConsole(c.warn() + "Invalid waveform: " + wf)
+		}
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	case palFX_invertblend:
@@ -14155,6 +14162,7 @@ const (
 	modifyBGCtrl_color
 	modifyBGCtrl_hue
 	modifyBGCtrl_scroll
+	modifyBGCtrl_waveform
 	modifyBGCtrl_shader
 	modifyBGCtrl_shaderparam
 	modifyBGCtrl_tex1anim
@@ -14175,6 +14183,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	sinscroll := [2]int32{IErr, IErr}
 	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
 	scroll := float32(math.NaN())
+	waveform := IErr
 	shader := sys.stage.newModifyBGCtrlShader()
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
@@ -14274,6 +14283,12 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			hue = exp[0].evalF(c)
 		case modifyBGCtrl_scroll:
 			scroll = exp[0].evalF(c)
+		case modifyBGCtrl_waveform:
+			wf := exp[0].evalSLower(c)
+			var ok bool
+			if waveform, ok = palFXWaveform(wf); !ok {
+				sys.appendToConsole(c.warn() + "Invalid waveform: " + wf)
+			}
 		case modifyBGCtrl_shader:
 			shader.nameSet = true
 			shader.name = exp[0].evalSLower(c)
@@ -14298,7 +14313,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, sinscroll, invall, invblend, color, hue, scroll, shader)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, sinscroll, invall, invblend, color, hue, scroll, waveform, shader)
 	return false
 }
 

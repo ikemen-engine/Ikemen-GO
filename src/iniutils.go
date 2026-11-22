@@ -2432,6 +2432,7 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	sinColor := [2]int32{}
 	sinHue := [2]int32{}
 	sinScroll := [2]int32{}
+	waveform := palFXWave_sine
 	invertAll := false
 	invertBlend := int32(0)
 
@@ -2484,6 +2485,12 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	if fv, ok := get("SinScroll"); ok && fv.Kind() == reflect.Array && fv.Len() == 2 {
 		for k := 0; k < 2; k++ {
 			sinScroll[k] = int32(fv.Index(k).Int())
+		}
+	}
+	if fv, ok := get("Waveform"); ok && fv.Kind() == reflect.String && fv.String() != "" {
+		var valid bool
+		if waveform, valid = palFXWaveform(fv.String()); !valid {
+			sys.appendToConsole("WARNING: Invalid PalFX waveform: " + fv.String())
 		}
 	}
 	if fv, ok := get("InvertAll"); ok && fv.Kind() == reflect.Bool {
@@ -2543,6 +2550,7 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 		palfx.sinscroll = sinScroll[0]
 		palfx.cycletime[4] = sinScroll[1]
 	}
+	palfx.waveform = waveform
 	palfx.invertall = invertAll
 	palfx.invertblend = invertBlend
 

@@ -1645,6 +1645,12 @@ func ReadPalFX(pre string, is IniSection, pfx *PalFX) {
 	if is.ReadF32(pre+"scroll", &n) {
 		pfx.scroll = n / 256
 	}
+	if str, ok, _ := is.getText(pre + "waveform"); ok {
+		var valid bool
+		if pfx.waveform, valid = palFXWaveform(str); !valid {
+			sys.appendToConsole("WARNING: Invalid " + pre + "waveform: " + str)
+		}
+	}
 }
 
 type AnimTextSnd struct {

@@ -1745,6 +1745,7 @@ func systemScriptInit(l *lua.LState) {
 		  - `sincolor` (table int32[2]): sinusoidal color shift `{amount, period}`
 		  - `sinhue` (table int32[2]): sinusoidal hue shift `{amount, period}`
 		  - `sinscroll` (table int32[2]): sinusoidal brightness scroll `{amount, period}`
+		  - `waveform` (string): wave shape of the sin fields: `"sine"` (default), `"saw"`, `"triangle"` or `"square"`
 		  - `invertall` (int32): set to `1` to invert all colors
 		  - `invertblend` (int32): invert blend mode index
 		  - `color` (float32): color saturation factor (`0–256` scaled to `0.0–1.0`)
@@ -1856,6 +1857,11 @@ func systemScriptInit(l *lua.LState) {
 					} else {
 						a.palfx.sinscroll = s[0]
 						a.palfx.cycletime[4] = s[1]
+					}
+				case "waveform":
+					var ok bool
+					if a.palfx.waveform, ok = palFXWaveform(lua.LVAsString(value)); !ok {
+						l.RaiseError("\nInvalid waveform: %v\n", lua.LVAsString(value))
 					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1

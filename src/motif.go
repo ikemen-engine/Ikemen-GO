@@ -48,6 +48,7 @@ type PalFxProperties struct {
 	SinColor    [2]int32 `ini:"sincolor"`
 	SinHue      [2]int32 `ini:"sinhue"`
 	SinScroll   [2]int32 `ini:"sinscroll"`
+	Waveform    string   `ini:"waveform"`
 	InvertAll   bool     `ini:"invertall"`
 	InvertBlend int32    `ini:"invertblend"`
 	PalFxData   *PalFX

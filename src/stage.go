@@ -885,6 +885,7 @@ type bgCtrl struct {
 	color        float32
 	hue          float32
 	scroll       float32
+	waveform     int32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -942,6 +943,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		bgc.color = 1
 		bgc.hue = 0
 		bgc.scroll = 0
+		bgc.waveform = palFXWave_sine
 	case "posset":
 		bgc._type = BT_PosSet
 		xy = true
@@ -1030,6 +1032,12 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		}
 		if is.ReadF32("scroll", &bgc.scroll) {
 			bgc.scroll = bgc.scroll / 256
+		}
+		if str, ok, _ := is.getText("waveform"); ok {
+			var valid bool
+			if bgc.waveform, valid = palFXWaveform(str); !valid {
+				sys.appendToConsole("WARNING: Invalid BGCtrl waveform: " + str)
+			}
 		}
 	} else if shader {
 		name, _, _ := is.getText("name")
@@ -1914,6 +1922,7 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.color = bgc.color
 			bgc.bg[i].palfx.hue = bgc.hue
 			bgc.bg[i].palfx.scroll = bgc.scroll
+			bgc.bg[i].palfx.waveform = bgc.waveform
 			// The effect only lasts one tick. The BG's PalFX is stepped every tick,
 			// so it expires as soon as the BGCtrl stops reapplying it
 			bgc.bg[i].palfx.time = 1
@@ -2305,7 +2314,7 @@ func (s *Stage) newModifyBGCtrlShader() modifyBGCtrlShader {
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, sinscroll [2]int32, invall int32, invblend int32, color float32, hue float32, scroll float32,
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, sinscroll [2]int32, invall int32, invblend int32, color float32, hue float32, scroll float32, waveform int32,
 	shader modifyBGCtrlShader) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
@@ -2421,6 +2430,9 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(scroll)) {
 				s.bgc[i].scroll = scroll / 256
+			}
+			if waveform != IErr {
+				s.bgc[i].waveform = waveform
 			}
 			if shader.nameSet {
 				s.bgc[i].shaderName = shader.name

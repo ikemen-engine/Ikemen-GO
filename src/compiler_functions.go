@@ -1565,6 +1565,9 @@ func (c *CharCompiler) palFXSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.paramWaveform(is, sc, prefix+"waveform", palFX_waveform); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, prefix+"invertall",
 		palFX_invertall, VT_Bool, 1, false); err != nil {
 		return err
@@ -1574,6 +1577,34 @@ func (c *CharCompiler) palFXSub(is IniSection,
 		return err
 	}
 	return nil
+}
+
+// Parses a PalFX waveform. Like ForceFeedback, it takes a bare keyword or a string expression
+func (c *CharCompiler) paramWaveform(is IniSection, sc *StateControllerBase, name string, id byte) error {
+	return c.stateParam(is, name, false, func(data string) error {
+		data = strings.TrimSpace(data)
+		if len(data) == 0 {
+			return Error(name + " not specified")
+		}
+		if _, ok := palFXWaveform(data); ok {
+			sc.add(id, c.stringToExp(strings.ToLower(data)))
+			return nil
+		}
+		bes, err := c.exprs(data, VT_String, 1)
+		if err != nil {
+			return err
+		}
+		// Constant strings can be validated now. Dynamic ones are checked at runtime
+		if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+			i := 1
+			s := sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+			if _, ok := palFXWaveform(s); !ok {
+				return Error("Invalid waveform: " + s)
+			}
+		}
+		sc.add(id, bes)
+		return nil
+	})
 }
 
 func (c *CharCompiler) palFX(is IniSection, sc *StateControllerBase) (StateController, error) {
@@ -5369,6 +5400,9 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 		}
 		if err := c.paramValue(is, sc, "scroll",
 			modifyBGCtrl_scroll, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramWaveform(is, sc, "waveform", modifyBGCtrl_waveform); err != nil {
 			return err
 		}
 		if err := c.shaderSub(is, sc, modifyBGCtrl_shader, "shader."); err != nil {
