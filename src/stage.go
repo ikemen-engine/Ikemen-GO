@@ -1000,16 +1000,19 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		if is.readI32ForStage("sincolor", &bgc.sincolor[0], &bgc.sincolor[1]) {
 			if bgc.sincolor[1] < 0 {
 				bgc.sincolor[0] = -bgc.sincolor[0]
+				bgc.sincolor[1] = -bgc.sincolor[1]
 			}
 		}
 		if is.readI32ForStage("sinhue", &bgc.sinhue[0], &bgc.sinhue[1]) {
 			if bgc.sinhue[1] < 0 {
 				bgc.sinhue[0] = -bgc.sinhue[0]
+				bgc.sinhue[1] = -bgc.sinhue[1]
 			}
 		}
 		if is.readI32ForStage("sinscroll", &bgc.sinscroll[0], &bgc.sinscroll[1]) {
 			if bgc.sinscroll[1] < 0 {
 				bgc.sinscroll[0] = -bgc.sinscroll[0]
+				bgc.sinscroll[1] = -bgc.sinscroll[1]
 			}
 		}
 		var tmp int32
@@ -2378,6 +2381,13 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 						s.bgc[i].mul[j] = mul[j]
 					}
 
+				}
+				// The sign only flips amplitudes. Periods stay positive or the sine never advances
+				if j == 3 {
+					side, side2 = 1, 1
+				}
+				if j == 1 {
+					side3, side4, side5 = 1, 1, 1
 				}
 				if sinadd[j] != IErr {
 					s.bgc[i].sinadd[j] = sinadd[j] * side
