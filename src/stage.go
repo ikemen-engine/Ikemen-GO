@@ -879,10 +879,12 @@ type bgCtrl struct {
 	sinmul       [4]int32
 	sincolor     [2]int32
 	sinhue       [2]int32
+	sinscroll    [2]int32
 	invall       bool
 	invblend     int32
 	color        float32
 	hue          float32
+	scroll       float32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -934,10 +936,12 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		bgc.sinmul = [4]int32{0, 0, 0, 0}
 		bgc.sincolor = [2]int32{0, 0}
 		bgc.sinhue = [2]int32{0, 0}
+		bgc.sinscroll = [2]int32{0, 0}
 		bgc.invall = false
 		bgc.invblend = 0
 		bgc.color = 1
 		bgc.hue = 0
+		bgc.scroll = 0
 	case "posset":
 		bgc._type = BT_PosSet
 		xy = true
@@ -1003,6 +1007,11 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 				bgc.sinhue[0] = -bgc.sinhue[0]
 			}
 		}
+		if is.readI32ForStage("sinscroll", &bgc.sinscroll[0], &bgc.sinscroll[1]) {
+			if bgc.sinscroll[1] < 0 {
+				bgc.sinscroll[0] = -bgc.sinscroll[0]
+			}
+		}
 		var tmp int32
 		if is.ReadI32("invertall", &tmp) {
 			bgc.invall = tmp != 0
@@ -1015,6 +1024,9 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		}
 		if is.ReadF32("hue", &bgc.hue) {
 			bgc.hue = bgc.hue / 512
+		}
+		if is.ReadF32("scroll", &bgc.scroll) {
+			bgc.scroll = bgc.scroll / 256
 		}
 	} else if shader {
 		name, _, _ := is.getText("name")
@@ -1892,10 +1904,13 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.cycletime[2] = bgc.sincolor[1]
 			bgc.bg[i].palfx.sinhue = bgc.sinhue[0]
 			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]
+			bgc.bg[i].palfx.sinscroll = bgc.sinscroll[0]
+			bgc.bg[i].palfx.cycletime[4] = bgc.sinscroll[1]
 			bgc.bg[i].palfx.invertall = bgc.invall
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
 			bgc.bg[i].palfx.hue = bgc.hue
+			bgc.bg[i].palfx.scroll = bgc.scroll
 			// The effect only lasts one tick. The BG's PalFX is stepped every tick,
 			// so it expires as soon as the BGCtrl stops reapplying it
 			bgc.bg[i].palfx.time = 1
@@ -2287,7 +2302,7 @@ func (s *Stage) newModifyBGCtrlShader() modifyBGCtrlShader {
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32,
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, sinscroll [2]int32, invall int32, invblend int32, color float32, hue float32, scroll float32,
 	shader modifyBGCtrlShader) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
@@ -2347,6 +2362,13 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					side4 = -1
 				}
 			}
+			var side5 int32 = 1
+			if sinscroll[1] != IErr {
+				if sinscroll[1] < 0 {
+					sinscroll[1] = -sinscroll[1]
+					side5 = -1
+				}
+			}
 			for j := 0; j < 4; j++ {
 				if j < 3 {
 					if add[j] != IErr {
@@ -2370,6 +2392,9 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					if sinhue[0] != IErr {
 						s.bgc[i].sinhue[j] = sinhue[j] * side4
 					}
+					if sinscroll[0] != IErr {
+						s.bgc[i].sinscroll[j] = sinscroll[j] * side5
+					}
 				}
 			}
 			if invall != IErr {
@@ -2383,6 +2408,9 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(hue)) {
 				s.bgc[i].hue = hue / 512
+			}
+			if !math.IsNaN(float64(scroll)) {
+				s.bgc[i].scroll = scroll / 256
 			}
 			if shader.nameSet {
 				s.bgc[i].shaderName = shader.name

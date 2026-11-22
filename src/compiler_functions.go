@@ -1142,6 +1142,10 @@ func (c *CharCompiler) explodInterpolate(is IniSection,
 		explod_interpolation_pfx_hue, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.scroll",
+		explod_interpolation_pfx_scroll, VT_Float, 1, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1466,6 +1470,10 @@ func (c *CharCompiler) palFXSub(is IniSection,
 		palFX_hue, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"scroll",
+		palFX_scroll, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, prefix+"add", false, func(data string) error {
 		bes, err := c.exprs(data, VT_Int, 3)
 		if err != nil {
@@ -1540,6 +1548,19 @@ func (c *CharCompiler) palFXSub(is IniSection,
 			return Error(prefix + "sinhue - not enough arguments")
 		}
 		sc.add(palFX_sinhue, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, prefix+"sinscroll", false, func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 2 {
+			return Error(prefix + "sinscroll - not enough arguments")
+		}
+		sc.add(palFX_sinscroll, bes)
 		return nil
 	}); err != nil {
 		return err
@@ -1621,6 +1642,10 @@ func (c *CharCompiler) afterImageSub(is IniSection, sc *StateControllerBase, pre
 	}
 	if err := c.paramValue(is, sc, prefix+"palhue",
 		afterImage_palhue, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palscroll",
+		afterImage_palscroll, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
@@ -5322,6 +5347,10 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 			modifyBGCtrl_sinhue, VT_Int, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "sinscroll",
+			modifyBGCtrl_sinscroll, VT_Int, 2, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "invertall",
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
@@ -5336,6 +5365,10 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 		}
 		if err := c.paramValue(is, sc, "hue",
 			modifyBGCtrl_hue, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scroll",
+			modifyBGCtrl_scroll, VT_Float, 1, false); err != nil {
 			return err
 		}
 		if err := c.shaderSub(is, sc, modifyBGCtrl_shader, "shader."); err != nil {

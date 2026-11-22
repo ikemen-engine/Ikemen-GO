@@ -1791,7 +1791,7 @@ type VulkanModelProgramUniformBufferObject2 struct {
 	meshOutline                 float32
 	modelGray                   float32
 	modelHue                    float32
-	_padding                    uint32
+	modelScroll                 float32
 	modelAdd                    [3]float32
 	_padding2                   uint32
 	modelMult                   [3]float32
@@ -1952,15 +1952,16 @@ type VulkanSpriteProgramFragUniformBufferObject struct {
 	add                           [3]float32
 	_padding                      uint32
 	mult                          [3]float32
-	alpha, gray, hue              float32
+	alpha, gray, hue, scroll      float32
 	mask                          int32
 	isFlat, isRgba, isTrapez, neg uint32
 	iTime                         float32    // 4 bytes
+	_padding3                     uint32     // std140 aligns the vec2 below to 8 bytes
 	iResolution                   [2]float32 // 8 bytes
 	aspectRatio                   float32
 	sTime                         float32 // 4 bytes
 	supersample                   uint32
-	_padding2                     [3]uint32 // keeps the size a multiple of 16
+	_padding2                     uint32 // keeps the size a multiple of 16
 }
 
 type VulkanLightUniform struct {
@@ -7643,6 +7644,8 @@ func (r *Renderer_VK) SetUniformF(name string, values ...float32) {
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.gray = values[0]
 	case "hue":
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.hue = values[0]
+	case "scroll":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.scroll = values[0]
 	case "alpha":
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.alpha = values[0]
 	case "iTime":
@@ -7796,6 +7799,8 @@ func (r *Renderer_VK) SetModelUniformF(name string, values ...float32) {
 			r.VKState.VulkanModelProgramUniformBufferObject2.modelGray = values[0]
 		case "hue":
 			r.VKState.VulkanModelProgramUniformBufferObject2.modelHue = values[0]
+		case "scroll":
+			r.VKState.VulkanModelProgramUniformBufferObject2.modelScroll = values[0]
 		case "alphaThreshold":
 			r.VKState.VulkanModelProgramUniformBufferObject1.alphaThreshold = values[0]
 		case "meshOutline":

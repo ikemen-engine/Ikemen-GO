@@ -9,7 +9,7 @@
 		vec4 textColor;
 		vec4 palAddGray;   // xyz add, w gray
 		vec4 palMulHue;    // xyz mul, w hue
-		vec4 palNegPad;    // x neg (0/1)
+		vec4 palNegPad;    // x neg (0/1), y scroll
 	};
 	layout(binding = 0) uniform sampler2D tex;
 #else
@@ -30,6 +30,7 @@
 	uniform vec3 palMul;
 	uniform float palGray;
 	uniform float palHue;
+	uniform float palScroll;
 	uniform int palNeg;
 	uniform sampler2D tex;
 	COMPAT_VARYING vec2 fragTexCoord;
@@ -70,18 +71,21 @@ void main()
 	vec3 mulV;
 	float grayV;
 	float hueV;
+	float scrollV;
 	float negV;
 	#if __VERSION__ >= 450
 		addV = palAddGray.xyz;
 		grayV = palAddGray.w;
 		mulV = palMulHue.xyz;
 		hueV = palMulHue.w;
+		scrollV = palNegPad.y;
 		negV = palNegPad.x;
 	#else
 		addV = palAdd;
 		mulV = palMul;
 		grayV = palGray;
 		hueV = palHue;
+		scrollV = palScroll;
 		negV = float(palNeg);
 	#endif
 
@@ -96,6 +100,14 @@ void main()
 	}
 	// Color
 	c.rgb = mix(vec3((c.r + c.g + c.b) / 3.0), c.rgb, 1.0 - grayV);
+	// Scroll: shifts brightness and wraps from bright back to dark
+	// Text color isn't multiplied by the glyph's alpha, so no alpha correction here
+	if (scrollV != 0.0) {
+		float l = (max(max(c.r, c.g), c.b) + min(min(c.r, c.g), c.b)) * 0.5;
+		float n = fract(l + scrollV);
+		// Keep saturation by scaling the color difference to the room left at the new lightness
+		c.rgb = n + (c.rgb - l) * min(n, 1.0 - n) / max(min(l, 1.0 - l), 1e-5);
+	}
 	// Add
 	c.rgb += addV * c.a;
 	// Mul

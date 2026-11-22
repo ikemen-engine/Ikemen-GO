@@ -40,12 +40,14 @@ type PalFxProperties struct {
 	Time        int32    `ini:"time" default:"-1"`
 	Color       float32  `ini:"color" default:"256"`
 	Hue         float32  `ini:"hue"`
+	Scroll      float32  `ini:"scroll"`
 	Add         [3]int32 `ini:"add"`
 	Mul         [3]int32 `ini:"mul" default:"256,256,256"`
 	SinAdd      [4]int32 `ini:"sinadd"`
 	SinMul      [4]int32 `ini:"sinmul"`
 	SinColor    [2]int32 `ini:"sincolor"`
 	SinHue      [2]int32 `ini:"sinhue"`
+	SinScroll   [2]int32 `ini:"sinscroll"`
 	InvertAll   bool     `ini:"invertall"`
 	InvertBlend int32    `ini:"invertblend"`
 	PalFxData   *PalFX

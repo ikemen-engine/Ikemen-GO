@@ -211,6 +211,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		r.SetUniformFv("mult", mult)
 		r.SetUniformF("gray", f.shaderPalFX.gray)
 		r.SetUniformF("hue", f.shaderPalFX.hue)
+		r.SetUniformF("scroll", f.shaderPalFX.scroll)
 		r.SetUniformFv("tint", []float32{0, 0, 0, 0})
 
 		// Same engine-provided values RenderSprite gives custom shaders
@@ -233,6 +234,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		r.SetUniformFSub(program.uniforms["palMul"], f.shaderPalFX.mult[0], f.shaderPalFX.mult[1], f.shaderPalFX.mult[2])
 		r.SetUniformFSub(program.uniforms["palGray"], f.shaderPalFX.gray)
 		r.SetUniformFSub(program.uniforms["palHue"], f.shaderPalFX.hue)
+		r.SetUniformFSub(program.uniforms["palScroll"], f.shaderPalFX.scroll)
 		r.SetUniformISub(program.uniforms["palNeg"], int32(Btoi(f.shaderPalFX.neg)))
 
 		//set screen resolution
@@ -650,5 +652,5 @@ func (r *FontRenderer_GLES32) newProgram(version uint, vertexSrc, fragmentSrc st
 	if r.shaderProgram, err = gfx.(*Renderer_GLES32).newShaderProgram(vertexSrc, fragmentSrc, "", "font shader", true); err != nil {
 		Logcat(fmt.Sprintf("Error loading font shader: %v", err.Error()))
 	}
-	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex", "palAdd", "palMul", "palGray", "palHue", "palNeg")
+	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex", "palAdd", "palMul", "palGray", "palHue", "palScroll", "palNeg")
 }

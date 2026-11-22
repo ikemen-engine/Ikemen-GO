@@ -30,6 +30,7 @@
 		layout(offset = 192) float meshOutline;
 		layout(offset = 196) float gray;
 		layout(offset = 200) float hue;
+		layout(offset = 204) float scroll;
 		layout(offset = 208) vec3 add;
 		layout(offset = 224) vec3 mult;
 		layout(offset = 240) int neg;
@@ -99,7 +100,7 @@
 	uniform sampler2D tex, normalMap, metallicRoughnessMap, ambientOcclusionMap, emissionMap, GGXLUT;
 	uniform samplerCube lambertianEnvSampler, GGXEnvSampler;
 	uniform mat3 texTransform, normalMapTransform, metallicRoughnessMapTransform, ambientOcclusionMapTransform, emissionMapTransform;
-	uniform float environmentIntensity, gray, hue, alphaThreshold, meshOutline, ambientOcclusionStrength;
+	uniform float environmentIntensity, gray, hue, scroll, alphaThreshold, meshOutline, ambientOcclusionStrength;
 	uniform mat3 environmentRotation;
 	uniform int mipCount, neg;
 	uniform vec3 cameraPosition, add, mult, emission;
@@ -567,8 +568,16 @@ void main(void) {
 		c_straight = vec3(1.0) - c_straight; 
 	}
 	
-	// Grayscale / Add / Mult
-	c_straight = mix(c_straight, vec3((c_straight.r + c_straight.g + c_straight.b) / 3.0), gray) + add;
+	// Grayscale / Scroll / Add / Mult
+	c_straight = mix(c_straight, vec3((c_straight.r + c_straight.g + c_straight.b) / 3.0), gray);
+	// Scroll: shifts brightness and wraps from bright back to dark
+	if (scroll != 0.0) {
+		float l = (max(max(c_straight.r, c_straight.g), c_straight.b) + min(min(c_straight.r, c_straight.g), c_straight.b)) * 0.5;
+		float n = fract(l + scroll);
+		// Keep saturation by scaling the color difference to the room left at the new lightness
+		c_straight = n + (c_straight - l) * min(n, 1.0 - n) / max(min(l, 1.0 - l), 1e-5);
+	}
+	c_straight += add;
 	c_straight *= mult;
 	c_straight = clamp(c_straight, 0.0, 1.0);
 

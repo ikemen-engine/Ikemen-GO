@@ -982,6 +982,7 @@ const (
 	OC_ex2_palfxvar_mulb
 	OC_ex2_palfxvar_color
 	OC_ex2_palfxvar_hue
+	OC_ex2_palfxvar_scroll
 	OC_ex2_palfxvar_invertall
 	OC_ex2_palfxvar_invertblend
 	OC_ex2_palfxvar_bg_time
@@ -993,6 +994,7 @@ const (
 	OC_ex2_palfxvar_bg_mulb
 	OC_ex2_palfxvar_bg_color
 	OC_ex2_palfxvar_bg_hue
+	OC_ex2_palfxvar_bg_scroll
 	OC_ex2_palfxvar_bg_invertall
 	OC_ex2_palfxvar_all_time
 	OC_ex2_palfxvar_all_addr
@@ -1003,6 +1005,7 @@ const (
 	OC_ex2_palfxvar_all_mulb
 	OC_ex2_palfxvar_all_color
 	OC_ex2_palfxvar_all_hue
+	OC_ex2_palfxvar_all_scroll
 	OC_ex2_palfxvar_all_invertall
 	OC_ex2_palfxvar_all_invertblend
 	OC_ex2_introstate
@@ -4080,6 +4083,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.palfxvar2(1))
 	case OC_ex2_palfxvar_hue:
 		sys.bcStack.PushF(c.palfxvar2(2))
+	case OC_ex2_palfxvar_scroll:
+		sys.bcStack.PushF(c.palfxvar2(3))
 	case OC_ex2_palfxvar_invertall:
 		sys.bcStack.PushI(c.palfxvar(-1))
 	case OC_ex2_palfxvar_invertblend:
@@ -4102,6 +4107,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.palfxvar2(1, 1))
 	case OC_ex2_palfxvar_bg_hue:
 		sys.bcStack.PushF(sys.palfxvar2(2, 1))
+	case OC_ex2_palfxvar_bg_scroll:
+		sys.bcStack.PushF(sys.palfxvar2(3, 1))
 	case OC_ex2_palfxvar_bg_invertall:
 		sys.bcStack.PushI(sys.palfxvar(-1, 1))
 	case OC_ex2_palfxvar_all_time:
@@ -4122,6 +4129,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.palfxvar2(1, 2))
 	case OC_ex2_palfxvar_all_hue:
 		sys.bcStack.PushF(sys.palfxvar2(2, 2))
+	case OC_ex2_palfxvar_all_scroll:
+		sys.bcStack.PushF(sys.palfxvar2(3, 2))
 	case OC_ex2_palfxvar_all_invertall:
 		sys.bcStack.PushI(sys.palfxvar(-1, 2))
 	case OC_ex2_palfxvar_all_invertblend:
@@ -6506,6 +6515,8 @@ const (
 	palFX_invertall
 	palFX_invertblend
 	palFX_hue
+	palFX_scroll
+	palFX_sinscroll
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -6518,6 +6529,8 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef, paramID byte, exp []BytecodeExp) 
 		pfd.color = exp[0].evalF(c) / 256
 	case palFX_hue:
 		pfd.hue = exp[0].evalF(c) / 512
+	case palFX_scroll:
+		pfd.scroll = exp[0].evalF(c) / 256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)
@@ -6574,6 +6587,17 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef, paramID byte, exp []BytecodeExp) 
 			}
 		}
 		pfd.sinhue = exp[0].evalI(c) * side
+	case palFX_sinscroll:
+		var side int32 = 1
+		if len(exp) > 1 {
+			if exp[1].evalI(c) < 0 {
+				pfd.cycletime[4] = -exp[1].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletime[4] = exp[1].evalI(c)
+			}
+		}
+		pfd.sinscroll = exp[0].evalI(c) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	case palFX_invertblend:
@@ -6734,6 +6758,7 @@ const (
 	explod_interpolation_pfx_add
 	explod_interpolation_pfx_color
 	explod_interpolation_pfx_hue
+	explod_interpolation_pfx_scroll
 	explod_animplayerno
 	explod_spriteplayerno
 	explod_syncparams
@@ -7122,6 +7147,8 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		pfd.icolor[0] = exp[0].evalF(c) / 256
 	case explod_interpolation_pfx_hue:
 		pfd.ihue[0] = exp[0].evalF(c) / 512
+	case explod_interpolation_pfx_scroll:
+		pfd.iscroll[0] = exp[0].evalF(c) / 256
 	default:
 	}
 }
@@ -7675,7 +7702,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
 					}
 				})
-			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_hue:
+			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_scroll:
 				modifiers = append(modifiers, func(e *Explod) {
 					pfd := &PalFXDef{} // Discarded when the explod has no PalFX of its own
 					if e.ownpal {
@@ -7856,6 +7883,7 @@ const (
 	afterImage_framegap
 	afterImage_palcolor
 	afterImage_palhue
+	afterImage_palscroll
 	afterImage_palinvertall
 	afterImage_palinvertblend
 	afterImage_palbright
@@ -7932,6 +7960,8 @@ func (sc afterImage) runSub(c, crun *Char, ai *AfterImage, paramID byte, exp []B
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palhue:
 		ai.setPalHueShift(exp[0].evalI(c))
+	case afterImage_palscroll:
+		ai.setPalScroll(exp[0].evalI(c))
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
 	case afterImage_palinvertblend:
@@ -14119,10 +14149,12 @@ const (
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
 	modifyBGCtrl_sinhue
+	modifyBGCtrl_sinscroll
 	modifyBGCtrl_invertall
 	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
 	modifyBGCtrl_hue
+	modifyBGCtrl_scroll
 	modifyBGCtrl_shader
 	modifyBGCtrl_shaderparam
 	modifyBGCtrl_tex1anim
@@ -14140,7 +14172,9 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	add, mul := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	sinadd, sinmul := [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
 	sincolor, sinhue := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	sinscroll := [2]int32{IErr, IErr}
 	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
+	scroll := float32(math.NaN())
 	shader := sys.stage.newModifyBGCtrlShader()
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
@@ -14225,6 +14259,11 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				sinhue[1] = exp[1].evalI(c)
 			}
+		case modifyBGCtrl_sinscroll:
+			sinscroll[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				sinscroll[1] = exp[1].evalI(c)
+			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_invertblend:
@@ -14233,6 +14272,8 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_hue:
 			hue = exp[0].evalF(c)
+		case modifyBGCtrl_scroll:
+			scroll = exp[0].evalF(c)
 		case modifyBGCtrl_shader:
 			shader.nameSet = true
 			shader.name = exp[0].evalSLower(c)
@@ -14257,7 +14298,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, invall, invblend, color, hue, shader)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, sinscroll, invall, invblend, color, hue, scroll, shader)
 	return false
 }
 

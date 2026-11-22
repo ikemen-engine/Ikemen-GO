@@ -35,15 +35,18 @@ type PalFXDef struct {
 	sinmul      [3]int32
 	sincolor    int32
 	sinhue      int32
-	cycletime   [4]int32
+	sinscroll   int32
+	cycletime   [5]int32
 	invertall   bool
 	invertblend int32
 	hue         float32
+	scroll      float32
 	interpolate bool
 	iadd        [6]int32
 	imul        [6]int32
 	icolor      [2]float32
 	ihue        [2]float32
+	iscroll     [2]float32
 	itime       int32
 }
 
@@ -59,7 +62,7 @@ func newPalFXDef() *PalFXDef {
 type PalFX struct {
 	PalFXDef
 	allowNeg       bool // Can use negative color math
-	sintime        [4]int32
+	sintime        [5]int32
 	enable         bool
 	ignoreAllPalFX bool // TODO: Probably expose this as a parameter
 	eAllowNeg      bool
@@ -69,6 +72,7 @@ type PalFX struct {
 	eMul           [3]int32
 	eColor         float32
 	eHue           float32
+	eScroll        float32
 	eInterpolate   bool
 	eiTime         int32
 	remap          []int // TODO: This isn't color math so it probably should be in a different struct
@@ -194,6 +198,7 @@ func (pf PalFX) toShader(blendMode TransType) (state ShaderPalFX) {
 	state.gray = 1 - pf.eColor
 	state.invblend = pf.eInvertblend
 	state.hue = pf.eHue
+	state.scroll = pf.eScroll
 
 	// Determine if we use negative color math based on blendMode
 	useNeg := blendMode == TT_sub && pf.eAllowNeg
@@ -261,6 +266,18 @@ func (pf *PalFX) sinHueshift(color *float32) {
 	}
 }
 
+func (pf *PalFX) sinScroll(value *float32) {
+	if pf.cycletime[4] > 1 {
+		st := 2 * math.Pi * float64(pf.sintime[4])
+		if pf.cycletime[4] == 2 {
+			st += math.Pi / 2.0
+		}
+		sin := math.Sin(st / float64(pf.cycletime[4]))
+
+		(*value) += float32(sin * (float64(pf.sinscroll) / 256.0))
+	}
+}
+
 // Dead code. Never called, and duplicated the interpolate branch of refresh()
 // Note the ei* scratch fields it used no longer exist, so this won't compile as-is
 /*
@@ -294,13 +311,14 @@ func (pf *PalFX) refresh() {
 
 	if pf.eInterpolate {
 		// Calculate interpolated values
-		pf.eMul, pf.eAdd, pf.eColor, pf.eHue = pf.interpolatedValues()
+		pf.eMul, pf.eAdd, pf.eColor, pf.eHue, pf.eScroll = pf.interpolatedValues()
 	} else {
 		// Static values
 		pf.eMul = pf.mul
 		pf.eAdd = pf.add
 		pf.eColor = pf.color
 		pf.eHue = pf.hue
+		pf.eScroll = pf.scroll
 	}
 
 	pf.eAllowNeg = pf.allowNeg
@@ -316,10 +334,11 @@ func (pf *PalFX) refresh() {
 	pf.sinMul(&pf.eMul)
 	pf.sinColor(&pf.eColor)
 	pf.sinHueshift(&pf.eHue)
+	pf.sinScroll(&pf.eScroll)
 }
 
 // Interpolated values at the current time, before sin effects. Explods also use it to bake their interpolation
-func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue float32) {
+func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue, scroll float32) {
 	t := float32(0)
 	if pf.itime > 0 {
 		t = float32(pf.eiTime) / float32(pf.itime)
@@ -331,6 +350,7 @@ func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue float32) {
 	}
 	color = Lerp(pf.icolor[1], pf.icolor[0], t) * pf.color
 	hue = Lerp(pf.ihue[1], pf.ihue[0], t) + pf.hue
+	scroll = Lerp(pf.iscroll[1], pf.iscroll[0], t) + pf.scroll
 	return
 }
 
@@ -341,7 +361,7 @@ func (pf *PalFX) tickTimers() {
 	if !pf.enable {
 		return
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < len(pf.cycletime); i++ {
 		if pf.cycletime[i] > 0 {
 			pf.sintime[i] = (pf.sintime[i] + 1) % pf.cycletime[i]
 		}
@@ -379,6 +399,7 @@ func (base PalFX) stacked(extra PalFX, blendMode TransType, alpha [2]int32) PalF
 	}
 
 	pf.eHue += pfx.eHue
+	pf.eScroll += pfx.eScroll
 	pf.eColor *= pfx.eColor
 	pf.eInvertall = pf.eInvertall != pfx.eInvertall
 

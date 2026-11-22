@@ -673,7 +673,7 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	color := f.color
 	palAddGray := [4]float32{f.shaderPalFX.add[0], f.shaderPalFX.add[1], f.shaderPalFX.add[2], f.shaderPalFX.gray}
 	palMulHue := [4]float32{f.shaderPalFX.mult[0], f.shaderPalFX.mult[1], f.shaderPalFX.mult[2], f.shaderPalFX.hue}
-	palNegPad := [4]float32{float32(Btoi(f.shaderPalFX.neg)), 0, 0, 0}
+	palNegPad := [4]float32{float32(Btoi(f.shaderPalFX.neg)), f.shaderPalFX.scroll, 0, 0}
 	resolution := f.resolution
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 4*4, unsafe.Pointer(&color))
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 4*4, 4*4, unsafe.Pointer(&palAddGray[0]))
@@ -851,6 +851,7 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	gfx.SetUniformFv("mult", mult[:])
 	gfx.SetUniformF("gray", f.shaderPalFX.gray)
 	gfx.SetUniformF("hue", f.shaderPalFX.hue)
+	gfx.SetUniformF("scroll", f.shaderPalFX.scroll)
 	gfx.SetUniformFv("tint", []float32{0, 0, 0, 0})
 	if f.customShader.tex1 != nil {
 		gfx.SetTexture("tex1", f.customShader.tex1)

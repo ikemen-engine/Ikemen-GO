@@ -1969,6 +1969,7 @@ func drawNode(mdl *Model, scene *Scene, layerNumber int, defaultLayerNumber int,
 		gfx.SetModelUniformFv("mult", []float32{spfx.mult[0] * sys.brightness, spfx.mult[1] * sys.brightness, spfx.mult[2] * sys.brightness})
 		gfx.SetModelUniformI("neg", int(Btoi(spfx.neg)))
 		gfx.SetModelUniformF("hue", spfx.hue)
+		gfx.SetModelUniformF("scroll", spfx.scroll)
 		gfx.SetModelUniformF("gray", spfx.gray)
 		gfx.SetModelUniformI("enableAlpha", int(Btoi(mat.alphaMode == AlphaModeBlend)))
 		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff.getValue().(float32))

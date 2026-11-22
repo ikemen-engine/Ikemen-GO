@@ -1441,6 +1441,7 @@ func newAfterImage() *AfterImage {
 	if len(ai.palfx) > 0 && ai.palfx[0] != nil {
 		ai.palfx[0].eColor = 1
 		ai.palfx[0].eHue = 0
+		ai.palfx[0].eScroll = 0
 		ai.palfx[0].eInvertall = false
 		ai.palfx[0].eInvertblend = 0
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
@@ -1460,6 +1461,12 @@ func (ai *AfterImage) setPalColor(color int32) {
 func (ai *AfterImage) setPalHueShift(huesh int32) {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eHue = (float32(Clamp(huesh, -256, 256)) / 512)
+	}
+}
+
+func (ai *AfterImage) setPalScroll(scroll int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eScroll = float32(scroll) / 256
 	}
 }
 
@@ -1568,6 +1575,7 @@ func (ai *AfterImage) setup(c *Char) {
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
 		ai.palfx[i].eHue = ai.palfx[i-1].eHue
+		ai.palfx[i].eScroll = ai.palfx[i-1].eScroll
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
 		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend
 
@@ -2584,6 +2592,7 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 			if i < 2 {
 				pfd.icolor[i] = pfd.color
 				pfd.ihue[i] = pfd.hue
+				pfd.iscroll[i] = pfd.scroll
 			}
 		}
 	}
@@ -2626,7 +2635,7 @@ func (e *Explod) bakeInterpolation() {
 
 	if e.ownpal && e.palfx.interpolate {
 		pf := e.palfx
-		pf.mul, pf.add, pf.color, pf.hue = pf.interpolatedValues()
+		pf.mul, pf.add, pf.color, pf.hue, pf.scroll = pf.interpolatedValues()
 	}
 }
 
@@ -2658,6 +2667,7 @@ func (e *Explod) startInterpolation(pfd *PalFXDef) {
 		pfd.add = [3]int32{0, 0, 0}
 		pfd.color = 1
 		pfd.hue = 0
+		pfd.scroll = 0
 	}
 }
 
@@ -6345,6 +6355,8 @@ func (c *Char) palfxvar2(x int32) float32 {
 			n = c.palfx.eColor
 		case 2:
 			n = c.palfx.eHue
+		case 3:
+			n = c.palfx.eScroll
 		default:
 			n = 0
 		}

@@ -2424,12 +2424,14 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	time := int32(-1)
 	color := float32(256)
 	hue := float32(0)
+	scroll := float32(0)
 	add := [3]int32{}
 	mul := [3]int32{256, 256, 256}
 	sinAdd := [4]int32{}
 	sinMul := [4]int32{}
 	sinColor := [2]int32{}
 	sinHue := [2]int32{}
+	sinScroll := [2]int32{}
 	invertAll := false
 	invertBlend := int32(0)
 
@@ -2445,6 +2447,9 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	}
 	if fv, ok := get("Hue"); ok && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) {
 		hue = float32(fv.Float())
+	}
+	if fv, ok := get("Scroll"); ok && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) {
+		scroll = float32(fv.Float())
 	}
 	if fv, ok := get("Add"); ok && fv.Kind() == reflect.Array && fv.Len() == 3 {
 		for k := 0; k < 3; k++ {
@@ -2476,6 +2481,11 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 			sinHue[k] = int32(fv.Index(k).Int())
 		}
 	}
+	if fv, ok := get("SinScroll"); ok && fv.Kind() == reflect.Array && fv.Len() == 2 {
+		for k := 0; k < 2; k++ {
+			sinScroll[k] = int32(fv.Index(k).Int())
+		}
+	}
 	if fv, ok := get("InvertAll"); ok && fv.Kind() == reflect.Bool {
 		invertAll = fv.Bool()
 	}
@@ -2487,6 +2497,7 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	palfx.time = time
 	palfx.color = color / 256
 	palfx.hue = hue / 512
+	palfx.scroll = scroll / 256
 	palfx.add = add
 	palfx.mul = mul
 	if sinAdd[3] < 0 {
@@ -2524,6 +2535,13 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	} else {
 		palfx.sinhue = sinHue[0]
 		palfx.cycletime[3] = sinHue[1]
+	}
+	if sinScroll[1] < 0 {
+		palfx.sinscroll = -sinScroll[0]
+		palfx.cycletime[4] = -sinScroll[1]
+	} else {
+		palfx.sinscroll = sinScroll[0]
+		palfx.cycletime[4] = sinScroll[1]
 	}
 	palfx.invertall = invertAll
 	palfx.invertblend = invertBlend
