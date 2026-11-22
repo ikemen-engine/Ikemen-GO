@@ -36,28 +36,14 @@
 	COMPAT_VARYING vec2 fragTexCoord;
 #endif
 
-vec3 rgb2hsv(vec3 c)
-{
-	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-
-	float d = q.x - min(q.w, q.y);
-	float e = 1.0e-10;
-	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-}
-
-vec3 hsv2rgb(vec3 c)
-{
-	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
-
+// Rotates hue around the gray axis with Rodrigues' rotation formula, then restores luma so brightness stays about the same
 vec3 hue_shift(vec3 color, float dhue) {
-	vec3 colorhsv = rgb2hsv(color);
-	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
-	return hsv2rgb(colorhsv);
+	float angle = dhue * 6.28318531;
+	float cs = cos(angle);
+	vec3 k = vec3(0.57735); // Unit gray axis
+	vec3 c = color * cs + cross(k, color) * sin(angle) + k * dot(k, color) * (1.0 - cs);
+	// Rotating around gray keeps only the RGB average, so add back the lost luma
+	return clamp(c + dot(color - c, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
 }
 
 

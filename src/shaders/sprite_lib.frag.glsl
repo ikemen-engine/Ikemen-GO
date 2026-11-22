@@ -82,10 +82,14 @@ vec3 ikemenHsvToRgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+// Rotates hue around the gray axis with Rodrigues' rotation formula, then restores luma so brightness stays about the same
 vec3 ikemenHueShift(vec3 color, float dhue) {
-	vec3 colorhsv = ikemenRgbToHsv(color);
-	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
-	return ikemenHsvToRgb(colorhsv);
+	float angle = dhue * 6.28318531;
+	float cs = cos(angle);
+	vec3 k = vec3(0.57735); // Unit gray axis
+	vec3 c = color * cs + cross(k, color) * sin(angle) + k * dot(k, color) * (1.0 - cs);
+	// Rotating around gray keeps only the RGB average, so add back the lost luma
+	return clamp(c + dot(color - c, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
 }
 
 // Sprite-local coordinate, 0-1 across the sprite even when it's packed in an atlas
@@ -171,8 +175,9 @@ vec4 ikemenSpriteColor(vec2 uv) {
 
 	// Apply PalFX
 	// Hue
-	if (hue != 0.0) {
-		c.rgb = ikemenHueShift(c.rgb, hue);
+	// Premultiplied colors are scaled by alpha, so the shift works on the straight color
+	if (hue != 0.0 && alphaScale.x > 0.0) {
+		c.rgb = ikemenHueShift(c.rgb / alphaScale.x, hue) * alphaScale.x;
 	}
 	// Invertall
 	if (neg) {
