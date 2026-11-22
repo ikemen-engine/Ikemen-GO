@@ -3657,7 +3657,7 @@ const (
 // We keep only one because a char can't be in two places, and Mugen's overlapping binds already resolve to the last one applied anyway
 type CharBind struct {
 	id     int32
-	isGrab bool       // Set when the binder made the bind (TargetBind, etc)
+	isGrab bool // Set when the binder made the bind (TargetBind, etc)
 	time   int32
 	pos    [3]float32 // In the bound char's coordinate space
 	facing float32    // TODO: TargetBind and BindToTarget might as well have this too
