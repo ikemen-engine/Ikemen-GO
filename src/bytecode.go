@@ -6379,21 +6379,12 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*redirscale
 			crun.setPosX(x, true)
-			if crun.bindOnAxis(0) != nil {
-				crun.bindTo.posAdd[0] = x
-			}
 		case posSet_y:
 			y := exp[0].evalF(c)*redirscale + crun.groundLevel + crun.platformPosY
 			crun.setPosY(y, true)
-			if crun.bindOnAxis(1) != nil {
-				crun.bindTo.posAdd[1] = y
-			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.setPosZ(z, true)
-			if crun.bindOnAxis(2) != nil {
-				crun.bindTo.posAdd[2] = z
-			}
 		}
 		return true
 	})
@@ -6415,21 +6406,12 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := exp[0].evalF(c) * redirscale
 			crun.addX(x)
-			if crun.bindOnAxis(0) != nil {
-				crun.bindTo.posAdd[0] = x
-			}
 		case posSet_y:
 			y := exp[0].evalF(c) * redirscale
 			crun.addY(y)
-			if crun.bindOnAxis(1) != nil {
-				crun.bindTo.posAdd[1] = y
-			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.addZ(z)
-			if crun.bindOnAxis(2) != nil {
-				crun.bindTo.posAdd[2] = z
-			}
 		}
 		return true
 	})

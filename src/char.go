@@ -3660,7 +3660,6 @@ type CharBind struct {
 	isGrab bool       // Set when the binder made the bind (TargetBind, etc)
 	time   int32
 	pos    [3]float32 // In the bound char's coordinate space
-	posAdd [3]float32 // PosSet/PosAdd this frame, for distX/distY. See https://github.com/ikemen-engine/Ikemen-GO/pull/799
 	facing float32    // TODO: TargetBind and BindToTarget might as well have this too
 }
 
@@ -9214,14 +9213,20 @@ func (c *Char) redLifeEnabled() bool {
 func (c *Char) distX(opp *Char, oc *Char) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
-	// Update distance while bound. Mugen chars only
-	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if bc := c.bindOnAxis(0); bc != nil {
-			cpos = (c.boundPos(bc, 0) + bc.facing*c.bindTo.posAdd[0]) * c.localscl
-		}
-	}
+
+	// Mugen chars used to read the position their bind would give them, plus PosSet/PosAdd while bound
+	// Binds now run at the same points in the frame as in Mugen, so the plain position already matches it and this was wrong
+	// See https://github.com/ikemen-engine/Ikemen-GO/pull/799
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	//	if bc := c.bindOnAxis(0); bc != nil {
+	//		cpos = (c.boundPos(bc, 0) + bc.facing*c.bindTo.posAdd[0]) * c.localscl
+	//	}
+	//}
+
 	dist := (opos - cpos) / oc.localscl
+
+	// A lot depends on distance 0, so we fix rounding errors here
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1380
 	if Abs(dist) < 0.0001 {
 		dist = 0
 	}
@@ -9231,13 +9236,6 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
-	// Update distance while bound. Mugen chars only
-	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if bc := c.bindOnAxis(1); bc != nil {
-			cpos = (c.boundPos(bc, 1) + c.bindTo.posAdd[1]) * c.localscl
-		}
-	}
 	return (opos - cpos) / oc.localscl
 }
 
@@ -10091,9 +10089,6 @@ func (c *Char) posUpdate() {
 		nobind[i] = bc == nil || math.IsNaN(float64(c.bindTo.pos[i]))
 		if nobind[i] {
 			c.oldPos[i], c.interPos[i] = c.pos[i], c.pos[i]
-		} else {
-			// Reset these while we're at it
-			c.bindTo.posAdd[i] = 0
 		}
 	}
 
@@ -10205,14 +10200,7 @@ func (c *Char) setBindTo(to *Char, time int32, facing float32, pos [3]float32) {
 		c.bindTo.clear()
 		return
 	}
-	// Keep posAdd only if the anchor is the same
-	if c.bindTo.id != to.id {
-		c.bindTo = CharBind{id: to.id}
-	}
-	c.bindTo.isGrab = false
-	c.bindTo.time = time
-	c.bindTo.pos = pos
-	c.bindTo.facing = facing
+	c.bindTo = CharBind{id: to.id, time: time, pos: pos, facing: facing}
 }
 
 // Bind another char to this one
@@ -10223,16 +10211,15 @@ func (c *Char) bindOther(t *Char, time int32, facing float32, pos [3]float32) {
 		t.unbindFrom(c.id)
 		return
 	}
-	// Keep posAdd if this char already binds it
-	if t.bindTo.id != c.id {
-		t.bindTo = CharBind{id: c.id}
-	}
-	t.bindTo.isGrab = true
-	t.bindTo.time = time
 	// Convert the offsets to the bound char's local scale
 	ls := c.localscl / t.localscl
-	t.bindTo.pos = [3]float32{pos[0] * ls, pos[1] * ls, pos[2] * ls}
-	t.bindTo.facing = facing
+	t.bindTo = CharBind{
+		id:     c.id,
+		isGrab: true,
+		time:   time,
+		pos:    [3]float32{pos[0] * ls, pos[1] * ls, pos[2] * ls},
+		facing: facing,
+	}
 }
 
 // Release every bind to this char
