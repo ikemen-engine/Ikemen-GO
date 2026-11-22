@@ -16,6 +16,7 @@ type scFunc func(is IniSection, sc *StateControllerBase) (StateController, error
 
 type CharCompiler struct {
 	cmdl             *CommandList
+	cmdKeyRemap      *CommandKeyRemap
 	previousOperator string
 	reverseOrder     bool
 	norange          bool
@@ -33,8 +34,17 @@ type CharCompiler struct {
 	currentFile      string
 }
 
+func inputTimeButtonOpCode(key CommandKey) OpCode {
+	return [...]OpCode{
+		OC_ex_inputtime_a, OC_ex_inputtime_b, OC_ex_inputtime_c,
+		OC_ex_inputtime_x, OC_ex_inputtime_y, OC_ex_inputtime_z,
+		OC_ex_inputtime_s, OC_ex_inputtime_d, OC_ex_inputtime_w,
+		OC_ex_inputtime_m,
+	}[key-CK_a]
+}
+
 func newCharCompiler() *CharCompiler {
-	c := &CharCompiler{funcs: make(map[string]BytecodeFunction)}
+	c := &CharCompiler{funcs: make(map[string]BytecodeFunction), cmdKeyRemap: NewCommandKeyRemap()}
 	c.scmap = map[string]scFunc{
 		// Mugen state controllers
 		"afterimage":         c.afterImage,
@@ -4986,25 +4996,25 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "N":
 			out.append(OC_ex_, OC_ex_inputtime_N)
 		case "a":
-			out.append(OC_ex_, OC_ex_inputtime_a)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.a))
 		case "b":
-			out.append(OC_ex_, OC_ex_inputtime_b)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.b))
 		case "c":
-			out.append(OC_ex_, OC_ex_inputtime_c)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.c))
 		case "x":
-			out.append(OC_ex_, OC_ex_inputtime_x)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.x))
 		case "y":
-			out.append(OC_ex_, OC_ex_inputtime_y)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.y))
 		case "z":
-			out.append(OC_ex_, OC_ex_inputtime_z)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.z))
 		case "s":
-			out.append(OC_ex_, OC_ex_inputtime_s)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.s))
 		case "d":
-			out.append(OC_ex_, OC_ex_inputtime_d)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.d))
 		case "w":
-			out.append(OC_ex_, OC_ex_inputtime_w)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.w))
 		case "m":
-			out.append(OC_ex_, OC_ex_inputtime_m)
+			out.append(OC_ex_, inputTimeButtonOpCode(c.cmdKeyRemap.m))
 		default:
 			return bvNone(), Error("Invalid InputTime argument: " + key)
 		}
@@ -8650,6 +8660,7 @@ func (c *CharCompiler) Compile(p *Char, def string, gi *CharGlobalInfo) (map[int
 	}
 	c.cmdl = &p.cmd[pn]
 	remap, defaults, ckr := true, true, NewCommandKeyRemap()
+	c.cmdKeyRemap = ckr
 
 	var cmds []IniSection
 	for lnidx < len(lines) {
