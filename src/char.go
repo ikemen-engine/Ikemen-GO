@@ -3067,10 +3067,10 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 }
 
 // Sorts a group of projectiles by distance from the first projectile
-func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projectile {
+func (p *Projectile) sortOthersByDistance(others []*Projectile) {
 	// We only need to sort if there are two or more projectiles
-	if len(projectiles) < 2 {
-		return projectiles
+	if len(others) < 2 {
+		return
 	}
 
 	// Local struct for sorting
@@ -3079,10 +3079,10 @@ func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projecti
 		dist float32
 	}
 
-	pairs := make([]pair, len(projectiles))
+	pairs := make([]pair, len(others))
 
 	// Compute distances of all projectiles
-	for idx, pr := range projectiles {
+	for idx, pr := range others {
 		// Compute squared distance
 		dx := p.pos[0]*p.localscl - pr.pos[0]*pr.localscl
 		dy := p.pos[1]*p.localscl - pr.pos[1]*pr.localscl
@@ -3104,10 +3104,8 @@ func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projecti
 
 	// Write back sorted projectiles
 	for i, pair := range pairs {
-		projectiles[i] = pair.pr
+		others[i] = pair.pr
 	}
-
-	return projectiles
 }
 
 // This function only checks if a projectile hits another projectile
@@ -4041,10 +4039,10 @@ func (c *Char) enemyNearP2Clear() {
 }
 
 // Sorts a group of enemies by distance from the first char
-func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
+func (c *Char) sortOthersByDistance(others []*Char, p2list bool) {
 	// We only need to sort if there are two or more enemies
-	if len(enemies) < 2 {
-		return enemies
+	if len(others) < 2 {
+		return
 	}
 
 	// Local struct for sorting
@@ -4053,10 +4051,14 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 		dist float32
 	}
 
-	pairs := make([]pair, len(enemies))
+	pairs := make([]pair, len(others))
+
+	// Factor standing height so an enemy at your level isn't treated as farther away for being a bit higher or lower
+	// Size constants stay in base localcoord, so they need converting when in a custom state
+	height := -c.size.standbox[1] * (c.baselocalscl / c.localscl)
 
 	// Compute distances of all enemies
-	for idx, e := range enemies {
+	for idx, e := range others {
 		// Factor x distance first
 		distX := c.distX(e, c) * c.facing
 		effectiveX := distX
@@ -4068,8 +4070,11 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 			effectiveX -= 30.0 / c.localscl
 		}
 
-		// By default the distance is just measured in x
-		sortDist := effectiveX
+		// Height differences only count past the player's own standing height constant
+		gapY := Max(0, Abs(c.distY(e, c))-height)
+
+		// Squared distance is enough for sorting and skips the square root
+		sortDist := effectiveX*effectiveX + gapY*gapY
 
 		// Factor z distance as well if applicable
 		if sys.zEnabled() {
@@ -4080,18 +4085,17 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 			if p2list {
 				distZ *= 4.0
 			}
-			// Use hypotenuse between x and z
-			sortDist = float32(math.Hypot(float64(effectiveX), float64(distZ)))
+			sortDist += distZ * distZ
 		}
 
 		// Save result in sorting slice
 		pairs[idx] = pair{ch: e, dist: sortDist}
 	}
 
-	// Sort by shortest absolute distance
+	// Sort by shortest distance
 	sort.Slice(pairs, func(i, j int) bool {
-		if Abs(pairs[i].dist) != Abs(pairs[j].dist) {
-			return Abs(pairs[i].dist) < Abs(pairs[j].dist)
+		if pairs[i].dist != pairs[j].dist {
+			return pairs[i].dist < pairs[j].dist
 		}
 		// Use player ID as tiebreaker (replaces sort.SliceStable)
 		return pairs[i].ch.id < pairs[j].ch.id
@@ -4099,10 +4103,8 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 
 	// Write back sorted characters
 	for i, p := range pairs {
-		enemies[i] = p.ch
+		others[i] = p.ch
 	}
-
-	return enemies
 }
 
 // Clear character variables upon a new round or creation of a new helper
@@ -7818,8 +7820,16 @@ func (c *Char) setPosX(x float32, all bool) {
 	}
 }
 
-func (c *Char) setPosY(y float32, all bool) { // This function mostly exists right now so we don't forget to use the other two
-	c.pos[1] = y
+func (c *Char) setPosY(y float32, all bool) {
+	// Y distance is also factored into enemy near lists
+	if c.pos[1] != y {
+		if c.isPlayerType() {
+			sys.charList.enemyNearChanged = true
+		} else {
+			c.enemyNearP2Clear()
+		}
+		c.pos[1] = y
+	}
 
 	if all {
 		c.oldPos[1], c.interPos[1] = y, y
@@ -15161,7 +15171,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 	}
 
 	// Sort by distance from c
-	enemies = c.sortOthersByDistance(enemies, p2list)
+	c.sortOthersByDistance(enemies, p2list)
 
 	// Update the cache
 	*cache = (*cache)[:0]
