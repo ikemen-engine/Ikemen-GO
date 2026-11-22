@@ -1,6 +1,8 @@
 package main
 
 import (
+	"slices"
+
 	"golang.org/x/exp/maps"
 )
 
@@ -1119,15 +1121,12 @@ func (rr *rankingRow) Clone() (result rankingRow) {
 
 func (hi *MotifHiscore) Clone() (result MotifHiscore) {
 	result = *hi
+	result.letters = slices.Clone(hi.letters)
 	if hi.rows != nil {
 		result.rows = make([]rankingRow, len(hi.rows), len(hi.rows))
 		for i := 0; i < len(hi.rows); i++ {
 			result.rows[i] = hi.rows[i].Clone()
 		}
-	}
-	if hi.letters != nil {
-		result.letters = make([]int, len(hi.letters), len(hi.letters))
-		copy(result.letters, hi.letters)
 	}
 	return
 }
@@ -1135,9 +1134,9 @@ func (hi *MotifHiscore) Clone() (result MotifHiscore) {
 func (wi *MotifWin) Clone() (result MotifWin) {
 	result = *wi
 
-	if wi.keyCancel != nil {
-		result.keyCancel = make([]string, len(wi.keyCancel), len(wi.keyCancel))
-		copy(result.keyCancel, wi.keyCancel)
+	if wi.keyDone != nil {
+		result.keyDone = make([]string, len(wi.keyDone), len(wi.keyDone))
+		copy(result.keyDone, wi.keyDone)
 	}
 	for i := 0; i < 4; i++ {
 		if wi.p1States[i] != nil {
@@ -1177,6 +1176,7 @@ func (m *Motif) Clone(postMatch bool) (result Motif) {
 		// Keep current runtime values so rollback loads during a match won't affect them.
 		result.co = m.co
 		result.vi = m.vi
+		result.re = m.re
 		result.hi = m.hi
 		result.wi = m.wi
 	}
