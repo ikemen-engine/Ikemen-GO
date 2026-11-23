@@ -5621,6 +5621,30 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 		case assertSpecial_flag_g:
 			flag := GlobalSpecialFlag(exp[0].evalI64(c))
 			sys.setGSF(flag, enable)
+			switch flag {
+			case GSF_beforeIntro:
+				if enable {
+					sys.introPhaseEnabled = true
+					sys.introPhaseUsed = true
+					crun.introPhase = IntroPhaseBefore
+				} else if crun.introPhase == IntroPhaseBefore {
+					crun.introPhase = IntroPhaseNone
+				}
+			case GSF_intro:
+				if enable {
+					crun.introPhase = IntroPhaseMain
+				} else if crun.introPhase == IntroPhaseMain {
+					crun.introPhase = IntroPhaseNone
+				}
+			case GSF_afterIntro:
+				if enable {
+					sys.introPhaseEnabled = true
+					sys.introPhaseUsed = true
+					crun.introPhase = IntroPhaseAfter
+				} else if crun.introPhase == IntroPhaseAfter {
+					crun.introPhase = IntroPhaseNone
+				}
+			}
 		case assertSpecial_noko:
 			// NoKO affects all characters in Mugen, so legacy chars do so as well
 			if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {

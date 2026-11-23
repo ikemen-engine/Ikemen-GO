@@ -111,6 +111,18 @@ const (
 	ASF_nodestroyself
 )
 
+// IntroPhase is the ordered phase used by the intro sequence scheduler.
+// IntroPhaseNone is also used by characters that do not declare an intro phase.
+type IntroPhase uint8
+
+const (
+	IntroPhaseNone IntroPhase = iota
+	IntroPhaseBefore
+	IntroPhaseMain
+	IntroPhaseAfter
+	IntroPhaseDone
+)
+
 type GlobalSpecialFlag uint32
 
 const (
@@ -135,6 +147,9 @@ const (
 	GSF_skipkodisplay
 	GSF_skiprounddisplay
 	GSF_skipwindisplay
+	// Intro phases (Ikemen)
+	GSF_beforeIntro
+	GSF_afterIntro
 )
 
 type PosType int32
@@ -2135,7 +2150,9 @@ func (e *Explod) update() {
 		return
 	}
 
-	if e.root().scf(SCF_disabled) {
+	root := e.root()
+	parent := e.parent()
+	if root.scf(SCF_disabled) || parent != nil && parent.introPhaseHeld {
 		return
 	}
 
@@ -2853,7 +2870,9 @@ func (p *Projectile) pauseStatus() bool {
 }
 
 func (p *Projectile) update() {
-	if p.root().scf(SCF_disabled) {
+	root := p.root()
+	owner := p.owner()
+	if root.scf(SCF_disabled) || owner != nil && owner.introPhaseHeld {
 		return
 	}
 
@@ -3112,6 +3131,10 @@ func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projecti
 
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
+	owner := p.owner()
+	if owner != nil && owner.introPhaseHeld {
+		return
+	}
 
 	// Skip if this projectile can't trade at all
 	// Projectiles can trade even if they are spawned with 0 hits
@@ -3145,6 +3168,10 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 		// Loop through their projectiles
 		for j := startj; j < len(sys.projs[i]); j++ {
 			pr := sys.projs[i][j]
+			prOwner := pr.owner()
+			if prOwner != nil && prOwner.introPhaseHeld {
+				continue
+			}
 
 			// Skip if other projectile can't trade
 			if !pr.isActive() || pr.hits < 0 || pr.id < 0 {
@@ -3231,7 +3258,9 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 }
 
 func (p *Projectile) tick() {
-	if p.root().scf(SCF_disabled) {
+	root := p.root()
+	owner := p.owner()
+	if root.scf(SCF_disabled) || owner != nil && owner.introPhaseHeld {
 		return
 	}
 
@@ -3829,6 +3858,8 @@ type Char struct {
 	inputFlag            InputBits
 	inputShift           [][2]int
 	pauseBool            bool
+	introPhase           IntroPhase // Last AssertSpecial intro phase declared by this character
+	introPhaseHeld       bool       // Character is waiting for an earlier intro phase to finish
 	downHitOffset        bool
 	koEchoTimer          int32
 	groundLevel          float32
@@ -10350,6 +10381,9 @@ func (c *Char) trackableByCamera() bool {
 }
 
 func (c *Char) xScreenBound() {
+	if c.introPhaseHeld {
+		return
+	}
 	x := c.pos[0]
 	before := x
 
@@ -12918,7 +12952,7 @@ func (c *Char) actionFinish() {
 }
 
 func (c *Char) track() {
-	if !c.trackableByCamera() {
+	if c.introPhaseHeld || !c.trackableByCamera() {
 		return
 	}
 
@@ -12972,7 +13006,7 @@ func (c *Char) track() {
 
 // This function runs every tick unlike the others
 func (c *Char) update() {
-	if c.scf(SCF_disabled) {
+	if c.introPhaseHeld || c.scf(SCF_disabled) {
 		return
 	}
 	if sys.tickFrame() {
@@ -13150,7 +13184,7 @@ func (c *Char) update() {
 
 // This function runs during tickNextFrame. After collision detection
 func (c *Char) tick() {
-	if c.scf(SCF_disabled) {
+	if c.introPhaseHeld || c.scf(SCF_disabled) {
 		return
 	}
 
@@ -14022,7 +14056,7 @@ func (cl *CharList) commandUpdate() {
 		root := p[0]
 		// The async Turns loader keeps its standby root disabled while populating command lists.
 		// Update: No longer necessary. And Mugen doesn't do it. But also harmless
-		if root.scf(SCF_disabled) {
+		if root.scf(SCF_disabled) || root.introPhaseHeld {
 			continue
 		}
 		// Select a random command for AI cheating
@@ -14035,6 +14069,9 @@ func (cl *CharList) commandUpdate() {
 		}
 		// Iterate root and helpers
 		for _, c := range p {
+			if c.introPhaseHeld {
+				continue
+			}
 			act := true
 			if sys.supertime > 0 {
 				act = c.superMovetime != 0
@@ -14160,11 +14197,53 @@ func (cl *CharList) action() {
 	// Sorting the characters first makes new helpers wait for their turn and allows RunOrder trigger accuracy
 	cl.updateRunOrder()
 
-	// Update commands for all chars
+	// A character that declared a later intro phase remains frozen until that
+	// phase becomes active. Characters without an intro phase keep their normal
+	// behavior, preserving compatibility with existing content.
+	phaseSchedulerActive := sys.introPhaseEnabled && sys.roundState() == 1 &&
+		sys.introPhaseCurrent != IntroPhaseNone && sys.introPhaseCurrent != IntroPhaseDone
+
+	// Determine which characters are held before preparing any of them.
+	// This also lets unmarked helpers inherit a hold from a parent that is
+	// waiting for a later phase, while explicitly phased helpers remain free
+	// to participate in their own phase.
+	for _, c := range cl.runOrder {
+		wasIntroPhaseHeld := c.introPhaseHeld
+		c.introPhaseHeld = sys.introPhaseSkipPending || (phaseSchedulerActive && c.introPhase > sys.introPhaseCurrent && c.introPhase < IntroPhaseDone)
+		if !c.introPhaseHeld && wasIntroPhaseHeld {
+			// A resumed character must re-register its phase from the state it is
+			// about to execute, not retain the old one.
+			c.introPhase = IntroPhaseNone
+		}
+	}
+	if phaseSchedulerActive && !sys.introPhaseSkipPending {
+		for _, c := range cl.runOrder {
+			if c.introPhaseHeld || c.helperIndex == 0 || c.introPhase != IntroPhaseNone {
+				continue
+			}
+			for parentID := c.parentId; parentID != 0; {
+				parent := cl.idMap[parentID]
+				if parent == nil {
+					break
+				}
+				if parent.introPhase > sys.introPhaseCurrent && parent.introPhase < IntroPhaseDone {
+					c.introPhaseHeld = true
+					break
+				}
+				parentID = parent.parentId
+			}
+		}
+	}
+	// Update commands only for actors that are active in this phase.
 	cl.commandUpdate()
 
-	// Prepare characters before performing their actions
 	for _, c := range cl.runOrder {
+		if c.introPhaseHeld {
+			// Preserve minus == 3 so the character can resume on the next active phase.
+			c.pauseBool = true
+			c.acttmp = -2
+			continue
+		}
 		c.actionPrepare()
 	}
 
@@ -14172,13 +14251,26 @@ func (cl *CharList) action() {
 	// We use an index-based loop instead of a range so that appended helpers are also processed
 	for i := 0; i < len(cl.runOrder); i++ {
 		c := cl.runOrder[i]
+		if c.introPhaseHeld {
+			continue
+		}
+		// The marker describes the state that is about to run. Clear it only
+		// when the character can actually execute its state controllers.
+		if sys.roundState() == 1 && c.minus == 3 && !c.pauseBool && !c.hitPause() {
+			c.introPhase = IntroPhaseNone
+		}
 		c.actionRun()
 	}
 
 	// Finish performing character actions
 	for _, c := range cl.runOrder {
-		c.actionFinish()
+		if !c.introPhaseHeld {
+			c.actionFinish()
+		}
 	}
+
+	// Update the active phase only after every eligible character has run.
+	sys.advanceIntroPhase()
 }
 
 func (cl *CharList) xScreenBound() {
@@ -14212,6 +14304,10 @@ func (cl *CharList) update() {
 
 // Check player vs player hits
 func (cl *CharList) hitDetectionPlayer(c *Char) {
+	// Characters waiting for a later intro phase cannot attack.
+	if c.introPhaseHeld {
+		return
+	}
 	// Stop outer loop if enemy is disabled
 	if c.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return
@@ -14230,7 +14326,7 @@ func (cl *CharList) hitDetectionPlayer(c *Char) {
 
 	// Iterate every other player to collect potential HitDef targets
 	for _, getter := range cl.runOrder {
-		if c == getter {
+		if c == getter || getter.introPhaseHeld {
 			continue
 		}
 
@@ -14467,6 +14563,9 @@ func (cl *CharList) hitDetectionPlayer(c *Char) {
 
 // Check projectile vs player hits
 func (cl *CharList) hitDetectionProjectile(getter *Char) {
+	if getter.introPhaseHeld {
+		return
+	}
 
 	// Stop outer loop if enemy is disabled
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
@@ -14490,6 +14589,11 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			}
 
 			c := p.owner()
+
+			// A held intro actor's projectiles remain frozen with their owner.
+			if c != nil && c.introPhaseHeld {
+				continue
+			}
 
 			// Skip if owner has been destroyed
 			// In this case the projectile still travels and interacts with other projectiles, but can't interact with players
@@ -14647,13 +14751,13 @@ func (cl *CharList) pushDetection(c *Char) {
 	}
 
 	for _, getter := range cl.runOrder {
-		// Skip self and pairs that were already processed
-		if getter.id <= c.id {
+		// Skip self, held characters, and pairs that were already processed
+		if getter.introPhaseHeld || getter.id <= c.id {
 			continue
 		}
 
 		// Stop current iteration if getter can't push at all
-		if !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
+		if getter.introPhaseHeld || !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 			continue
 		}
 
@@ -14996,6 +15100,9 @@ func (cl *CharList) pushDetection(c *Char) {
 // Mugen did not do this, making helper binding more frustrating than it needed to be
 func (cl *CharList) rebindIfPushed() {
 	for _, c := range cl.runOrder {
+		if c.introPhaseHeld {
+			continue
+		}
 		// Do nothing if the char was pushed directly
 		if c.pushed {
 			continue
@@ -15046,7 +15153,10 @@ func (cl *CharList) collisionDetection() {
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1941
 	// It doesn't need to run in "sortedOrder", but it should be harmless
 	for _, idx := range sortedOrder {
-		cl.pushDetection(cl.runOrder[idx])
+		c := cl.runOrder[idx]
+		if !c.introPhaseHeld {
+			cl.pushDetection(c)
+		}
 	}
 
 	// Rebind players if necessary
@@ -15056,7 +15166,9 @@ func (cl *CharList) collisionDetection() {
 	// This used to be in hitDetectionPlayer(), but because that now iterates attackers instead of targets it needs to be outside
 	// Might be better placed in some other function. But putting it here ensures it happens at the right time
 	for _, c := range cl.runOrder {
-		c.setCSF(CSF_gethit, false)
+		if !c.introPhaseHeld {
+			c.setCSF(CSF_gethit, false)
+		}
 	}
 
 	// Reset hit detection scratch lists
@@ -15069,7 +15181,9 @@ func (cl *CharList) collisionDetection() {
 
 	// Projectile hit detection
 	for _, c := range cl.runOrder {
-		cl.hitDetectionProjectile(c)
+		if !c.introPhaseHeld {
+			cl.hitDetectionProjectile(c)
+		}
 	}
 }
 

@@ -5055,6 +5055,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
 		case "intro":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
+		case "beforeintro":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_beforeIntro))
+		case "afterintro":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_afterIntro))
 		case "nobardisplay":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
 		case "nobg":

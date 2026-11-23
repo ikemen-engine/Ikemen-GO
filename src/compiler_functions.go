@@ -144,6 +144,10 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 			// Mugen char flags
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
+			case "beforeintro":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_beforeIntro)))
+			case "afterintro":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_afterIntro)))
 			case "invisible":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_invisible)))
 			case "noairguard":

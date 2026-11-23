@@ -9629,6 +9629,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.gsf(GSF_globalnoshadow)))
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
+		case "beforeintro":
+			l.Push(lua.LBool(sys.gsf(GSF_beforeIntro)))
+		case "afterintro":
+			l.Push(lua.LBool(sys.gsf(GSF_afterIntro)))
 		case "nobardisplay":
 			l.Push(lua.LBool(sys.gsf(GSF_nobardisplay)))
 		case "nobg":

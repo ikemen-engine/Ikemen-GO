@@ -78,6 +78,10 @@ type SystemStateVars struct {
 	matchNo                 int32
 	roundNo                 int32
 	intro                   int32
+	introPhaseEnabled       bool
+	introPhaseUsed          bool
+	introPhaseSkipPending   bool
+	introPhaseCurrent       IntroPhase
 	lastHitter              [2]int
 	winTeam                 int
 	winType                 [2]WinType
@@ -1941,6 +1945,69 @@ func (s *System) roundState() int32 {
 	}
 }
 
+// hasIntroPhase reports whether at least one live character is currently
+// declaring the requested phase. The phase marker is retained for characters
+// waiting for a later phase, so they can be held without advancing their CNS.
+func (s *System) hasIntroPhase(phase IntroPhase) bool {
+	for _, chars := range s.chars {
+		for _, c := range chars {
+			if c != nil && !c.csf(CSF_destroy) && !c.scf(SCF_disabled) && c.introPhase == phase {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// advanceIntroPhase moves through the phases only after every character in
+// the current phase has left the state that asserts its corresponding flag.
+func (s *System) advanceIntroPhase() {
+	if !s.introPhaseEnabled || s.introPhaseSkipPending || s.roundState() != 1 {
+		return
+	}
+
+	switch s.introPhaseCurrent {
+	case IntroPhaseNone:
+		switch {
+		case s.hasIntroPhase(IntroPhaseBefore):
+			s.introPhaseCurrent = IntroPhaseBefore
+		case s.hasIntroPhase(IntroPhaseMain):
+			s.introPhaseCurrent = IntroPhaseMain
+		case s.hasIntroPhase(IntroPhaseAfter):
+			s.introPhaseCurrent = IntroPhaseAfter
+		default:
+			s.introPhaseCurrent = IntroPhaseDone
+		}
+	case IntroPhaseBefore:
+		if !s.hasIntroPhase(IntroPhaseBefore) {
+			switch {
+			case s.hasIntroPhase(IntroPhaseMain):
+				s.introPhaseCurrent = IntroPhaseMain
+			case s.hasIntroPhase(IntroPhaseAfter):
+				s.introPhaseCurrent = IntroPhaseAfter
+			default:
+				s.introPhaseCurrent = IntroPhaseDone
+			}
+		}
+	case IntroPhaseMain:
+		if !s.hasIntroPhase(IntroPhaseMain) {
+			if s.hasIntroPhase(IntroPhaseAfter) {
+				s.introPhaseCurrent = IntroPhaseAfter
+			} else {
+				s.introPhaseCurrent = IntroPhaseDone
+			}
+		}
+	case IntroPhaseAfter:
+		if !s.hasIntroPhase(IntroPhaseAfter) {
+			s.introPhaseCurrent = IntroPhaseDone
+		}
+	}
+
+	if s.introPhaseCurrent == IntroPhaseDone {
+		s.introPhaseEnabled = false
+	}
+}
+
 func (s *System) introState() int32 {
 	switch {
 	case s.intro > s.fightScreen.round.ctrl_time+1:
@@ -2547,6 +2614,10 @@ func (s *System) resetRound() {
 	s.winwaittime = s.fightScreen.round.over_forcewintime
 	s.winskipped = false
 	s.intro = s.fightScreen.round.start_waittime + s.fightScreen.round.ctrl_time + 1
+	s.introPhaseEnabled = false
+	s.introPhaseUsed = false
+	s.introPhaseSkipPending = false
+	s.introPhaseCurrent = IntroPhaseNone
 	s.curRoundTime = s.maxRoundTime
 	s.curPlayTime = 0
 	// Mugen resets the starting ID between matches but not between rounds
@@ -2565,6 +2636,16 @@ func (s *System) resetRound() {
 
 	if s.stage.resetbg || stageSwap {
 		s.stage.reset()
+	}
+
+	// Reset intro phase metadata between rounds. The legacy Intro marker is
+	// also tracked per character while the extended scheduler is inactive, so
+	// stale markers must not leak into the next round.
+	for _, chars := range s.chars {
+		for _, c := range chars {
+			c.introPhase = IntroPhaseNone
+			c.introPhaseHeld = false
+		}
 	}
 
 	// Reset characters
@@ -2772,33 +2853,78 @@ func (s *System) posReset() {
 
 // Skip character intros on button press and play the shutter effect
 func (s *System) runIntroSkip() {
-	// If no intros to skip or not allowed to
-	if !s.gsf(GSF_intro) || s.gsf(GSF_roundnotskip) {
+	// The shutter can outlast the phase that started it. Keep processing the
+	// pending skip until its completion signal arrives.
+	skipPending := s.fightScreen.round.shutterTimer > 0 || s.introSkipCall || s.introPhaseSkipPending
+	phaseIntroActive := s.introPhaseEnabled && s.introPhaseCurrent != IntroPhaseDone
+	if s.gsf(GSF_roundnotskip) {
+		// Do not leave the new scheduler frozen if skip is disallowed.
+		s.introPhaseSkipPending = false
+		return
+	}
+	if !s.gsf(GSF_intro) && !phaseIntroActive && !skipPending {
 		return
 	}
 
-	// If too late to skip intros
-	if s.intro <= s.fightScreen.round.ctrl_time || s.fightScreen.round.roundDisplayPhase >= 1 { // Latter is probably redundant
+	// Legacy intros can only be skipped before the round announcement starts.
+	// The extended phases are held before the announcement, so allow skipping
+	// throughout those phases as long as RoundState 2 has not begun.
+	if skipPending {
+		if s.intro <= 0 {
+			return
+		}
+	} else if phaseIntroActive {
+		if s.intro <= 0 {
+			return
+		}
+	} else if s.intro <= s.fightScreen.round.ctrl_time || s.fightScreen.round.roundDisplayPhase >= 1 {
 		return
 	}
 
 	// Start shutter effect on button press
 	if s.fightScreen.round.shutterTimer == 0 && s.anyButton() {
 		s.fightScreen.round.shutterTimer = s.fightScreen.round.shutter_time * 2 // Open + close time
+		if phaseIntroActive {
+			// Stop the phase scheduler immediately; the shutter animation may
+			// take several frames before the final skip signal arrives.
+			s.introPhaseSkipPending = true
+		}
 	}
 
 	// Skip intros when signal from shutter animation arrives
 	if s.introSkipCall {
 		s.introSkipCall = false
+		extendedSkip := s.introPhaseUsed
+		// Skip the remaining intro phases, but resume at the normal round
+		// announcement point. This keeps the Round and Fight calls visible.
 		s.intro = s.fightScreen.round.ctrl_time
+		if extendedSkip {
+			s.introPhaseEnabled = false
+			s.introPhaseUsed = false
+			s.introPhaseSkipPending = false
+			s.introPhaseCurrent = IntroPhaseDone
+		}
 
 		// SkipRoundDisplay and SkipFightDisplay flags must be preserved during intro skip frame
 		kept := (s.specialFlag & GSF_skiprounddisplay) | (s.specialFlag & GSF_skipfightdisplay)
 		s.resetGblEffect()
 		s.specialFlag = kept
 
+		if extendedSkip {
+			// Start the round and fight announcements from their first frame.
+			s.fightScreen.round.roundDisplayPhase = 0
+			s.fightScreen.round.roundDisplayTimer = 0
+			s.fightScreen.round.fightDisplayPhase = 0
+			s.fightScreen.round.fightDisplayTimer = 0
+			s.fightScreen.round.timerActive = false
+		}
+
 		// Reset all characters
 		for i, p := range s.chars {
+			for _, c := range p {
+				c.introPhase = IntroPhaseNone
+				c.introPhaseHeld = false
+			}
 			if len(p) > 0 {
 				s.clearPlayerAssets(i, false)
 				p[0].clearState()
@@ -3361,7 +3487,9 @@ func (s *System) stepRoundState() {
 	// Intros
 	if s.intro > s.fightScreen.round.ctrl_time {
 		s.intro--
-		if s.gsf(GSF_intro) && s.intro <= s.fightScreen.round.ctrl_time {
+		introPhaseActive := (s.introPhaseEnabled && s.introPhaseCurrent != IntroPhaseDone) || s.introPhaseSkipPending
+		introFlagActive := s.specialFlag&(GSF_intro|GSF_beforeIntro|GSF_afterIntro) != 0
+		if (introFlagActive || introPhaseActive) && s.intro <= s.fightScreen.round.ctrl_time {
 			s.intro = s.fightScreen.round.ctrl_time + 1
 		}
 	} else if s.intro > 0 {
