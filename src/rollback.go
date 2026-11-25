@@ -267,54 +267,39 @@ func (rs *RollbackSystem) runFrame() bool {
 func (rs *RollbackSystem) simulateFrame() bool {
 	sys.frameStepFlag = false
 
-	// If next round
-	if !sys.runNextRound() {
-		return false
-	}
-
-	// Update game state
-	sys.action()
-
-	// Update motif state
-	sys.uiAction()
-
-	// if rs.handleFlags() {
-	//	return true
-	// }
-
-	if !rs.updateEvents() {
-		return false
-	}
-
-	// Break if finished
-	if sys.fightLoopEnd && !sys.postMatchFlg {
-		return false
-	}
-
-	// Update system; break if update returns false (game ended)
-	//if !sys.update() {
-	//	return false
-	//}
-
-	// If end match selected from menu/end of attract mode match/etc
-	if sys.endMatch {
-		sys.esc = true
-		return false
-	} else if sys.esc {
-		sys.endMatch = sys.netConnection != nil
-		return false
-	}
-	return true
-}
-
-func (rs *RollbackSystem) updateEvents() bool {
-	if !sys.addFrameTime(sys.turbo) {
-		if !sys.eventUpdate() {
+	// Above 60 FPS game speed, one input can need more than one game tick.
+	for {
+		// If next round
+		if !sys.runNextRound() {
 			return false
 		}
-		return false
+
+		// Update game state
+		sys.action()
+
+		// Update motif state
+		sys.uiAction()
+
+		frameDone := sys.addFrameTime(sys.turbo)
+
+		// Break if finished
+		if sys.fightLoopEnd && !sys.postMatchFlg {
+			return false
+		}
+
+		// If end match selected from menu/end of attract mode match/etc
+		if sys.endMatch {
+			sys.esc = true
+			return false
+		} else if sys.esc {
+			sys.endMatch = sys.netConnection != nil
+			return false
+		}
+
+		if frameDone {
+			return true
+		}
 	}
-	return true
 }
 
 func getAIInputs(player int) []byte {
