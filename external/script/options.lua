@@ -1382,6 +1382,31 @@ options.t_itemname = {
 	end,
 }
 
+-- Rows that show a value but open a list or text prompt instead of changing it.
+options.t_hintDefault = {
+	aspectratio = true,
+	renderer = true,
+	resolution = true,
+	shaders = true,
+	portchange = true,
+	rollbackport = true,
+}
+
+-- Picks the hint for an Options row.
+function options.f_hintContext(row)
+	if row.hintContext ~= nil then
+		return row.hintContext
+	end
+	local name = row.itemname
+	if options.t_hintDefault[name] then
+		return 'default'
+	end
+	if options.t_vardisplay[name] ~= nil then
+		return 'adjust'
+	end
+	return 'default'
+end
+
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	local cursorPosY, moveTxt, item = 1, 0, 1
@@ -1424,8 +1449,22 @@ function options.f_createMenu(tbl, bool_main)
 			if tbl.reset and context == nil then
 				tbl.reset = false
 			else
+				local hintContext = options.f_hintContext(t[item])
+				local hintDevice = nil
+				if context ~= nil and context.capture ~= nil then
+					hintContext = 'capture'
+					-- Only the edited device can cancel a capture, so the hint shows its buttons.
+					local device = context.capture.root.device
+					if device ~= nil and device.id > 0 then
+						hintDevice = device.id
+					end
+				end
+				local menuBackground = motif.optionbgdef
+				if context ~= nil and context.background ~= nil then
+					menuBackground = context.background
+				end
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info,
-					context and context.background or motif.optionbgdef, context ~= nil)
+					menuBackground, context ~= nil, {hintContext = hintContext, hintDevice = hintDevice})
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if context ~= nil and (context.capture ~= nil or context.popup ~= nil or context.skipInput) then
@@ -1957,10 +1996,10 @@ local function findInputItem(tbl, name)
 	end
 end
 
-local function inputPopup(context, text, getValue, onClose)
+local function inputPopup(context, text, getValue, onClose, hintContext)
 	local sec = motif.option_info
 	context.popup = main.f_warning(text, sec, context.background, nil, sec.title.TextSpriteData, nil,
-		sec.cancel.snd, sec.cursor.done.snd, getValue, true)
+		sec.cancel.snd, sec.cursor.done.snd, getValue, true, hintContext)
 	context.onClose = onClose
 end
 
@@ -1973,11 +2012,14 @@ local function deviceById(id)
 end
 
 -- Value shown for a binding.
-local function bindingDisplay(token)
+local function bindingDisplay(token, kind)
 	if token == nil or token == '' or token == '-' then
 		return motif.option_info.menu.valuename.nokey
 	end
-	return token
+	if kind == 'keyboard' then
+		return '<key:' .. token .. '>'
+	end
+	return '<virtual:' .. token .. '>'
 end
 
 -- Refreshes the values shown in an editor and links its submenus to the root.
@@ -1989,11 +2031,19 @@ local function updateEditor(tbl, root)
 	tbl.device = root.device
 	tbl.inputMenu = root
 	local rows = editorRows(root)
+	local kind = root.device.kind
+	if root.kind == 'setup' and not root.keyboard then
+		kind = 'virtual'
+	end
 	for _, row in ipairs(tbl.items) do
 		local field = row.itemname
+		row.glyphDevice = root.device.id
+		row.hintContext = 'editor'
 		if rows[field] then
-			row.vardisplay = bindingDisplay(root.draft[rows[field]])
+			row.hintContext = 'binding'
+			row.vardisplay = bindingDisplay(root.draft[rows[field]], kind)
 		elseif field == 'activesetup' then
+			row.hintContext = 'setup'
 			row.vardisplay = root.draft.name
 		end
 	end
@@ -2491,6 +2541,7 @@ function options.f_refreshInputSettings()
 		keyboardmenu = kind ~= 'keyboard',
 		controllermapping = kind ~= 'gamepad',
 		preferredside = device == nil,
+		glyphs = device == nil,
 		vibration = device == nil or not device.hasRumble,
 	}
 	-- Menu loops keep their item lists, so they are refilled in place. Editor templates are copied whole.
@@ -2510,13 +2561,22 @@ function options.f_refreshInputSettings()
 		end
 	end
 	filter(tbl)
+	local valuename = motif.option_info.menu.valuename
 	for _, row in ipairs(tbl.items) do
-		if row.itemname == 'device' then
-			row.vardisplay = device.name
-		elseif row.itemname == 'preferredside' then
-			row.vardisplay = options.f_preferredSideDisplay(device.id)
-		elseif row.itemname == 'vibration' then
-			row.vardisplay = options.f_boolDisplay(device.rumble)
+		local field = row.itemname
+		if field == 'device' then
+			row.hintContext, row.vardisplay = 'device', device.name
+		elseif field == 'preferredside' then
+			row.hintContext, row.vardisplay = 'adjust', options.f_preferredSideDisplay(device.id)
+		elseif field == 'vibration' then
+			row.hintContext, row.vardisplay = 'adjust', options.f_boolDisplay(device.rumble)
+		elseif field == 'glyphs' then
+			for _, set in ipairs(inputGetGlyphPacks(device.id)) do
+				if set.selected then
+					row.vardisplay = set.automatic and valuename.glyphauto or (valuename.glyphpack:gsub('%%(%a+)', {id = set.id, name = set.name}))
+					break
+				end
+			end
 		end
 	end
 end
@@ -2597,7 +2657,7 @@ options.t_itemname.device = function(t, item)
 	return true
 end
 
--- Preferred Side and Vibration belong to the device, so they are saved straight away.
+-- Preferred Side, Glyphs and Vibration belong to the device, so they are saved straight away.
 options.t_itemname.preferredside = function(t, item)
 	local step = 0
 	if getAction(-1, motif.option_info.menu.add.action) then
@@ -2612,6 +2672,51 @@ options.t_itemname.preferredside = function(t, item)
 		if inputSetPreferredSide(device.id, (device.preferredSide + step) % 3) then
 			options.f_refreshInputSettings()
 		end
+	end
+	return true
+end
+
+-- Opens the list of glyph packs this device can use, with the cursor on the current one.
+options.t_itemname.glyphs = function(t, item)
+	local device, list = options.inputDevice, t.submenu.glyphs
+	if getAction(-1, motif.option_info.menu.done.action) and device ~= nil and list ~= nil then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		local valuename = motif.option_info.menu.valuename
+		while list.items[1] ~= nil and list.items[1].pack ~= nil do
+			table.remove(list.items, 1)
+		end
+		for i, set in ipairs(inputGetGlyphPacks(device.id)) do
+			table.insert(list.items, i, {
+				itemname = 'glyphpack',
+				displayname = set.automatic and valuename.glyphauto or (valuename.glyphpack:gsub('%%(%a+)', {id = set.id, name = set.name})),
+				paramname = t.items[item].paramname .. '_' .. (set.automatic and 'auto' or set.id),
+				vardisplay = '',
+				selected = set.selected,
+				pack = set.id,
+			})
+			if set.selected then
+				list.inputFocus = i
+			end
+		end
+		list.loop()
+		options.f_refreshInputSettings()
+		main.f_menuSnap(motif.option_info)
+		main.f_menuItemBgAnimReset(motif.option_info)
+	end
+	return true
+end
+
+-- The pack under the cursor is used and saved straight away, so glyphs change while moving.
+options.t_itemname.glyphpack = function(t, item)
+	local row, device = t.items[item], options.inputDevice
+	if device ~= nil and not row.selected and inputSetGlyphPack(device.id, row.pack) then
+		for _, v in ipairs(t.items) do
+			v.selected = v == row
+		end
+	end
+	if getAction(-1, motif.option_info.menu.done.action) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		return false
 	end
 	return true
 end

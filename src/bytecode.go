@@ -15149,6 +15149,8 @@ func (sc text) Run(c *Char, _ []int32) bool {
 	if ts.text == "" {
 		ts.text = OldSprintf("%v", ts.params...)
 	}
+	// Glyphs show the buttons of the player who owns the text.
+	ts.glyphDevice = sys.playerGlyphDevice(crun.playerNo)
 
 	if ts.customShader.name != "" {
 		ts.customShader.time = shaderTime

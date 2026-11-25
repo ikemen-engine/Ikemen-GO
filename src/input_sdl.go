@@ -47,6 +47,89 @@ var StringToKeyLUT map[string]sdl.Keycode
 
 var input Input
 
+// Controller type used to pick glyph artwork. SDL knows common pads, the motif can match others by GUID or name.
+func (in *Input) GlyphPack(device *InputDevice, glyphs *ControllerGlyphsProperties) string {
+	if device == nil {
+		return "generic"
+	}
+	// A pack chosen for this device wins. An unknown name falls through to
+	// detection, which also covers a pack the current motif does not define.
+	if chosen := sys.cfg.controllerGlyphs(device); chosen != "" {
+		if set := glyphs.Controller[chosen]; set != nil && strings.EqualFold(set.Type, glyphDeviceType(device)) {
+			return chosen
+		}
+	}
+	if device.Joy < 0 {
+		return "keyboard"
+	}
+	if !in.IsJoystickPresent(device.Joy) {
+		return "generic"
+	}
+	if controller := glyphs.GUID[strings.ToLower(device.GUID)]; controller != "" {
+		return strings.ToLower(controller)
+	}
+	// Longest matching name wins, so "switch 2" beats "switch". Map order is
+	// random, so equal-length patterns are decided alphabetically.
+	name := strings.ToLower(in.GetJoystickName(device.Joy))
+	match, controller := "", ""
+	for pattern, candidate := range glyphs.Name {
+		if pattern == "" || !strings.Contains(name, strings.ToLower(pattern)) {
+			continue
+		}
+		if len(pattern) > len(match) || (len(pattern) == len(match) && pattern < match) {
+			match, controller = pattern, candidate
+		}
+	}
+	if controller != "" {
+		return strings.ToLower(controller)
+	}
+	if in.IsRawJoystick(device.Joy) {
+		return "generic"
+	}
+	switch in.controllers[device.Joy].Type() {
+	case sdl.CONTROLLER_TYPE_XBOX360:
+		return "xbox360"
+	case sdl.CONTROLLER_TYPE_XBOXONE:
+		return "xbox"
+	case sdl.CONTROLLER_TYPE_PS3:
+		return "ps3"
+	case sdl.CONTROLLER_TYPE_PS4:
+		return "ps4"
+	case sdl.CONTROLLER_TYPE_PS5:
+		return "ps5"
+	case sdl.CONTROLLER_TYPE_NINTENDO_SWITCH_PRO:
+		return "switch"
+	}
+	return "generic"
+}
+
+// Label printed on a face button. SDL reports them by position (A is the bottom button).
+// Follows SDL3's SDL_GetGamepadButtonLabel, which can replace this after the migration.
+func (in *Input) FaceLabel(joy int, token string) string {
+	if joy < 0 || joy >= len(in.controllers) || in.controllers[joy] == nil {
+		return token
+	}
+	gc := in.controllers[joy]
+	id := uint32(gc.Vendor())<<16 | uint32(gc.Product())
+	// Joy-Con values of SDL_GameControllerType, which go-sdl2 has no names for.
+	const joyconLeft, joyconRight, joyconPair = sdl.GameControllerType(11), sdl.GameControllerType(12), sdl.GameControllerType(13)
+	var labels map[string]string
+	switch {
+	// GameCube adapter, and Switch pads shaped like a GameCube pad (PDP Fight Pad Pro, Core (Plus) Wired)
+	case id == 0x057e0337 || id == 0x0e6f0185 || id == 0x20d6a711:
+		labels = map[string]string{"B": "X", "X": "B"}
+	// Switch pads, and mappings SDL marks as Nintendo-labelled
+	case gc.Type() == sdl.CONTROLLER_TYPE_NINTENDO_SWITCH_PRO,
+		gc.Type() == joyconLeft, gc.Type() == joyconRight, gc.Type() == joyconPair,
+		strings.Contains(gc.Mapping(), "SDL_GAMECONTROLLER_USE_BUTTON_LABELS"):
+		labels = map[string]string{"A": "B", "B": "A", "X": "Y", "Y": "X"}
+	}
+	if label, ok := labels[token]; ok {
+		return label
+	}
+	return token
+}
+
 func initLUTs() {
 	KeyToStringLUT = map[sdl.Keycode]string{
 		sdl.K_RETURN:       "RETURN",

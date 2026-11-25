@@ -68,6 +68,8 @@ func realMain() {
 	}()
 
 	sdl.SetHint(sdl.HINT_ACCELEROMETER_AS_JOYSTICK, "0")
+	// Face buttons by position on every pad, as in SDL3. Nintendo pads would otherwise swap A/B and X/Y.
+	sdl.SetHint(sdl.HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0")
 	if runtime.GOOS == "android" {
 		Logcat("Inside realMain...")
 		runtime.LockOSThread()
