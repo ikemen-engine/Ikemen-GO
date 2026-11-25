@@ -332,6 +332,7 @@ type ControllerGlyphsProperties struct {
 	Controller map[string]*ControllerGlyphProperties `ini:"controller"`
 	GUID       map[string]string                     `ini:"guid" literal:"true"`
 	Name       map[string]string                     `ini:"name" literal:"true"`
+	Command    map[string]string                     `ini:"command" insensitivekeys:"false"`
 }
 
 type ControllerGlyphProperties struct {

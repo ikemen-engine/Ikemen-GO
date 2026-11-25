@@ -201,6 +201,7 @@ options.t_editableOptions = {
 	'Sound.AudioDucking',
 	'Sound.StereoEffects',
 	'Sound.PanningRange',
+	'Input.CommandMapping',
 }
 
 -- Copies the current or default values of every setting shown in Options.
@@ -1220,6 +1221,16 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	-- Command Display
+	['commanddisplay'] = function(t, item, cursorPosY, moveTxt)
+		if getAction(-1, motif.option_info.menu.add.action, motif.option_info.menu.subtract.action) then
+			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+			modifyGameOption('Input.CommandMapping', not gameOption('Input.CommandMapping'))
+			t.items[item].vardisplay = options.t_vardisplay['commanddisplay']()
+			options.modified = true
+		end
+		return true
+	end,
 	-- Restore All Input Defaults
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
 		local sec = motif.option_info
@@ -1555,6 +1566,9 @@ options.t_vardisplay = {
 	end,
 	['autoguard'] = function()
 		return options.f_boolDisplay(gameOption('Options.AutoGuard'))
+	end,
+	['commanddisplay'] = function()
+		return options.f_boolDisplay(gameOption('Input.CommandMapping'), motif.option_info.menu.valuename.commandmapping, motif.option_info.menu.valuename.commandsetup)
 	end,
 	['vsscreenloading'] = function()
 		return options.f_boolDisplay(gameOption('Config.VsScreenLoading'), motif.option_info.menu.valuename.on, motif.option_info.menu.valuename.off)

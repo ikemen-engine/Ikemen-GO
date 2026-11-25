@@ -1898,6 +1898,14 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 		}
 		return nil, true
 	}
+	// Command Display set to Mapping shows the key or button bound to the engine button.
+	if button, ok := sys.motif.ControllerGlyphs.Command[tag]; ok && sys.cfg.Input.CommandMapping {
+		if device := sys.glyphDevice(ts.glyphDevice); device != nil && device.Connected {
+			if runs := ts.inputGlyph(button); len(runs) == 1 && runs[0].anim != nil {
+				return runs, true
+			}
+		}
+	}
 	if a := sys.motif.namedGlyph(tag); a != nil {
 		return []glyphRun{{anim: a}}, true
 	}
