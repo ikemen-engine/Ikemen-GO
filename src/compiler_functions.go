@@ -135,6 +135,7 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 			assertSpecial_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		// "enabled: 0" reads like "disabled" but "enable: 0" would read like "do not enable"
 		if err := c.paramValue(is, sc, "enabled",
 			assertSpecial_enabled, VT_Bool, 1, false); err != nil {
 			return err
@@ -4574,6 +4575,10 @@ func (c *CharCompiler) assertInput(is IniSection, sc *StateControllerBase) (Stat
 	ret, err := (*assertInput)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			assertInput_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "enabled",
+			assertInput_enabled, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		foo := func(data string) error {

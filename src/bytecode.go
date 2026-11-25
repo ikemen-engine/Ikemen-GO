@@ -12922,6 +12922,7 @@ const (
 	assertInput_flag byte = iota
 	assertInput_flag_B
 	assertInput_flag_F
+	assertInput_enabled
 	assertInput_redirectid
 )
 
@@ -12931,21 +12932,33 @@ func (sc assertInput) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	// Like AssertSpecial, enabled = 0 clears the flags instead of setting them
+	enable := true
+	set := func(ib InputBits) {
+		if enable {
+			crun.inputFlag |= ib
+		} else {
+			crun.inputFlag &^= ib
+		}
+	}
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
+		case assertInput_enabled:
+			enable = exp[0].evalB(c)
 		case assertInput_flag:
-			crun.inputFlag |= InputBits(exp[0].evalI(c))
+			set(InputBits(exp[0].evalI(c)))
 		case assertInput_flag_B:
 			if crun.facing >= 0 {
-				crun.inputFlag |= IB_PL
+				set(IB_PL)
 			} else {
-				crun.inputFlag |= IB_PR
+				set(IB_PR)
 			}
 		case assertInput_flag_F:
 			if crun.facing >= 0 {
-				crun.inputFlag |= IB_PR
+				set(IB_PR)
 			} else {
-				crun.inputFlag |= IB_PL
+				set(IB_PL)
 			}
 		}
 		return true
