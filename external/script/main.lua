@@ -1051,7 +1051,8 @@ function main.f_commandLine()
 	local frames = fightScreenVar("time.framespercount")
 	local t = {}
 	local t_assignedPals = {}
-	for k, v in pairs(flags) do
+	-- Assign mirror-match palettes in the same order on both peers and in replays.
+	for k, v in main.f_sortKeys(flags) do
 		if k:match('^-p[0-9]+$') then
 			local num = tonumber(k:match('^-p([0-9]+)'))
 			local player = main.f_playerSide(num)
