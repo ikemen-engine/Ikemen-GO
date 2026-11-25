@@ -93,7 +93,7 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 		sys.renderFrame()
 
 		//rs.session.loopTimer.usToWaitThisLoop()
-		running = sys.update()
+		running = sys.presentFrame()
 
 		if sys.esc || !running {
 			break
@@ -265,6 +265,8 @@ func (rs *RollbackSystem) runFrame() bool {
 // Contains the logic for a single frame of the game
 // Called by both runFrame for speculative execution, and AdvanceFrame for confirmed execution
 func (rs *RollbackSystem) simulateFrame() bool {
+	// frameCounter is saved state, so replayed frames must advance it too.
+	defer func() { sys.frameCounter++ }()
 	sys.frameStepFlag = false
 
 	// Above 60 FPS game speed, one input can need more than one game tick.

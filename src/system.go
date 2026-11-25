@@ -1027,7 +1027,11 @@ func (s *System) renderFrame() {
 
 func (s *System) update() bool {
 	s.frameCounter++
+	return s.presentFrame()
+}
 
+// Like update, but rollback advances frameCounter in simulateFrame.
+func (s *System) presentFrame() bool {
 	// preMatchTime normally follows the local UI clock until gameplay begins.
 	// Preserve the synchronized prematch time while rollback waits for its first frame.
 	rollbackMatchStarting := s.rollback.session != nil && s.rollback.netConnection != nil
