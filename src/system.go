@@ -1003,7 +1003,7 @@ func (s *System) renderFrame() {
 	}
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
-	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
+	dx, dy, dscl := s.zoom.drawCamera(x, y, scl)
 	s.draw(dx, dy, dscl)
 
 	// Lua
@@ -2987,6 +2987,8 @@ func (s *System) action() {
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
 	s.cam.Update(scl, x, y)
+	// ScreenPos reads this, so it must be computed in logic, not when drawing.
+	s.zoom.computeCamera(s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale())
 	s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft()
 	s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] + float32(s.gameWidth)/s.cam.Scale - s.screenright()
 	if s.xmin > s.xmax {
@@ -7182,6 +7184,15 @@ func (z *ZoomEffect) update() {
 			z.reset()
 		}
 	}
+}
+
+// Camera for sys.draw(). An active zoom uses the result from the last logic frame.
+func (z *ZoomEffect) drawCamera(x, y, scl float32) (dx, dy, dscl float32) {
+	if !z.active {
+		z.resultPos, z.resultScale = [2]float32{x, y}, scl
+		return x, y, scl
+	}
+	return z.resultPos[0], z.resultPos[1], z.resultScale
 }
 
 // Compute the camera position and scale used for sys.draw()
