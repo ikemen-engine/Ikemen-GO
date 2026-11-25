@@ -6230,6 +6230,14 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 		faceBrightness = dst.Lose.Brightness
 		face2Brightness = dst.Face2.Lose.Brightness
 	}
+	// Like MUGEN, fall back to 9000,1 if the main portrait is missing.
+	if animListSet(targetAnim) || len(sprList(targetSpr)) > 0 {
+		sprs := make([]int32, 0, len(targetSpr)+2)
+		for _, p := range sprList(targetSpr) {
+			sprs = append(sprs, p[0], p[1])
+		}
+		targetSpr = append(sprs, 9000, 1)
+	}
 	memberIdx := float32(e.memberNo)
 	// Main face
 	mainSpacingX := float32(dst.Spacing[0]) * memberIdx

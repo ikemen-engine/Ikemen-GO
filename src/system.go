@@ -4552,10 +4552,9 @@ func (s *System) gameLogicSpeed() int32 {
 
 func (s *System) gameRenderSpeed() int {
 	var spd int32
-	if !s.gameRunning || s.motif.me.active || s.rollback.session != nil || s.replayFile != nil {
-		// Standalone Lua screens and the Lua-driven pause menu execute one
-		// complete update-and-draw frame per call. Rollback is also fixed at 60 Hz.
-		// TODO: Rollback should render at Framerate but sync at Gamespeed
+	if !s.gameRunning || s.motif.me.active || s.netplay() {
+		// Lua screens, netplay and replay playback use a 60 Hz input clock.
+		// TODO: Render between input frames at the configured framerate.
 		spd = 60
 	} else {
 		spd = int32(s.cfg.Video.Framerate)

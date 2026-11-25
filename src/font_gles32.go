@@ -200,6 +200,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		r.SetUniformISub(program.uniforms["tex"], 0) // Glyph atlas stays on unit 0
 		r.SetUniformI("isFlat", 0)
 		r.SetUniformI("isRgba", 1)
+		r.SetUniformI("supersample", 0)
 		r.SetUniformI("mask", 0)
 		r.SetUniformI("isTrapez", 0)
 		r.SetUniformI("useQuad", 0)
