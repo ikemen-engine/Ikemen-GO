@@ -3288,6 +3288,21 @@ func (p *Projectile) tick() {
 	}
 }
 
+// Step the animation in game logic so rollback, which doesn't draw, keeps it in sync.
+func (p *Projectile) stepAnim() {
+	if p.anim == nil || p.root().scf(SCF_disabled) || p.hitpause > 0 || p.pauseBool {
+		return
+	}
+	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
+	// In the case of projectiles this can be seen with Clsn display
+	if sys.tickFrame() {
+		p.anim.UpdateSprite()
+	}
+	if sys.tickNextFrame() {
+		p.anim.Action()
+	}
+}
+
 func (p *Projectile) cueDraw() {
 	// Nothing to draw here. Not even debug
 	if p.anim == nil {
@@ -3298,12 +3313,6 @@ func (p *Projectile) cueDraw() {
 	}
 
 	isPaused := p.hitpause > 0 || p.pauseBool
-
-	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
-	// In the case of projectiles this can be seen with Clsn display
-	if !isPaused && sys.tickFrame() {
-		p.anim.UpdateSprite()
-	}
 
 	// Projectile Clsn display
 	if sys.clsnDisplay {
@@ -3319,10 +3328,6 @@ func (p *Projectile) cueDraw() {
 				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
 			}
 		}
-	}
-
-	if sys.tickNextFrame() && !isPaused {
-		p.anim.Action() // TODO: Placing this in cueDraw is a bit unusual. Confirm if it's right
 	}
 
 	// Set position
