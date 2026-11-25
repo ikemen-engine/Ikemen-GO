@@ -69,7 +69,9 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		var windowFlags sdl.WindowFlags = sdl.WINDOW_INPUT_FOCUS
 
 		// 1. INITIALIZATION & HINTS
-		chk(sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_JOYSTICK | sdl.INIT_EVENTS | sdl.INIT_GAMECONTROLLER | sdl.INIT_HAPTIC | sdl.INIT_TIMER))
+		chk(sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_JOYSTICK | sdl.INIT_EVENTS | sdl.INIT_GAMECONTROLLER | sdl.INIT_TIMER))
+		// Keyboards and controllers can work without a haptic driver.
+		_ = sdl.InitSubSystem(sdl.INIT_HAPTIC)
 
 		// 2. DISPLAY MODE (The Crash Point)
 		var desktopW, desktopH int32
