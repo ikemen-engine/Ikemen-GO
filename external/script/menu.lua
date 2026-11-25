@@ -619,7 +619,8 @@ function menu.f_init(player, id)
 	-- Input rows follow the kind of device the pause owner plays with. Online, only shared
 	-- match actions, session setup edits and the mapping editors are available.
 	local kind = inputGetPlayerKind(menu.player)
-	local hidden = {keyboardmenu = kind ~= 'keyboard', controllermapping = kind ~= 'gamepad'}
+	-- Stage Select needs a mode with stage selection, so a fixed training stage hides it.
+	local hidden = {keyboardmenu = kind ~= 'keyboard', controllermapping = kind ~= 'gamepad', stageselect = not main.stageMenu}
 	local allowed = netPlay() and {back = true, commandlist = true, buttonsetup = true, keyboardmenu = true, controllermapping = true,
 		characterchange = true, rematch = true, orderselect = true, stageselect = true, exit = true}
 	local root = menu[menu.currentMenuId]
