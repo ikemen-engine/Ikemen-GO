@@ -6460,6 +6460,10 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		// TODO: Should ModifyPlayer persist or not across matches?
 		p.resetModifyPlayer()
 
+		// The chosen movelist is per match
+		// TODO: Likewise, maybe this can persist?
+		p.movelist = 0
+
 		// Prepare success message
 		if attached {
 			tstr = fmt.Sprintf("Same attached char kept: %v", cdef)

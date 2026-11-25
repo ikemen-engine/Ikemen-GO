@@ -4229,7 +4229,6 @@ func (c *Char) resetModifyPlayer() {
 	c.powerMax = gi.data.power
 	c.dizzyPointsMax = gi.data.dizzypoints
 	c.guardPointsMax = gi.data.guardpoints
-	c.movelist = 0
 	// c.teamside already assigned by loadCharacter()
 }
 

@@ -15978,7 +15978,6 @@ const (
 	modifyPlayer_redirectid
 )
 
-// TODO: Undo all effects if a cached character is loaded
 func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 	crun := getRedirectedChar(c, StateControllerBase(sc), modifyPlayer_redirectid, "ModifyPlayer")
 	if crun == nil {
@@ -16027,15 +16026,26 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case modifyPlayer_displayname:
-			dn := exp[0].evalS(c)
-			sys.cgi[crun.playerNo].displayname = dn
+			if crun.helperIndex == 0 {
+				dn := exp[0].evalS(c)
+				sys.cgi[crun.playerNo].displayname = dn
+			} else {
+				// Helpers are not allowed to change CharGlobalInfo
+				sys.appendToConsole(c.warn() + "ModifyPlayer DisplayName cannot be changed on a helper")
+			}
 		case modifyPlayer_lifebarname:
-			ln := exp[0].evalS(c)
-			sys.cgi[crun.playerNo].lifebarname = ln
+			if crun.helperIndex == 0 {
+				ln := exp[0].evalS(c)
+				sys.cgi[crun.playerNo].lifebarname = ln
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer LifebarName cannot be changed on a helper")
+			}
 		case modifyPlayer_helpername:
 			if crun.helperIndex != 0 {
 				hn := exp[0].evalS(c)
 				crun.name = hn
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer HelperName can only be changed on a helper")
 			}
 		case modifyPlayer_helpervar_id:
 			if crun.helperIndex != 0 {
@@ -16045,6 +16055,8 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				} else {
 					crun.helperId = 0
 				}
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer HelperVar.ID can only be changed on a helper")
 			}
 		case modifyPlayer_movehit:
 			crun.mctype = MC_Hit
@@ -16066,9 +16078,17 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 		case modifyPlayer_unhittabletime:
 			crun.unhittableTime = Max(0, exp[0].evalI(c))
 		case modifyPlayer_attack:
-			crun.gi().attackBase = exp[0].evalI(c)
+			if crun.helperIndex == 0 {
+				crun.gi().attackBase = exp[0].evalI(c)
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer Attack cannot be changed on a helper")
+			}
 		case modifyPlayer_defence:
-			crun.gi().defenceBase = exp[0].evalI(c)
+			if crun.helperIndex == 0 {
+				crun.gi().defenceBase = exp[0].evalI(c)
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer Defence cannot be changed on a helper")
+			}
 		case modifyPlayer_alive:
 			alive := exp[0].evalB(c)
 			if !alive {
