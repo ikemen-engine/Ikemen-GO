@@ -1150,7 +1150,8 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		fLength *= ycs
 	}
 
-	rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
+	// Pivot is in world units, so scale it like the sprite position
+	rcOffset := [2]float32{rotPivot[0] * xcs * sys.widthScale, rotPivot[1] * ycs * sys.heightScale}
 
 	blendMode, blendAlpha := a.alphaToBlend()
 
@@ -1198,7 +1199,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	RenderSprite(rp)
 }
 
-func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd float32, rot Rotation, rotPivot [2]float32,
+func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd float32, rot Rotation, camScl float32, rotPivot [2]float32,
 	pfx *PalFX, color uint32, intensity int32, facing float32, airOffsetFix [2]float32, projectionMode int32, fLength float32, shader CustomShaderRenderData) {
 
 	// Skip blank shadows
@@ -1217,7 +1218,8 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	x += xoff
 	y += yoff
 
-	rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
+	// x and y are pre-scaled, so the pivot needs the camera zoom applied here
+	rcOffset := [2]float32{rotPivot[0] * camScl * sys.widthScale, rotPivot[1] * camScl * sys.heightScale}
 
 	rp := RenderParams{
 		tex:            a.spr.Tex,
@@ -1833,6 +1835,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		// Scale rotation pivot by the reflection's base scale
 		// Y is multiplied by -1 because a y-scale of 1 means inverted
 		// TODO: It's slightly off. Might need a correction similar to "xrotoff"
+		// Pivot X follows xscale while the sprite's X position doesn't, so they disagree when xscale != 1
 		sdwRotPivot := [2]float32{s.rotPivot[0] * xscale, s.rotPivot[1] * yscale * -1}
 
 		var projection int32
@@ -1899,7 +1902,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			(sys.cam.Offset[0]-shake[0])-((x-s.pos[0]-offsetX)*scl),
 			sys.cam.GroundLevel()+(sys.cam.Offset[1]-shake[1])-y-(sdwPosY*yscale-offsetY)*scl,
 			scl*s.scl[0]*xscale, scl*-s.scl[1],
-			yscale, xshear, rot, sdwRotPivot,
+			yscale, xshear, rot, scl, sdwRotPivot,
 			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, shader)
 	}
 }
