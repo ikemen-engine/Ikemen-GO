@@ -1212,8 +1212,8 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	rot.angle = -angle
 
 	// Compute X and Y AIR animation offsets
-	xoff := xscl * airOffsetFix[0] * h * (float32(a.frames[a.drawidx].Xoffset) + a.interpolate_offset_x) * (1 / a.scale_x)
-	yoff := yscl * airOffsetFix[1] * vscl * v * (float32(a.frames[a.drawidx].Yoffset) + a.interpolate_offset_y) * (1 / a.scale_y)
+	xoff := xscl * airOffsetFix[0] * h * (float32(a.frames[a.drawidx].Xoffset) + a.interpolate_offset_x) * a.start_scale[0] * (1 / a.scale_x)
+	yoff := yscl * airOffsetFix[1] * vscl * v * (float32(a.frames[a.drawidx].Yoffset) + a.interpolate_offset_y) * a.start_scale[1] * (1 / a.scale_y)
 
 	x += xoff
 	y += yoff
@@ -1247,8 +1247,8 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		rcOffset:       rcOffset,
 		projectionMode: projectionMode,
 		fLength:        fLength * sys.heightScale,
-		xOffset:        xoff,
-		yOffset:        yoff,
+		xOffset:        xoff * sys.widthScale,
+		yOffset:        yoff * sys.heightScale,
 		customShader:   shader,
 	}
 
@@ -2121,6 +2121,7 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 		}
 
 		// Scale rotation pivot by the reflection's base scale
+		// TODO: Pivot X follows xscale while the sprite's X position doesn't, so they disagree when xscale != 1
 		refRotPivot := [2]float32{s.rotPivot[0] * xscale, s.rotPivot[1] * yscale * -1}
 
 		var projection int32
