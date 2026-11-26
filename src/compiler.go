@@ -1411,15 +1411,25 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		savedIn := *in
 		defer func() { *in = savedIn }()
 		tok := c.tokenizer(in)
-		// Mugen accepts "! =" as "=" in the special comparison triggers and the attr/hitflag comparisons
-		// We do the same in CNS mode, but log the error
-		if tok == "!" && !c.zssMode && sys.ignoreMostErrors {
+		if tok == "=" || tok == "!=" {
+			return true
+		}
+		// ZSS rejects any incorrect token
+		if c.zssMode || !sys.ignoreMostErrors {
+			return false
+		}
+		// CNS tolerates them but prints a warning
+		// Because Mugen ignores junk before the '=' in these triggers, e.g. "! =" or "p2statetype ?= A"
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/4206
+		ignored := tok
+		for c.isOperator(tok) == 0 {
 			tok = c.tokenizer(in)
 			if tok == "=" || tok == "!=" {
-				sys.appendToConsole(c.charWarn() + "Ignored '!' before '" + tok + "'")
+				sys.appendToConsole(c.charWarn() + "Ignored '" + ignored + "' before '" + tok + "'")
+				return true
 			}
 		}
-		return tok == "=" || tok == "!="
+		return false
 	}
 
 	// For moveType, stateType and such triggers
