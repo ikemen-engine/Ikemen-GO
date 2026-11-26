@@ -177,17 +177,25 @@ type DebugClsn struct {
 	palTex Texture // Reusable texture with the Clsn color
 }
 
-func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
+func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing, localscl, zpos, zScale float32) {
 	if len(boxes) == 0 {
 		return
+	}
+
+	// Follow the char's Z perspective when enabled. Disabled keeps boxes flat and data accurate
+	if sys.cfg.Debug.ClsnPerspective && sys.zEnabled() {
+		pos := sys.drawposXYfromZ([2]float32{x, y}, localscl, zpos, zScale)
+		x, y = pos[0], pos[1]
+	} else {
+		zScale = 1
 	}
 
 	// Apply camera transform
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 
-	xs := sys.cam.Scale
-	ys := sys.cam.Scale
+	xs := sys.cam.Scale * zScale
+	ys := sys.cam.Scale * zScale
 
 	for _, box := range boxes {
 		left := box.rect[0]
@@ -3056,8 +3064,8 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 
 	// Apply projectile scale
 	scale := [2]float32{
-		p.clsnScale[0] * p.localscl * p.zScale,
-		p.clsnScale[1] * p.localscl * p.zScale,
+		p.clsnScale[0] * p.localscl,
+		p.clsnScale[1] * p.localscl,
 	}
 
 	for _, r := range rects {
@@ -3328,12 +3336,12 @@ func (p *Projectile) cueDraw() {
 			// Clsn1
 			boxes1 := p.getClsn(1)
 			if len(boxes1) > 0 {
-				sys.debugc1hit.Add(boxes1, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
+				sys.debugc1hit.Add(boxes1, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing, p.localscl, p.pos[2], p.zScale)
 			}
 			// Clsn2
 			boxes2 := p.getClsn(2)
 			if len(boxes2) > 0 {
-				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
+				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing, p.localscl, p.pos[2], p.zScale)
 			}
 		}
 	}
@@ -13440,7 +13448,7 @@ func (c *Char) cueDebugDraw() {
 				debugType = &sys.debugc1not
 			}
 			if debugType != nil {
-				debugType.Add(boxes1, x+xoff, y+yoff, c.facing)
+				debugType.Add(boxes1, x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 			}
 		}
 
@@ -13474,7 +13482,7 @@ func (c *Char) cueDebugDraw() {
 			// Color each box by its own invincibility
 			for i := range boxes2 {
 				bhb, bmtk, _, _ := c.debugHitByState(2, int32(i))
-				pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing)
+				pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 			}
 
 			// The text only cares about the global state. The colors will specify which boxes can be hit
@@ -13558,23 +13566,23 @@ func (c *Char) cueDebugDraw() {
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
 			boxes3 := c.getClsnWorld(3)
-			sys.debugcsize.Add(boxes3, x, y, c.facing)
+			sys.debugcsize.Add(boxes3, x, y, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 
 		// Add Dummy boxes
 		dummy := c.getClsnWorld(4)
 		if len(dummy) > 0 {
-			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing)
+			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
-		sys.debugcross.Add(crosshair, x, y, c.facing)
+		sys.debugcross.Add(crosshair, x, y, c.facing, c.localscl, c.pos[2], c.zScale)
 
 		// Add GroundLevel indicator
 		if c.prevGroundLevel != 0 {
 			gLevel := []ClsnFinal{{rect: [4]float32{-2, 0, 2, 1}, angle: 0}}
-			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 	}
 
