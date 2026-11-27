@@ -6655,53 +6655,33 @@ func (c *CharCompiler) paramValueLoose(is IniSection, sc *StateControllerBase,
 
 func (c *CharCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
-		if len(data) == 0 {
-			return Error(paramName + " not specified")
-		}
-		var ra Reaction
-		dataLower := strings.ToLower(data)
-		//if sys.cgi[c.playerNo].ikemenver[0] == 0 && sys.cgi[c.playerNo].ikemenver[1] == 0 {
+		conv := animTypeValue
+		// Bare words in CNS only require the first letter, like in Mugen
 		if !c.zssMode {
-			// CNS: first letter is enough
-			switch dataLower[0] {
-			case 'l':
-				ra = RA_Light
-			case 'm':
-				ra = RA_Medium
-			case 'h':
-				ra = RA_Hard
-			case 'b':
-				ra = RA_Back
-			case 'u':
-				ra = RA_Up
-			case 'd':
-				ra = RA_Diagup
-			default:
-				return Error("Invalid " + paramName + ": " + data)
-			}
-		} else {
-			// ZSS: require full word
-			switch dataLower {
-			case "light":
-				ra = RA_Light
-			case "medium":
-				ra = RA_Medium
-			case "hard":
-				ra = RA_Hard
-			case "heavy":
-				ra = RA_Hard
-			case "back":
-				ra = RA_Back
-			case "up":
-				ra = RA_Up
-			case "diagup":
-				ra = RA_Diagup
-			default:
-				return Error("Invalid " + paramName + ": " + data)
+			conv = func(s string) (int32, bool) {
+				if s = strings.TrimSpace(s); s == "" {
+					return 0, false
+				}
+				switch strings.ToLower(s)[0] {
+				case 'l':
+					return int32(RA_Light), true
+				case 'm':
+					return int32(RA_Medium), true
+				case 'h':
+					return int32(RA_Hard), true
+				case 'b':
+					return int32(RA_Back), true
+				case 'u':
+					return int32(RA_Up), true
+				case 'd':
+					return int32(RA_Diagup), true
+				}
+				return 0, false
 			}
 		}
-		sc.add(id, sc.iToExp(int32(ra)))
-		return nil
+		// Any bare word is the legacy syntax
+		return c.parseTypeExpression(sc, id, data, paramName,
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", conv)
 	})
 }
 

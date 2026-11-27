@@ -8271,11 +8271,17 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 	case hitDef_air_type:
 		hd.air_type = HitType(exp[0].evalI(c))
 	case hitDef_animtype:
-		hd.animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
+			hd.animtype = Reaction(v)
+		}
 	case hitDef_air_animtype:
-		hd.air_animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "air.animtype", animTypeValue); ok {
+			hd.air_animtype = Reaction(v)
+		}
 	case hitDef_fall_animtype:
-		hd.fall_animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "fall.animtype", animTypeValue); ok {
+			hd.fall_animtype = Reaction(v)
+		}
 	case hitDef_affectteam:
 		hd.affectteam = exp[0].evalI(c)
 	case hitDef_teamside:
@@ -9556,20 +9562,26 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				p.hitdef.air_type = v1
 			})
 		case hitDef_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.animtype = v1
+				})
+			}
 		case hitDef_air_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.air_animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "air.animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.air_animtype = v1
+				})
+			}
 		case hitDef_fall_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.fall_animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "fall.animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.fall_animtype = v1
+				})
+			}
 		case hitDef_affectteam:
 			v1 := exp[0].evalI(c)
 			modifiers = append(modifiers, func(p *Projectile) {
@@ -11524,6 +11536,24 @@ func physicsTypeValue(s string) (int32, bool) {
 		return int32(ST_N), true
 	case 'u':
 		return int32(ST_U), true
+	}
+	return 0, false
+}
+
+func animTypeValue(s string) (int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "light":
+		return int32(RA_Light), true
+	case "medium":
+		return int32(RA_Medium), true
+	case "hard", "heavy":
+		return int32(RA_Hard), true
+	case "back":
+		return int32(RA_Back), true
+	case "up":
+		return int32(RA_Up), true
+	case "diagup":
+		return int32(RA_Diagup), true
 	}
 	return 0, false
 }
