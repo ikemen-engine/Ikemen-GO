@@ -6687,43 +6687,29 @@ func (c *CharCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, par
 
 func (c *CharCompiler) paramHittype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
-		if len(data) == 0 {
-			return Error(paramName + " not specified")
-		}
-		var ht HitType
-		dataLower := strings.ToLower(data)
-		//if sys.cgi[c.playerNo].ikemenver[0] == 0 && sys.cgi[c.playerNo].ikemenver[1] == 0 {
+		conv := hitTypeValue
+		// Bare words in CNS only require the first letter, like in Mugen
 		if !c.zssMode {
-			// CNS: first letter is enough
-			switch dataLower[0] {
-			case 'h':
-				ht = HT_High
-			case 'l':
-				ht = HT_Low
-			case 't':
-				ht = HT_Trip
-			case 'n':
-				ht = HT_None
-			default:
-				return Error("Invalid " + paramName + ": " + data)
-			}
-		} else {
-			// ZSS: require full word
-			switch dataLower {
-			case "high":
-				ht = HT_High
-			case "low":
-				ht = HT_Low
-			case "trip":
-				ht = HT_Trip
-			case "none":
-				ht = HT_None
-			default:
-				return Error("Invalid " + paramName + ": " + data)
+			conv = func(s string) (int32, bool) {
+				if s = strings.TrimSpace(s); s == "" {
+					return 0, false
+				}
+				switch strings.ToLower(s)[0] {
+				case 'h':
+					return int32(HT_High), true
+				case 'l':
+					return int32(HT_Low), true
+				case 't':
+					return int32(HT_Trip), true
+				case 'n':
+					return int32(HT_None), true
+				}
+				return 0, false
 			}
 		}
-		sc.add(id, sc.iToExp(int32(ht)))
-		return nil
+		// Any bare word is the legacy syntax
+		return c.parseTypeExpression(sc, id, data, paramName,
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", conv)
 	})
 }
 

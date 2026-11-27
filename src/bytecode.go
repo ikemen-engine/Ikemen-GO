@@ -8267,9 +8267,13 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 	case hitDef_hitflag:
 		hd.hitflag = evalHitFlag(exp, c)
 	case hitDef_ground_type:
-		hd.ground_type = HitType(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "ground.type", hitTypeValue); ok {
+			hd.ground_type = HitType(v)
+		}
 	case hitDef_air_type:
-		hd.air_type = HitType(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "air.type", hitTypeValue); ok {
+			hd.air_type = HitType(v)
+		}
 	case hitDef_animtype:
 		if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
 			hd.animtype = Reaction(v)
@@ -9552,15 +9556,19 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				p.hitdef.hitflag = v1
 			})
 		case hitDef_ground_type:
-			v1 := HitType(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.ground_type = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "ground.type", hitTypeValue); ok {
+				v1 := HitType(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.ground_type = v1
+				})
+			}
 		case hitDef_air_type:
-			v1 := HitType(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.air_type = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "air.type", hitTypeValue); ok {
+				v1 := HitType(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.air_type = v1
+				})
+			}
 		case hitDef_animtype:
 			if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
 				v1 := Reaction(v)
@@ -11554,6 +11562,20 @@ func animTypeValue(s string) (int32, bool) {
 		return int32(RA_Up), true
 	case "diagup":
 		return int32(RA_Diagup), true
+	}
+	return 0, false
+}
+
+func hitTypeValue(s string) (int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "high":
+		return int32(HT_High), true
+	case "low":
+		return int32(HT_Low), true
+	case "trip":
+		return int32(HT_Trip), true
+	case "none":
+		return int32(HT_None), true
 	}
 	return 0, false
 }
