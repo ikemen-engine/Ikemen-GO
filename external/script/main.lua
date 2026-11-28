@@ -3206,7 +3206,7 @@ function main.f_clearShuffleTables()
 end
 
 function main.f_deleteReplay(item, t)
-	if t[item] == nil or t[item].itemname == 'back' or not t[item].itemname:match('%.replay$') then
+	if t[item] == nil or t[item].itemname == 'back' or not t[item].itemname:lower():match('%.replay$') then
 		return t, item
 	end
 
@@ -3224,7 +3224,7 @@ function main.f_deleteReplay(item, t)
 end
 
 function main.f_renameReplay(item, t)
-	if t[item] == nil or t[item].itemname == 'back' or not t[item].itemname:match('%.replay$') then
+	if t[item] == nil or t[item].itemname == 'back' or not t[item].itemname:lower():match('%.replay$') then
 		return t, item
 	end
 	local oldPath, oldName, ext = t[item].itemname:match('^(.-)([^\\/]+)%.([^%.\\/]-)$')
@@ -3291,8 +3291,7 @@ function main.f_replay()
 	for k, v in ipairs(getDirectoryFiles('save/replays')) do
 		v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 			path = path:gsub('\\', '/')
-			ext = ext:lower()
-			if ext == 'replay' then
+			if ext:lower() == 'replay' then
 				table.insert(t, {itemname = path .. filename .. '.' .. ext, displayname = filename})
 			end
 		end)
@@ -3311,7 +3310,7 @@ function main.f_replay()
 			playBgm({source = "motif.title", interrupt = true})
 			main.close = false
 			break
-		elseif esc() or getInput(-1, motif[main.group].menu.cancel.key) or (t[item].itemname == 'back' and getInput(-1, motif[main.group].menu.done.key)) then
+		elseif esc() or getInput(-1, motif.replay_info.menu.cancel.key) or (t[item].itemname == 'back' and getInput(-1, motif.replay_info.menu.done.key)) then
 			sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
 			fadeOutInit(motif.replay_info.fadeout.FadeData)
 			main.close = true
@@ -3324,7 +3323,7 @@ function main.f_replay()
 			cursorPosY = math.max(1, math.min(cursorPosY, item, visibleItems))
 		elseif getKey(motif.replay_info.menu.item.rename.keycode) then
 			t, item = main.f_renameReplay(item, t)
-		elseif getInput(-1, motif[main.group].menu.done.key) then
+		elseif getInput(-1, motif.replay_info.menu.done.key) then
 			main.f_waitForPreloads(true)
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 			if enterReplay(t[item].itemname) and synchronize() then
