@@ -309,7 +309,7 @@ type GlyphProperties struct {
 }
 
 type MenuProperties struct {
-	Pos   [2]float32      `ini:"pos" default:"1000,900"`
+	Pos   [2]float32      `ini:"pos"`
 	Tween TweenProperties `ini:"tween"`
 	Item  struct {
 		TextProperties
