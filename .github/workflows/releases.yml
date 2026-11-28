@@ -312,7 +312,9 @@ jobs:
           LIBVPX_LICENSE="https://raw.githubusercontent.com/webmproject/libvpx/${LIBVPX_REV}/LICENSE"
 
           LIBXMP_README="https://raw.githubusercontent.com/libxmp/libxmp/master/README"
-          SDL2_LICENSE="https://raw.githubusercontent.com/libsdl-org/SDL/main/LICENSE.txt"
+          SDL2_LICENSE="https://raw.githubusercontent.com/libsdl-org/SDL/SDL2/LICENSE.txt"
+          SDL3_LICENSE="https://raw.githubusercontent.com/libsdl-org/SDL/main/LICENSE.txt"
+          SDL2_COMPAT_LICENSE="https://raw.githubusercontent.com/libsdl-org/sdl2-compat/main/LICENSE.txt"
 
           {
             echo "============================="
@@ -368,14 +370,28 @@ jobs:
             echo "-------------------------------------"
             curl -fsSL "$LIBXMP_README"
             echo
-            echo "Section 6: SDL2 and Notices"
-            echo "---------------------------"
+            echo "Section 6: SDL and Notices"
+            echo "--------------------------"
             echo "Upstream: https://github.com/libsdl-org/SDL"
             echo
-            echo "SDL2 LICENSE (zlib):"
-            echo "--------------------"
-            curl -fsSL "$SDL2_LICENSE"
-            echo
+            if [ "${{ matrix.cfg.runner_os }}" = "windows" ] || [ "${{ matrix.cfg.runner_os }}" = "macos" ]; then
+              echo "The bundled SDL2 library is sdl2-compat (https://github.com/libsdl-org/sdl2-compat),"
+              echo "which provides the SDL2 API on top of the bundled SDL3 library."
+              echo
+              echo "6.1 SDL3 LICENSE (zlib):"
+              echo "------------------------"
+              curl -fsSL "$SDL3_LICENSE"
+              echo
+              echo "6.2 sdl2-compat LICENSE (zlib):"
+              echo "-------------------------------"
+              curl -fsSL "$SDL2_COMPAT_LICENSE"
+              echo
+            else
+              echo "SDL2 LICENSE (zlib):"
+              echo "--------------------"
+              curl -fsSL "$SDL2_LICENSE"
+              echo
+            fi
           } > LICENSES.txt
 
           if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then

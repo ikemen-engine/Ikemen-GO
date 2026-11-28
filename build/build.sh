@@ -1691,6 +1691,7 @@ function buildWin() {
 
 	# bundle libs
 	bundle_shared_libs
+	check_windows_sdl_runtime
 
 	# Clean embedded resource object
 	rm -f src/rsrc_windows.syso 2>/dev/null || true
@@ -1698,6 +1699,36 @@ function buildWin() {
 	echo "==> Build successful (Windows)"
 	echo "    Binary: $OUTDIR/$binName"
 	[[ -d "$LIBDIR" ]] && echo "    Runtime DLLs: $LIBDIR/"
+}
+
+# MSYS2's SDL2 package is sdl2-compat: its SDL2.dll is a shim that loads SDL3.dll at
+# runtime and crashes without it. The link step can't catch that, so check here.
+function check_windows_sdl_runtime() {
+	local sdl2="$LIBDIR/SDL2.dll"
+	if [[ ! -f "$sdl2" ]]; then
+		echo "ERROR: $sdl2 was not bundled" >&2
+		exit 1
+	fi
+	grep -aq "sdl2-compat" "$sdl2" || return 0
+	# lib/ is reused between local builds, so it may predate the SDL3 bundling.
+	if ! compgen -G "$LIBDIR/SDL3*.dll" > /dev/null; then
+		cp -av "$MSYS_PREFIX"/bin/SDL3*.dll "$LIBDIR/" 2>/dev/null || true
+	fi
+	if ! compgen -G "$LIBDIR/SDL3*.dll" > /dev/null; then
+		echo "ERROR: $sdl2 is sdl2-compat and needs SDL3.dll, which was not found in $MSYS_PREFIX/bin." >&2
+		echo "Install it from the MSYS2 UCRT64 shell: pacman -S mingw-w64-ucrt-x86_64-sdl3" >&2
+		exit 1
+	fi
+	# Bundle SDL3's own MSYS2 imports (e.g. libiconv). System DLLs aren't in $MSYS_PREFIX/bin.
+	local sdl3 dep
+	for sdl3 in "$LIBDIR"/SDL3*.dll; do
+		for dep in $(objdump -p "$sdl3" | awk '/DLL Name:/ {print $3}'); do
+			if [[ -f "$MSYS_PREFIX/bin/$dep" && ! -f "$LIBDIR/$dep" ]]; then
+				cp -av "$MSYS_PREFIX/bin/$dep" "$LIBDIR/"
+			fi
+		done
+	done
+	echo "==> SDL2.dll is sdl2-compat; bundled $(cd "$LIBDIR" && ls SDL3*.dll | tr '\n' ' ')"
 }
 
 # Convert an arbitrary tag (e.g. "v1.2.3", "1.2", "nightly") to a valid
@@ -1824,7 +1855,8 @@ function bundle_shared_libs() {
 			"$MSYS_PREFIX"/bin/libgcc_s_seh-1.dll \
 			"$MSYS_PREFIX"/bin/libstdc++-6.dll \
 			"$MSYS_PREFIX"/bin/libxmp*.dll \
-			"$MSYS_PREFIX"/bin/SDL2*.dll ; do
+			"$MSYS_PREFIX"/bin/SDL2*.dll \
+			"$MSYS_PREFIX"/bin/SDL3*.dll ; do
 			cp -av "$d" "$dest_lib/" 2>/dev/null || true
 		done
 	elif [[ -d "$FFMPEG_PREFIX/lib" && "$GOOS" != "android" ]]; then
