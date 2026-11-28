@@ -134,6 +134,7 @@ type SystemStateVars struct {
 	playBgmFlg       bool
 
 	keyInput            Key
+	keyInputFrame       int32
 	keyString           string
 	lastInputController int
 	uiLastInputToken    string
