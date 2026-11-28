@@ -335,7 +335,7 @@ func (input *Input) GetJoystickGUID(joy int) string {
 }
 
 func (input *Input) RumbleController(joy int, lo, hi uint16, ticks uint32) {
-	if joy < 0 || joy >= len(input.controllers) || joy >= len(sys.joystickConfig) {
+	if sys.inRollback() || joy < 0 || joy >= len(input.controllers) || joy >= len(sys.joystickConfig) {
 		return
 	}
 
@@ -346,16 +346,16 @@ func (input *Input) RumbleController(joy int, lo, hi uint16, ticks uint32) {
 		if gls > 0 && sys.turbo > 0 {
 			var framerate_ms uint32 = uint32(math.Ceil(1.0 / float64(gls) * float64(sys.turbo) * 1000.0))
 			var buffertime_ms uint32 = framerate_ms >> 1 // makes rumble feel more consistent between frames
-			var multiplier float32 = 1.0
 
 			// This makes macOS rumble, which is less pronounced,
 			// feel closer to Linux rumble, which is more forceful.
 			// TODO: Compare *NIX-like systems with Windows.
 			if runtime.GOOS == "darwin" {
-				multiplier = 1.625
+				lo = uint16(min(float32(lo)*1.625, math.MaxUint16))
+				hi = uint16(min(float32(hi)*1.625, math.MaxUint16))
 			}
 			if ticks > 0 {
-				input.controllers[joy].Rumble(uint16(float32(lo)*multiplier), uint16(float32(hi)*multiplier), (ticks*framerate_ms)+buffertime_ms)
+				input.controllers[joy].Rumble(lo, hi, (ticks*framerate_ms)+buffertime_ms)
 			} else {
 				input.controllers[joy].Rumble(0, 0, 0)
 			}
