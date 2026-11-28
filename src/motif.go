@@ -4985,18 +4985,8 @@ func (di *MotifDialogue) buildFaceAnim(m *Motif, side, pn, grp, idx int, faceCfg
 	a.rot.xangle = faceCfg.XAngle
 	a.rot.yangle = faceCfg.YAngle
 	a.projection = int32(Projection_Orthographic) // Default
-	v := strings.ToLower(strings.TrimSpace(faceCfg.Projection))
-	switch v {
-	case "perspective":
-		a.projection = int32(Projection_Perspective)
-	case "perspective2":
-		a.projection = int32(Projection_Perspective2)
-	case "orthographic":
-		// default, we don't need to do nothing
-	default:
-		if IsInt(v) {
-			a.projection = Atoi(v)
-		}
+	if p, ok := parseProjection(faceCfg.Projection); ok {
+		a.projection = int32(p)
 	}
 	a.fLength = faceCfg.Focallength
 	a.Update(false)
@@ -7031,18 +7021,8 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 	a.rot.xangle = xangle
 	a.rot.yangle = yangle
 	a.projection = int32(Projection_Orthographic) // Default
-	v := strings.ToLower(strings.TrimSpace(projection))
-	switch v {
-	case "perspective":
-		a.projection = int32(Projection_Perspective)
-	case "perspective2":
-		a.projection = int32(Projection_Perspective2)
-	case "orthographic":
-		// default, we don't need to do nothing
-	default:
-		if IsInt(v) {
-			a.projection = Atoi(v)
-		}
+	if p, ok := parseProjection(projection); ok {
+		a.projection = int32(p)
 	}
 	a.fLength = fLength
 	// Movement

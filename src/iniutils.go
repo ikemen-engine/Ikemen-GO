@@ -2080,17 +2080,8 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 		switch fv.Kind() {
 
 		case reflect.String:
-			switch strings.ToLower(strings.TrimSpace(fv.String())) {
-			case "orthographic":
-				projection = int32(Projection_Orthographic)
-			case "perspective":
-				projection = int32(Projection_Perspective)
-			case "perspective2":
-				projection = int32(Projection_Perspective2)
-			default:
-				if i, err := strconv.Atoi(fv.String()); err == nil {
-					projection = int32(i)
-				}
+			if p, ok := parseProjection(fv.String()); ok {
+				projection = int32(p)
 			}
 		case reflect.Int32, reflect.Int64:
 			projection = int32(fv.Int())
@@ -2310,17 +2301,8 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 		switch fv.Kind() {
 
 		case reflect.String:
-			switch strings.ToLower(strings.TrimSpace(fv.String())) {
-			case "orthographic":
-				projection = int32(Projection_Orthographic)
-			case "perspective":
-				projection = int32(Projection_Perspective)
-			case "perspective2":
-				projection = int32(Projection_Perspective2)
-			default:
-				if i, err := strconv.Atoi(fv.String()); err == nil {
-					projection = int32(i)
-				}
+			if p, ok := parseProjection(fv.String()); ok {
+				projection = int32(p)
 			}
 		case reflect.Int32, reflect.Int64:
 			projection = int32(fv.Int())

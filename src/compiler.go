@@ -6805,19 +6805,10 @@ func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byt
 
 func (c *CharCompiler) paramProjection(is IniSection, sc *StateControllerBase, key string, id byte) error {
 	return c.stateParam(is, key, false, func(data string) error {
-		var proj Projection
-
-		switch strings.ToLower(strings.TrimSpace(data)) {
-		case "orthographic":
-			proj = Projection_Orthographic
-		case "perspective":
-			proj = Projection_Perspective
-		case "perspective2":
-			proj = Projection_Perspective2
-		default:
+		proj, ok := parseProjection(data)
+		if !ok {
 			return Error("invalid projection type: " + data)
 		}
-
 		sc.add(id, sc.iToExp(int32(proj)))
 		return nil
 	})
@@ -6875,37 +6866,10 @@ func (c *CharCompiler) paramTrans(is IniSection, sc *StateControllerBase, prefix
 			}
 		}
 
-		// Defaults
-		tt := TT_default
-		defsrc, defdst := int32(255), int32(0)
-
-		// Parse the trans type and set default alpha
-		data = strings.ToLower(data)
-		switch data {
-		case "default":
-			tt = TT_default
-			defsrc, defdst = 255, 0
-		case "none":
-			tt = TT_none
-			defsrc, defdst = 255, 0
-		case "add":
-			tt = TT_add
-			defsrc, defdst = 255, 255
-		case "add1":
-			tt = TT_add
-			defsrc, defdst = 255, 128
-		case "addalpha":
-			tt = TT_add
-			defsrc, defdst = 255, 0
-			// In Mugen it defaults to this before reading the alpha
-			// Older Mugen versions have a bug where AddAlpha defaults to no change if the animation also uses AddAlpha (AS_D_). This is fixed in 1.1
-		case "sub":
-			tt = TT_sub
-			defsrc, defdst = 255, 255
-		case "subadd":
-			tt = TT_subadd
-			defsrc, defdst = 255, 255
-		default:
+		// Parse the trans type and its default alpha.
+		// Older Mugen versions have a bug where AddAlpha defaults to no change if the animation also uses AddAlpha (AS_D_). This is fixed in 1.1
+		tt, def, ok := parseTrans(data)
+		if !ok {
 			// In Mugen, CNS ignores invalid parameter names
 			if c.zssMode || !sys.ignoreMostErrors {
 				return Error("Invalid trans type: " + data)
@@ -6914,6 +6878,7 @@ func (c *CharCompiler) paramTrans(is IniSection, sc *StateControllerBase, prefix
 				return nil
 			}
 		}
+		defsrc, defdst := def[0], def[1]
 
 		exp := make([]BytecodeExp, 3)
 

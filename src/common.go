@@ -1376,15 +1376,8 @@ func (l *Layout) Read(pre string, is IniSection) {
 	is.ReadF32(pre+"yangle", &l.rot.yangle)
 	is.ReadF32(pre+"xshear", &l.xshear)
 	is.ReadF32(pre+"focallength", &l.fLength)
-	if str, ok := is[pre+"projection"]; ok {
-		switch strings.ToLower(strings.TrimSpace(str)) {
-		case "orthographic":
-			l.projection = Projection_Orthographic
-		case "perspective":
-			l.projection = Projection_Perspective
-		case "perspective2":
-			l.projection = Projection_Perspective2
-		}
+	if p, ok := parseProjection(is[pre+"projection"]); ok {
+		l.projection = p
 	}
 	if is.ReadI32(pre+"window", &l.window[0], &l.window[1], &l.window[2], &l.window[3]) {
 		if l.window[2] < l.window[0] {

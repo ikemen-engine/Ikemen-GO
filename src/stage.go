@@ -358,15 +358,8 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("xangle", &bg.rot.xangle)
 	is.readF32ForStage("yangle", &bg.rot.yangle)
 	is.readF32ForStage("focallength", &bg.fLength)
-	if str, ok := is["projection"]; ok {
-		switch strings.ToLower(strings.TrimSpace(str)) {
-		case "orthographic":
-			bg.projection = Projection_Orthographic
-		case "perspective":
-			bg.projection = Projection_Perspective
-		case "perspective2":
-			bg.projection = Projection_Perspective2
-		}
+	if p, ok := parseProjection(is["projection"]); ok {
+		bg.projection = p
 	}
 	is.readF32ForStage("xbottomzoomdelta", &bg.xbottomzoomdelta)
 	is.readF32ForStage("zoomscaledelta", &bg.zoomscaledelta[0], &bg.zoomscaledelta[1])
@@ -379,46 +372,20 @@ func readBackGround(is IniSection, link *backGround,
 
 	// Read transparency
 	if data, ok := is["trans"]; ok {
-		switch strings.ToLower(data) {
-		case "add":
-			bg.anim.mask = 0
-			bg.anim.transType = TT_add
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 255
-		case "add1":
-			bg.anim.mask = 0
-			bg.anim.transType = TT_add
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 128
-		case "addalpha":
-			bg.anim.mask = 0
-			bg.anim.transType = TT_add
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 0 // In Mugen it defaults to this before reading the alpha
-		case "sub":
-			bg.anim.mask = 0
-			bg.anim.transType = TT_sub
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 255
-		case "subadd":
-			bg.anim.mask = 0
-			bg.anim.transType = TT_subadd
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 255
-		case "none":
-			// In Mugen this does the same as Default
-			// TODO: Make ikemenversion fix it
-			//bg.anim.transType = TT_none
-			bg.anim.transType = TT_default
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 0
-		case "default":
-			bg.anim.transType = TT_default
-			bg.anim.srcAlpha = 255
-			bg.anim.dstAlpha = 0
-		default:
+		tt, alpha, ok := parseTrans(data)
+		if !ok {
 			return nil, Error("Invalid trans type: " + data)
 		}
+		// In Mugen none does the same as default
+		// TODO: Make ikemenversion fix it
+		if tt == TT_none {
+			tt = TT_default
+		}
+		if tt != TT_default {
+			bg.anim.mask = 0
+		}
+		bg.anim.transType = tt
+		bg.anim.srcAlpha, bg.anim.dstAlpha = int16(alpha[0]), int16(alpha[1])
 	}
 
 	// Read alpha if applicable
@@ -1610,15 +1577,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		sec.ReadF32("xangle", &s.sdw.rot.xangle)
 		sec.ReadF32("yangle", &s.sdw.rot.yangle)
 		sec.ReadF32("focallength", &s.sdw.fLength)
-		if str, ok := sec["projection"]; ok {
-			switch strings.ToLower(strings.TrimSpace(str)) {
-			case "orthographic":
-				s.sdw.projection = Projection_Orthographic
-			case "perspective":
-				s.sdw.projection = Projection_Perspective
-			case "perspective2":
-				s.sdw.projection = Projection_Perspective2
-			}
+		if p, ok := parseProjection(sec["projection"]); ok {
+			s.sdw.projection = p
 		}
 		sec.readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
 		// TODO: This should probably require 4 values
@@ -1655,15 +1615,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		sec.ReadF32("xangle", &s.reflection.rot.xangle)
 		sec.ReadF32("yangle", &s.reflection.rot.yangle)
 		sec.ReadF32("focallength", &s.reflection.fLength)
-		if str, ok := sec["projection"]; ok {
-			switch strings.ToLower(strings.TrimSpace(str)) {
-			case "orthographic":
-				s.reflection.projection = Projection_Orthographic
-			case "perspective":
-				s.reflection.projection = Projection_Perspective
-			case "perspective2":
-				s.reflection.projection = Projection_Perspective2
-			}
+		if p, ok := parseProjection(sec["projection"]); ok {
+			s.reflection.projection = p
 		}
 		sec.readF32ForStage("offset", &s.reflection.offset[0], &s.reflection.offset[1])
 		// TODO: This should probably require 4 values

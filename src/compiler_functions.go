@@ -5994,6 +5994,19 @@ func (c *CharCompiler) textSub(is IniSection, sc *StateControllerBase) error {
 		text_hidewithbars, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "window",
+		text_window, VT_Float, 4, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "textwrap", false, func(data string) error {
+		sc.add(text_textwrap, sc.iToExp(int32(parseTextWrap(strings.Trim(strings.TrimSpace(data), "\"")))))
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.paramTrans(is, sc, "", text_trans); err != nil {
+		return err
+	}
 	return nil
 }
 

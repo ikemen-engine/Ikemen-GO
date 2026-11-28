@@ -2417,22 +2417,8 @@ func (a *Anim) SetAlpha(src, dst int16) {
 // Blending for a trans name, as in stage backgrounds. A given alpha replaces
 // the default factors of the add and sub types.
 func transBlend(trans string, alpha []int32) (TransType, [2]int32) {
-	tt, factors := TT_default, [2]int32{255, 0}
-	switch strings.ToLower(strings.TrimSpace(trans)) {
-	case "", "default":
-	case "none":
-		tt = TT_none
-	case "add":
-		tt, factors = TT_add, [2]int32{255, 255}
-	case "add1":
-		tt, factors = TT_add, [2]int32{255, 128}
-	case "addalpha":
-		tt = TT_add
-	case "sub":
-		tt, factors = TT_sub, [2]int32{255, 255}
-	case "subadd":
-		tt, factors = TT_subadd, [2]int32{255, 255}
-	default:
+	tt, factors, ok := parseTrans(trans)
+	if !ok && strings.TrimSpace(trans) != "" {
 		LogMessage("Invalid trans type: %v", trans)
 	}
 	if tt != TT_default && tt != TT_none {

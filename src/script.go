@@ -2026,13 +2026,8 @@ func systemScriptInit(l *lua.LState) {
 			a.projection = int32(numArg(l, 2))
 
 		case lua.LTString:
-			switch strings.ToLower(strings.TrimSpace(l.Get(2).String())) {
-			case "orthographic":
-				a.projection = int32(Projection_Orthographic)
-			case "perspective":
-				a.projection = int32(Projection_Perspective)
-			case "perspective2":
-				a.projection = int32(Projection_Perspective2)
+			if p, ok := parseProjection(l.Get(2).String()); ok {
+				a.projection = int32(p)
 			}
 		}
 		return 0
@@ -2260,13 +2255,8 @@ func systemScriptInit(l *lua.LState) {
 				case lua.LTNumber:
 					aSnap.projection = int32(lua.LVAsNumber(v))
 				case lua.LTString:
-					switch strings.ToLower(strings.TrimSpace(v.String())) {
-					case "orthographic":
-						aSnap.projection = int32(Projection_Orthographic)
-					case "perspective":
-						aSnap.projection = int32(Projection_Perspective)
-					case "perspective2":
-						aSnap.projection = int32(Projection_Perspective2)
+					if p, ok := parseProjection(v.String()); ok {
+						aSnap.projection = int32(p)
 					}
 				}
 			}
@@ -7964,13 +7954,8 @@ func systemScriptInit(l *lua.LState) {
 			ts.projection = int32(numArg(l, 2))
 
 		case lua.LTString:
-			switch strings.ToLower(strings.TrimSpace(l.Get(2).String())) {
-			case "orthographic":
-				ts.projection = int32(Projection_Orthographic)
-			case "perspective":
-				ts.projection = int32(Projection_Perspective)
-			case "perspective2":
-				ts.projection = int32(Projection_Perspective2)
+			if p, ok := parseProjection(l.Get(2).String()); ok {
+				ts.projection = int32(p)
 			}
 		}
 		return 0
@@ -7998,7 +7983,7 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.text = strArg(l, 2)
-		if ts.textWrap {
+		if ts.textWrap != TW_none {
 			ts.wrapText(ts.text, len([]rune(ts.text)))
 		}
 		return 0
@@ -8041,7 +8026,10 @@ func systemScriptInit(l *lua.LState) {
 		case lua.LString, lua.LNumber:
 			ts.SetTextWrap(v.String())
 		default:
-			ts.textWrap, ts.wrapChars = boolArg(l, 2), false
+			ts.textWrap = TW_none
+			if boolArg(l, 2) {
+				ts.textWrap = TW_word
+			}
 		}
 		return 0
 	})

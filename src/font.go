@@ -880,8 +880,7 @@ type TextSprite struct {
 	elapsedTicks   float32
 	textSpacing    [2]float32
 	textDelay      float32
-	textWrap       bool
-	wrapChars      bool // textwrap = c: lines break at any character instead of between words
+	textWrap       TextWrap
 	vel            [2]float32
 	accel          [2]float32
 	friction       [2]float32
@@ -1081,12 +1080,31 @@ func (ts *TextSprite) SetColor(r, g, b, a int32) {
 	ts.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
 }
 
-// SetTextWrap: empty, n or 0 disable wrapping, c wraps at any character,
+// How text wraps at the right edge of its window (textwrap in motifs and the Text sctrl):
+// not at all, between words, or at any character.
+type TextWrap int32
+
+const (
+	TW_none TextWrap = iota
+	TW_word
+	TW_char
+)
+
+// Reads a textwrap value: empty, n or 0 disable wrapping, c wraps at any character,
 // any other value wraps between words.
-func (ts *TextSprite) SetTextWrap(mode string) {
+func parseTextWrap(mode string) TextWrap {
 	mode = strings.ToLower(strings.TrimSpace(mode))
-	ts.textWrap = mode != "" && mode != "0" && mode[0] != 'n'
-	ts.wrapChars = ts.textWrap && mode[0] == 'c'
+	switch {
+	case mode == "" || mode == "0" || mode[0] == 'n':
+		return TW_none
+	case mode[0] == 'c':
+		return TW_char
+	}
+	return TW_word
+}
+
+func (ts *TextSprite) SetTextWrap(mode string) {
+	ts.textWrap = parseTextWrap(mode)
 }
 
 func (ts *TextSprite) SetTextSpacing(xs, ys float32) {
@@ -1151,8 +1169,11 @@ func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
 		return 0
 	}
 
-	// Base "full screen" width in text space.
+	// Base "full screen" width in text space. Character texts use their own localcoord.
 	lcWidth := float32(sys.motif.Info.Localcoord[0])
+	if ts.localcoordW > 0 {
+		lcWidth = float32(ts.localcoordW)
+	}
 	if ts.localScale > 0 {
 		lcWidth = lcWidth * ts.localScale
 	}
@@ -1313,7 +1334,7 @@ func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 					if strings.HasPrefix(s[i:], "\\n") {
 						break
 					}
-					if ts.wrapChars && rawRunes > 0 {
+					if ts.textWrap == TW_char && rawRunes > 0 {
 						break
 					}
 					if size := tagLength(s[i:]); size > 0 {
@@ -1339,7 +1360,7 @@ func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 	}
 
 	// No wrapping: cut to typedLen, omit a trailing '\' before a pending "\n"
-	if !ts.textWrap {
+	if ts.textWrap == TW_none {
 		endByte := toByteIndex(fullLine, typedLen)
 		if endByte > len(fullLine) {
 			endByte = len(fullLine)

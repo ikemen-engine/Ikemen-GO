@@ -26,6 +26,27 @@ const (
 	TT_default
 )
 
+// Reads a trans name with its default alpha. In Mugen, addalpha defaults to 255,0 before the alpha is read.
+func parseTrans(s string) (TransType, [2]int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "default":
+		return TT_default, [2]int32{255, 0}, true
+	case "none":
+		return TT_none, [2]int32{255, 0}, true
+	case "add":
+		return TT_add, [2]int32{255, 255}, true
+	case "add1":
+		return TT_add, [2]int32{255, 128}, true
+	case "addalpha":
+		return TT_add, [2]int32{255, 0}, true
+	case "sub":
+		return TT_sub, [2]int32{255, 255}, true
+	case "subadd":
+		return TT_subadd, [2]int32{255, 255}, true
+	}
+	return TT_default, [2]int32{255, 0}, false
+}
+
 type PalFXDef struct {
 	time        int32
 	color       float32

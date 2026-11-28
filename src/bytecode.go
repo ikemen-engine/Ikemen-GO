@@ -14946,9 +14946,24 @@ const (
 	text_shader_tex2_spr
 	text_shader_playerno
 	text_shadertime
+	text_window
+	text_textwrap
+	text_trans
 	text_last = iota + palFX_last + 1 - 1
 	text_redirectid
 )
+
+// Wraps a character's text at its window, or at the screen edge without one.
+func wrapCharText(ts *TextSprite) {
+	if ts.textWrap == TW_none {
+		return
+	}
+	text := OldSprintf("%v", ts.params...)
+	if ts.template != "" {
+		text = OldSprintf(ts.template, ts.params...)
+	}
+	ts.wrapText(text, len([]rune(text)))
+}
 
 // Returns the font and the localcoord width it was made for.
 // Missing fonts use the debug font, which is treated as 320 wide.
@@ -15085,6 +15100,15 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ts.xshear = exp[0].evalF(c)
 		case text_hidewithbars:
 			ts.hidewithbars = exp[0].evalB(c)
+		case text_window:
+			if len(exp) >= 4 {
+				ts.SetWindow([4]float32{exp[0].evalF(c), exp[1].evalF(c), exp[2].evalF(c), exp[3].evalF(c)})
+			}
+		case text_textwrap:
+			ts.textWrap = TextWrap(exp[0].evalI(c))
+		case text_trans:
+			ts.alpha = [2]int32{Clamp(exp[0].evalI(c), 0, 255), Clamp(exp[1].evalI(c), 0, 255)}
+			ts.trans = TransType(exp[2].evalI(c))
 		case text_id:
 			ts.id = exp[0].evalI(c)
 		case text_shader:
@@ -15151,6 +15175,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 	}
 	// Glyphs show the buttons of the player who owns the text.
 	ts.glyphDevice = sys.playerGlyphDevice(crun.playerNo)
+	wrapCharText(ts)
 
 	if ts.customShader.name != "" {
 		ts.customShader.time = shaderTime
@@ -15389,6 +15414,24 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 			modifiers = append(modifiers, func(ts *TextSprite) {
 				ts.hidewithbars = v
 			})
+		case text_window:
+			if len(exp) >= 4 {
+				w := [4]float32{exp[0].evalF(c), exp[1].evalF(c), exp[2].evalF(c), exp[3].evalF(c)}
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.SetWindow(w)
+				})
+			}
+		case text_textwrap:
+			tw := TextWrap(exp[0].evalI(c))
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.textWrap = tw
+			})
+		case text_trans:
+			alpha := [2]int32{Clamp(exp[0].evalI(c), 0, 255), Clamp(exp[1].evalI(c), 0, 255)}
+			tt := TransType(exp[2].evalI(c))
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.trans, ts.alpha = tt, alpha
+			})
 		case text_shader:
 			s := exp[0].evalSLower(c)
 			if key, ok := sys.resolveCharShader(shaderPN, s); ok {
@@ -15463,6 +15506,11 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 	for _, modify := range modifiers {
 		for _, ts := range texts {
 			modify(ts)
+		}
+	}
+	if len(modifiers) > 0 {
+		for _, ts := range texts {
+			wrapCharText(ts)
 		}
 	}
 

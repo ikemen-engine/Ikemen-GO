@@ -166,6 +166,23 @@ const (
 	Projection_Perspective2
 )
 
+// Reads a projection name (orthographic, perspective, perspective2) or its number.
+func parseProjection(s string) (Projection, bool) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	switch s {
+	case "orthographic":
+		return Projection_Orthographic, true
+	case "perspective":
+		return Projection_Perspective, true
+	case "perspective2":
+		return Projection_Perspective2, true
+	}
+	if i, err := strconv.Atoi(s); err == nil {
+		return Projection(i), true
+	}
+	return Projection_Orthographic, false
+}
+
 type DebugClsnText struct {
 	x, y       float32
 	text       string
