@@ -134,6 +134,7 @@ type SystemStateVars struct {
 	playBgmFlg       bool
 
 	keyInput            Key
+	keyInputFrame       int32
 	keyString           string
 	lastInputController int
 	uiLastInputToken    string
@@ -1716,6 +1717,14 @@ func (s *System) uiEnsureCommandLists(total int) error {
 		}
 	}
 	return nil
+}
+
+// Lua menus keep the connection in System. Rollback moves it during a match.
+func (s *System) inputConnection() *NetConnection {
+	if s.netConnection != nil {
+		return s.netConnection
+	}
+	return s.rollback.netConnection
 }
 
 func (s *System) netplay() bool {

@@ -114,8 +114,8 @@ func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 func OnKeyReleased(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
 		sys.keyState[key] = false
-		// sys.keyInput is used as an edge-triggered "new key press" signal for Lua (getKey()).
-		if sys.keyInput == key {
+		// A tap between polls must reach getKey once.
+		if sys.keyInput == key && sys.keyInputFrame != sys.frameCounter {
 			sys.keyInput = KeyUnknown
 			sys.keyString = ""
 		}
@@ -129,7 +129,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 			return
 		}
 		sys.keyState[key] = true
-		sys.keyInput = key
+		sys.keyInput, sys.keyInputFrame = key, sys.frameCounter
 		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
 		sys.esc = sys.esc || escPressed
 		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
@@ -427,6 +427,7 @@ func NewCommandKeyRemap() *CommandKeyRemap {
 type InputReader struct {
 	SocdAllow          [4]bool // Up, down, back, forward
 	SocdFirst          [4]bool
+	socdFlipped        bool
 	ButtonAssistBuffer [9]bool
 }
 
@@ -495,7 +496,12 @@ func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
 // Left and Right are solved in CommandList Input based on B and F outcome
-func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
+func (ir *InputReader) SocdResolution(U, D, B, F, flipped bool) (bool, bool, bool, bool) {
+	// Keep the first held direction on the same physical side when the fighter turns.
+	if ir.socdFlipped != flipped {
+		ir.SocdFirst[2], ir.SocdFirst[3] = ir.SocdFirst[3], ir.SocdFirst[2]
+		ir.socdFlipped = flipped
+	}
 	method := sys.cfg.Input.SOCDResolution
 
 	// Resolve U and D conflicts based on SOCD resolution config
@@ -2845,7 +2851,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		}
 		//B, F = L, R
 		// Apply SOCD resolution for UI too (same helper used for characters).
-		//U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		//U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F, false)
 		//L, R = B, F
 	}
 
@@ -2914,7 +2920,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		}
 
 		// Resolve SOCD for U/D and B/F
-		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F, char.fbFlip)
 
 		// Get L and R back from B and F
 		if char.fbFlip {

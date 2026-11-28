@@ -12780,29 +12780,26 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if crun.controller >= 0 && sys.inputRemap[crun.controller] < len(sys.ffbparams) {
-		joy := sys.inputRemap[crun.controller]
-		if newAPI { // New API: just rumble straight away on the ultimately redirected character
-			input.RumbleController(joy, lo, hi, time)
-		} else { // Old API: fill out FFB params
-			// Do a final redirect to P2 if self not defined
-			if !self {
-				if crun = crun.p2(); crun == nil {
-					return false
-				}
-				joy = sys.inputRemap[crun.controller]
-			}
-			// Don't rumble helpers.
-			if joy >= 0 && joy < len(sys.ffbparams) && crun.helperIndex == 0 {
-				sys.ffbparams[joy] = ForceFeedbackParams{
-					timer:    time,
-					start:    ampl[0],
-					d1:       ampl[1],
-					d2:       ampl[2],
-					d3:       ampl[3],
-					waveform: waveform,
-				}
-			}
+	if !newAPI && !self {
+		crun = crun.p2()
+	}
+	if crun == nil || crun.controller < 0 || crun.controller >= len(sys.inputRemap) {
+		return false
+	}
+	joy := sys.inputRemap[crun.controller]
+	if joy < 0 || joy >= len(sys.ffbparams) {
+		return false
+	}
+	if newAPI {
+		input.RumbleController(joy, lo, hi, time)
+	} else if crun.helperIndex == 0 {
+		sys.ffbparams[joy] = ForceFeedbackParams{
+			timer:    time,
+			start:    ampl[0],
+			d1:       ampl[1],
+			d2:       ampl[2],
+			d3:       ampl[3],
+			waveform: waveform,
 		}
 	}
 	return false

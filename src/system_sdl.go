@@ -402,6 +402,10 @@ func (w *Window) UpdateDebugFPS() {
 }
 
 func (w *Window) pollEvents() {
+	if sys.keyInput != KeyUnknown && !sys.keyState[sys.keyInput] && sys.keyInputFrame != sys.frameCounter {
+		sys.keyInput = KeyUnknown
+		sys.keyString = ""
+	}
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t := event.(type) {
 		case sdl.CommonEvent:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -46,7 +48,7 @@ const (
 	LP_GuestReadySent
 )
 
-type NetState int
+type NetState = int32
 
 const (
 	NS_Stop NetState = iota
@@ -124,47 +126,37 @@ func readReplayInput(r io.Reader, ibit *InputBits, axes *[6]int8) error {
 // Net input ring buffer
 // -----------------------------------------------------------------------------
 
-// NetBuffer holds the inputs that are sent between players
+// A frame is ready after inpT advances. Its slot is free once curT passes it.
 type NetBuffer struct {
 	buf              [NETBUF_NUM_FRAMES]InputBits
 	axisBuf          [NETBUF_NUM_FRAMES][6]int8
-	curT, inpT, senT int32
+	curT, inpT, senT atomic.Int32
 	InputReader      *InputReader
 }
 
-func NewNetBuffer() NetBuffer {
-	return NetBuffer{
-		InputReader: NewInputReader(),
-	}
-}
-
 func (nb *NetBuffer) reset(time int32) {
-	nb.curT, nb.inpT, nb.senT = time, time, time
+	nb.curT.Store(time)
+	nb.inpT.Store(time)
+	nb.senT.Store(time)
 	nb.InputReader.Reset()
 }
 
 // Convert local player's key inputs into input bits for sending
 func (nb *NetBuffer) writeNetBuffer(in int) {
-	if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
-		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)].KeysToBits(nb.InputReader.LocalInput(in))
-		nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = nb.InputReader.LocalAnalogInput(in)
-		nb.inpT++
+	if t := nb.inpT.Load(); t-nb.curT.Load() < NETBUF_NUM_FRAMES {
+		slot := t & (NETBUF_NUM_FRAMES - 1)
+		nb.buf[slot].KeysToBits(nb.InputReader.LocalInput(in))
+		nb.axisBuf[slot] = nb.InputReader.LocalAnalogInput(in)
+		nb.inpT.Store(t + 1)
 	}
 }
 
-// Read input bits from the net buffer
-func (nb *NetBuffer) readNetBuffer() [14]bool {
-	if nb.curT < nb.inpT {
-		return nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)].BitsToKeys()
+func (nb *NetBuffer) readNetBuffer() (InputBits, [6]int8) {
+	if t := nb.curT.Load(); t < nb.inpT.Load() {
+		slot := t & (NETBUF_NUM_FRAMES - 1)
+		return nb.buf[slot], nb.axisBuf[slot]
 	}
-	return [14]bool{}
-}
-
-func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
-	if nb.curT < nb.inpT {
-		return nb.axisBuf[nb.curT&(NETBUF_NUM_FRAMES-1)]
-	}
-	return [6]int8{}
+	return 0, [6]int8{}
 }
 
 // -----------------------------------------------------------------------------
@@ -176,7 +168,7 @@ type NetConnection struct {
 	ln                 *net.TCPListener
 	conn               *net.TCPConn
 	pendingConn        chan *net.TCPConn
-	st                 NetState
+	st                 atomic.Int32
 	sendEnd            chan bool
 	recvEnd            chan bool
 	buf                [MaxSimul * 2]NetBuffer // We skip attached characters here because they never have human inputs
@@ -200,7 +192,6 @@ type NetConnection struct {
 
 func NewNetConnection() *NetConnection {
 	nc := &NetConnection{
-		st:          NS_Stop,
 		pendingConn: make(chan *net.TCPConn),
 		sendEnd:     make(chan bool, 1),
 		recvEnd:     make(chan bool, 1),
@@ -210,7 +201,7 @@ func NewNetConnection() *NetConnection {
 	nc.recvEnd <- true
 
 	for i := range nc.buf {
-		nc.buf[i] = NewNetBuffer()
+		nc.buf[i].InputReader = NewInputReader()
 	}
 
 	return nc
@@ -241,9 +232,7 @@ func (nc *NetConnection) Close() {
 		}
 	})
 	// Ensure send/recv goroutines can exit even if they have nothing to write.
-	if nc.st == NS_Playing {
-		nc.st = NS_End
-	}
+	nc.st.CompareAndSwap(NS_Playing, NS_End)
 	if nc.ln != nil {
 		nc.ln.Close()
 		nc.ln = nil
@@ -261,22 +250,31 @@ func (nc *NetConnection) Close() {
 		close(nc.recvEnd)
 		nc.recvEnd = nil
 	}
-	if nc.recording != nil {
-		nc.recording.Close()
-		nc.recording = nil
-		nc.headerWritten = false
-	}
+	nc.stopRecording()
 	nc.conn = nil
 	nc.uiInputDebounced = false
 	nc.rollbackLocalPort = 0
 	nc.rollbackRemotePort = 0
 }
 
-func (nc *NetConnection) end() {
-	if nc.st != NS_Error {
-		nc.st = NS_End
+func (nc *NetConnection) stopRecording() {
+	if nc.recording == nil {
+		return
 	}
+	if rs := sys.rollback.session; rs != nil && rs.recording == nc.recording {
+		rs.SaveReplay()
+		rs.recording = nil
+	}
+	nc.recording.Close()
+	nc.recording = nil
+	nc.headerWritten = false
+}
+
+func (nc *NetConnection) end() {
 	nc.Close()
+	if nc.st.Load() != NS_Error {
+		nc.st.Store(NS_End)
+	}
 }
 
 // Abort the whole session so Lua can display the warning without another TCP sync.
@@ -311,14 +309,13 @@ func (nc *NetConnection) Stop() (err error) {
 			return err
 		}
 		defer conn.SetDeadline(time.Time{})
-		if nc.st != NS_End && nc.st != NS_Error {
-			nc.st = NS_Stop
-		}
+		nc.st.CompareAndSwap(NS_Playing, NS_Stop)
+		nc.st.CompareAndSwap(NS_Stopped, NS_Stop)
 		<-nc.sendEnd
 		nc.sendEnd <- true
 		<-nc.recvEnd
 		nc.recvEnd <- true
-		if nc.st == NS_Error {
+		if nc.st.Load() == NS_Error {
 			return Error("Netplay input synchronization failed or timed out")
 		}
 	}
@@ -469,22 +466,6 @@ func (nc *NetConnection) IsConnected() bool {
 }
 
 // Wire primitives
-func (nc *NetConnection) readI8() (int8, error) {
-	b := [1]byte{}
-	if _, err := io.ReadFull(nc.conn, b[:]); err != nil {
-		return 0, err
-	}
-	return int8(b[0]), nil
-}
-
-func (nc *NetConnection) writeI8(i8 int8) error {
-	b := [...]byte{byte(i8)}
-	if _, err := nc.conn.Write(b[:]); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (nc *NetConnection) writeU8(u8 byte) error {
 	_, err := nc.conn.Write([]byte{u8})
 	return err
@@ -560,23 +541,35 @@ func (nc *NetConnection) readJSON(v interface{}) error {
 }
 
 // Gameplay-facing netplay API
+func netInputChannel(player, channels int) int {
+	if player >= 0 && player < len(sys.inputRemap) {
+		if channel := sys.inputRemap[player]; channel >= 0 && channel < channels {
+			return channel
+		}
+	}
+	return -1
+}
+
 func (nc *NetConnection) readNetInput(i int) [14]bool {
-	if i >= 0 && i < len(nc.buf) {
-		return nc.buf[sys.inputRemap[i]].readNetBuffer()
+	if channel := netInputChannel(i, len(nc.buf)); channel >= 0 {
+		buttons, _ := nc.buf[channel].readNetBuffer()
+		return buttons.BitsToKeys()
 	}
 	return [14]bool{}
 }
 
 func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(nc.buf) {
-		return nc.buf[sys.inputRemap[i]].readNetBufferAnalog()
+	if channel := netInputChannel(i, len(nc.buf)); channel >= 0 {
+		_, axes := nc.buf[channel].readNetBuffer()
+		return axes
 	}
 	return [6]int8{}
 }
 
 func (nc *NetConnection) AnyButton() bool {
-	for _, nb := range nc.buf {
-		if nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)]&IB_anybutton != 0 {
+	for i := range nc.buf {
+		buttons, _ := nc.buf[i].readNetBuffer()
+		if buttons&IB_anybutton != 0 {
 			return true
 		}
 	}
@@ -595,7 +588,7 @@ func (nc *NetConnection) Synchronize() (err error) {
 			nc.fail(err)
 		}
 	}()
-	if !nc.IsConnected() || nc.st == NS_Error {
+	if !nc.IsConnected() || nc.st.Load() == NS_Error {
 		return Error("Cannot connect to the other player")
 	}
 	// Reset any pending loading rendezvous so it can't interfere with gameplay sync.
@@ -677,7 +670,7 @@ func (nc *NetConnection) Synchronize() (err error) {
 	// Reset local and remote input buffers for the current time
 	nc.buf[nc.locIn].reset(nc.time)
 	nc.buf[nc.remIn].reset(nc.time)
-	nc.st = NS_Playing
+	nc.st.Store(NS_Playing)
 
 	// Start sending inputs to remote peer in a goroutine
 	sendBuf := &nc.buf[nc.locIn]
@@ -687,29 +680,20 @@ func (nc *NetConnection) Synchronize() (err error) {
 		defer func() {
 			nc.sendEnd <- true
 		}()
-		for nc.st == NS_Playing {
-			// Check if there are unsent frames
-			if nb.senT < nb.inpT {
-				// Write digital inputs
-				if err := nc.writeI16(int16(nb.buf[nb.senT&(NETBUF_NUM_FRAMES-1)])); err != nil {
-					nc.st = NS_Error
+		for nc.st.Load() == NS_Playing {
+			if t := nb.senT.Load(); t < nb.inpT.Load() {
+				slot := t & (NETBUF_NUM_FRAMES - 1)
+				if err := writeReplayInput(nc.conn, nb.buf[slot], nb.axisBuf[slot]); err != nil {
+					nc.st.Store(NS_Error)
 					return
-				} else {
-					// Write analog inputs
-					for j := 0; j < len(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)]); j++ {
-						if err := nc.writeI8(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)][j]); err != nil {
-							nc.st = NS_Error
-							return
-						}
-					}
 				}
-				nb.senT++
+				nb.senT.Store(t + 1)
 			}
 			time.Sleep(time.Millisecond)
 		}
 		// Write termination signal to indicate no more input frames
 		if err := nc.writeI16(-1); err != nil {
-			nc.st = NS_Error
+			nc.st.Store(NS_Error)
 		}
 	})
 
@@ -721,33 +705,29 @@ func (nc *NetConnection) Synchronize() (err error) {
 		defer func() {
 			nc.recvEnd <- true
 		}()
-		for nc.st == NS_Playing {
-			// Check if there is space in the input buffer
-			if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
-				if tmp, err := nc.readI16(); err != nil {
-					nc.st = NS_Error
+		for nc.st.Load() == NS_Playing {
+			if t := nb.inpT.Load(); t-nb.curT.Load() < NETBUF_NUM_FRAMES {
+				buttons, err := nc.readI16()
+				if err != nil {
+					nc.st.Store(NS_Error)
 					return
-				} else {
-					// Read digital inputs
-					nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = InputBits(tmp)
-					if tmp < 0 {
-						// If remote sent termination signal
-						nc.st = NS_Stopped
-						return
-					} else {
-						// Read analog inputs
-						for j := 0; j < len(nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)]); j++ {
-							if tmp2, err := nc.readI8(); err != nil {
-								nc.st = NS_Error
-								return
-							} else {
-								nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)][j] = tmp2
-							}
-						}
-						nb.inpT++
-						nb.senT = nb.inpT
-					}
 				}
+				if buttons < 0 {
+					nc.st.CompareAndSwap(NS_Playing, NS_Stopped)
+					return
+				}
+				var axes [6]byte
+				if _, err := io.ReadFull(nc.conn, axes[:]); err != nil {
+					nc.st.Store(NS_Error)
+					return
+				}
+				slot := t & (NETBUF_NUM_FRAMES - 1)
+				nb.buf[slot] = InputBits(buttons)
+				for i, value := range axes {
+					nb.axisBuf[slot][i] = int8(value)
+				}
+				nb.inpT.Store(t + 1)
+				nb.senT.Store(t + 1)
 			}
 			time.Sleep(time.Millisecond)
 		}
@@ -755,14 +735,13 @@ func (nc *NetConnection) Synchronize() (err error) {
 		// Consume complete frames. Analog bytes may also contain 0xffff;
 		// only a digital-input word can be the termination marker.
 		if err := nc.drainInputs(); err != nil {
-			nc.st = NS_Error
+			nc.st.Store(NS_Error)
 		}
 	})
 
-	// Update delay-netplay state after sync. Skip rollback-entry samples;
-	// replay frames are appended later from the authoritative GGPO timeline.
-	nc.update(sys.rollback.session == nil)
-	if nc.st == NS_Error {
+	// Record the first menu frame. GGPO supplies the first frame inside a rollback match.
+	nc.update(!sys.gameRunning || sys.rollback.session == nil)
+	if nc.st.Load() == NS_Error {
 		return Error("Netplay input synchronization failed or timed out")
 	}
 	// update pumps window events and can cancel/close TCP while waiting for input.
@@ -837,7 +816,7 @@ func (nc *NetConnection) LoadingReady() (ready bool, err error) {
 	if sys.esc || sys.gameEnd {
 		return false, nil
 	}
-	if nc == nil || !nc.IsConnected() || nc.st == NS_Error {
+	if nc == nil || !nc.IsConnected() || nc.st.Load() == NS_Error {
 		return false, Error("Cannot connect to the other player")
 	}
 	if nc.loadingStarted.IsZero() {
@@ -937,12 +916,12 @@ func (nc *NetConnection) Update() bool {
 // Advance delay-netplay by one frame. Skip recording the final sync frame before rollback,
 // since it belongs to neither the pre-match replay nor the rollback match replay.
 func (nc *NetConnection) update(recordReplay bool) bool {
-	if nc.st != NS_Stopped {
+	if nc.st.Load() != NS_Stopped {
 		nc.stoppedStarted = time.Time{}
 	}
 
 	if !sys.gameEnd {
-		switch nc.st {
+		switch nc.st.Load() {
 		case NS_Stopped:
 			if nc.stoppedStarted.IsZero() {
 				nc.stoppedStarted = time.Now()
@@ -956,10 +935,10 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 			waitStarted := time.Now()
 			for {
 				// Determine the earliest frame that has been processed by both local and remote buffers
-				foo := Min(nc.buf[nc.locIn].senT, nc.buf[nc.remIn].senT)
+				foo := Min(nc.buf[nc.locIn].senT.Load(), nc.buf[nc.remIn].senT.Load())
 
 				// Calculate network delay difference between local and remote input buffers
-				tmp := nc.buf[nc.remIn].inpT + nc.delay>>3 - nc.buf[nc.locIn].inpT
+				tmp := nc.buf[nc.remIn].inpT.Load() + nc.delay>>3 - nc.buf[nc.locIn].inpT.Load()
 
 				// Adjust local buffer to synchronize with remote
 				if tmp >= 0 {
@@ -975,7 +954,7 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 
 				// Break loop if we have reached the frame that both buffers have sent
 				if nc.time >= foo {
-					if sys.esc || !sys.await(sys.gameRenderSpeed()) || nc.st != NS_Playing {
+					if sys.esc || !sys.await(sys.gameRenderSpeed()) || nc.st.Load() != NS_Playing {
 						break
 					}
 					// TCP can remain established while packets stop arriving.
@@ -987,16 +966,16 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 				}
 
 				// Update current frame time for local and remote buffers
-				nc.buf[nc.locIn].curT = nc.time
-				nc.buf[nc.remIn].curT = nc.time
+				nc.buf[nc.locIn].curT.Store(nc.time)
+				nc.buf[nc.remIn].curT.Store(nc.time)
 
 				// Write inputs to replay file
-				if recordReplay && nc.recording != nil {
+				if recordReplay && nc.headerWritten && nc.recording != nil {
 					for i := range nc.buf {
-						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
-						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx], nc.buf[i].axisBuf[ringIdx]); err != nil {
+						buttons, axes := nc.buf[i].readNetBuffer()
+						if err := writeReplayInput(nc.recording, buttons, axes); err != nil {
 							log.Printf("Error while writing replay input for controller %d: %v", i, err)
-							nc.recording = nil
+							nc.stopRecording()
 							break
 						}
 					}
@@ -1147,20 +1126,15 @@ func (rf *ReplayFile) Close() {
 
 // Read input buttons from replay input
 func (rf *ReplayFile) readReplayInput(i int) [14]bool {
-	if i >= 0 && i < len(rf.ibit) {
-		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
+	if channel := netInputChannel(i, len(rf.ibit)); channel >= 0 {
+		return rf.ibit[channel].BitsToKeys()
 	}
 	return [14]bool{}
 }
 
 func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(rf.ibit) {
-		remap := sys.inputRemap[i] // we'll be using this a lot
-
-		// New replay file, read in the axes too
-		if remap >= 0 && remap < len(rf.iaxes) {
-			return rf.iaxes[remap]
-		}
+	if channel := netInputChannel(i, len(rf.iaxes)); channel >= 0 {
+		return rf.iaxes[channel]
 	}
 	return [6]int8{}
 }
@@ -1179,19 +1153,26 @@ func seekReplaySyncMarker(f *os.File) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	data, err := io.ReadAll(io.LimitReader(f, replaySyncSearchLimit))
-	if err != nil {
-		_, _ = f.Seek(start, io.SeekStart)
-		return 0, err
+	r := bufio.NewReader(io.LimitReader(f, replaySyncSearchLimit))
+	var skipped int64
+	for {
+		data, err := r.Peek(r.Size())
+		if i := bytes.Index(data, []byte(replaySyncMagic)); i >= 0 {
+			skipped += int64(i)
+			_, err = f.Seek(start+skipped+int64(len(replaySyncMagic)), io.SeekStart)
+			return skipped, err
+		}
+		if err != nil {
+			_, _ = f.Seek(start, io.SeekStart)
+			if err == io.EOF {
+				return 0, fmt.Errorf("replay sync marker not found from offset %d", start)
+			}
+			return 0, err
+		}
+		// Keep enough bytes to find a marker split across two reads.
+		n, _ := r.Discard(len(data) - len(replaySyncMagic) + 1)
+		skipped += int64(n)
 	}
-	idx := bytes.Index(data, []byte(replaySyncMagic))
-	if idx < 0 {
-		_, _ = f.Seek(start, io.SeekStart)
-		return 0, fmt.Errorf("replay sync marker not found from offset %d", start)
-	}
-	skipped := int64(idx)
-	_, err = f.Seek(start+skipped+int64(len(replaySyncMagic)), io.SeekStart)
-	return skipped, err
 }
 
 func (rf *ReplayFile) readReplaySync() (seed, pmTime int32, err error) {
@@ -1275,6 +1256,8 @@ func (rf *ReplayFile) Update() bool {
 					} else {
 						log.Printf("Error while reading replay input for controller %d: %v", i, err)
 					}
+					rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
+					rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 					sys.esc = true
 					break
 				}
