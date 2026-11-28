@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -261,15 +262,24 @@ func (nc *NetConnection) Close() {
 		close(nc.recvEnd)
 		nc.recvEnd = nil
 	}
-	if nc.recording != nil {
-		nc.recording.Close()
-		nc.recording = nil
-		nc.headerWritten = false
-	}
+	nc.stopRecording()
 	nc.conn = nil
 	nc.uiInputDebounced = false
 	nc.rollbackLocalPort = 0
 	nc.rollbackRemotePort = 0
+}
+
+func (nc *NetConnection) stopRecording() {
+	if nc.recording == nil {
+		return
+	}
+	if rs := sys.rollback.session; rs != nil && rs.recording == nc.recording {
+		rs.SaveReplay()
+		rs.recording = nil
+	}
+	nc.recording.Close()
+	nc.recording = nil
+	nc.headerWritten = false
 }
 
 func (nc *NetConnection) end() {
@@ -991,12 +1001,12 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 				nc.buf[nc.remIn].curT = nc.time
 
 				// Write inputs to replay file
-				if recordReplay && nc.recording != nil {
+				if recordReplay && nc.headerWritten && nc.recording != nil {
 					for i := range nc.buf {
 						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
 						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx], nc.buf[i].axisBuf[ringIdx]); err != nil {
 							log.Printf("Error while writing replay input for controller %d: %v", i, err)
-							nc.recording = nil
+							nc.stopRecording()
 							break
 						}
 					}
@@ -1179,19 +1189,26 @@ func seekReplaySyncMarker(f *os.File) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	data, err := io.ReadAll(io.LimitReader(f, replaySyncSearchLimit))
-	if err != nil {
-		_, _ = f.Seek(start, io.SeekStart)
-		return 0, err
+	r := bufio.NewReader(io.LimitReader(f, replaySyncSearchLimit))
+	var skipped int64
+	for {
+		data, err := r.Peek(r.Size())
+		if i := bytes.Index(data, []byte(replaySyncMagic)); i >= 0 {
+			skipped += int64(i)
+			_, err = f.Seek(start+skipped+int64(len(replaySyncMagic)), io.SeekStart)
+			return skipped, err
+		}
+		if err != nil {
+			_, _ = f.Seek(start, io.SeekStart)
+			if err == io.EOF {
+				return 0, fmt.Errorf("replay sync marker not found from offset %d", start)
+			}
+			return 0, err
+		}
+		// Keep enough bytes to find a marker split across two reads.
+		n, _ := r.Discard(len(data) - len(replaySyncMagic) + 1)
+		skipped += int64(n)
 	}
-	idx := bytes.Index(data, []byte(replaySyncMagic))
-	if idx < 0 {
-		_, _ = f.Seek(start, io.SeekStart)
-		return 0, fmt.Errorf("replay sync marker not found from offset %d", start)
-	}
-	skipped := int64(idx)
-	_, err = f.Seek(start+skipped+int64(len(replaySyncMagic)), io.SeekStart)
-	return skipped, err
 }
 
 func (rf *ReplayFile) readReplaySync() (seed, pmTime int32, err error) {
@@ -1275,6 +1292,8 @@ func (rf *ReplayFile) Update() bool {
 					} else {
 						log.Printf("Error while reading replay input for controller %d: %v", i, err)
 					}
+					rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
+					rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 					sys.esc = true
 					break
 				}

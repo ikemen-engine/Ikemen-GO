@@ -1719,6 +1719,14 @@ func (s *System) uiEnsureCommandLists(total int) error {
 	return nil
 }
 
+// Lua menus keep the connection in System. Rollback moves it during a match.
+func (s *System) inputConnection() *NetConnection {
+	if s.netConnection != nil {
+		return s.netConnection
+	}
+	return s.rollback.netConnection
+}
+
 func (s *System) netplay() bool {
 	return s.rollback.session != nil || s.netConnection != nil || s.replayFile != nil
 }

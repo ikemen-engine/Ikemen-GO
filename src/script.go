@@ -5964,28 +5964,24 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "replayRecord", func(*lua.LState) int {
-		/*Start recording rollback/netplay input to a file.
+		/*Start recording rollback/netplay input at the next synchronization.
 		@function replayRecord
 		@tparam string path Output file path.*/
-		if sys.netConnection != nil {
-			sys.netConnection.recording = createReplayFile(strArg(l, 1))
-			sys.netConnection.headerWritten = false
+		nc := sys.inputConnection()
+		if nc != nil {
+			if f := createReplayFile(strArg(l, 1)); f != nil {
+				nc.stopRecording()
+				nc.recording = f
+			}
 		}
 		return 0
 	})
 	luaRegister(l, "replayStop", func(*lua.LState) int {
 		/*Stop input replay recording.
 		@function replayStop*/
-		if sys.cfg.Netplay.RollbackNetcode {
-			if sys.rollback.session != nil && sys.rollback.session.recording != nil {
-				sys.rollback.session.recording.Close()
-				sys.rollback.session.recording = nil
-			}
-		}
-		if sys.netConnection != nil && sys.netConnection.recording != nil {
-			sys.netConnection.recording.Close()
-			sys.netConnection.recording = nil
-			sys.netConnection.headerWritten = false
+		nc := sys.inputConnection()
+		if nc != nil {
+			nc.stopRecording()
 		}
 		return 0
 	})
