@@ -600,7 +600,7 @@ func (r *Renderer_GL33) InitModelShader() error {
 
 	r.modelShader.RegisterAttributes("inVertexId", "position", "uv", "normalIn", "tangentIn", "vertColor", "joints_0", "joints_1", "weights_0", "weights_1", "outlineAttributeIn")
 
-	r.modelShader.RegisterUniforms("model", "view", "projection", "normalMatrix", "unlit", "baseColorFactor", "add", "mult", "useTexture", "useNormalMap", "useMetallicRoughnessMap", "useEmissionMap", "neg", "gray", "hue",
+	r.modelShader.RegisterUniforms("model", "view", "projection", "normalMatrix", "unlit", "baseColorFactor", "add", "mult", "useTexture", "useNormalMap", "useMetallicRoughnessMap", "useEmissionMap", "neg", "gray", "hue", "scroll",
 		"enableAlpha", "alphaThreshold", "numJoints", "morphTargetWeight", "morphTargetOffset", "morphTargetTextureDimension", "numTargets", "numVertices",
 		"metallicRoughness", "ambientOcclusionStrength", "emission", "environmentIntensity", "mipCount", "meshOutline",
 		"cameraPosition", "environmentRotation", "texTransform", "normalMapTransform", "metallicRoughnessMapTransform", "ambientOcclusionMapTransform", "emissionMapTransform",
@@ -726,7 +726,7 @@ func (r *Renderer_GL33) Init() {
 	r.spriteShader, _ = r.newShaderProgram(vertShader, fragShader, "", "Main Shader", true)
 	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
-		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue", "supersample",
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue", "scroll", "supersample",
 		"spriteUV", "palUV", "quad", "useQuad")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
@@ -2462,7 +2462,7 @@ func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []b
 
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
-		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue", "supersample",
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue", "scroll", "supersample",
 		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")

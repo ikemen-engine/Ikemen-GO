@@ -1411,15 +1411,25 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		savedIn := *in
 		defer func() { *in = savedIn }()
 		tok := c.tokenizer(in)
-		// Mugen accepts "! =" as "=" in the special comparison triggers and the attr/hitflag comparisons
-		// We do the same in CNS mode, but log the error
-		if tok == "!" && !c.zssMode && sys.ignoreMostErrors {
+		if tok == "=" || tok == "!=" {
+			return true
+		}
+		// ZSS rejects any incorrect token
+		if c.zssMode || !sys.ignoreMostErrors {
+			return false
+		}
+		// CNS tolerates them but prints a warning
+		// Because Mugen ignores junk before the '=' in these triggers, e.g. "! =" or "p2statetype ?= A"
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/4206
+		ignored := tok
+		for c.isOperator(tok) == 0 {
 			tok = c.tokenizer(in)
 			if tok == "=" || tok == "!=" {
-				sys.appendToConsole(c.charWarn() + "Ignored '!' before '" + tok + "'")
+				sys.appendToConsole(c.charWarn() + "Ignored '" + ignored + "' before '" + tok + "'")
+				return true
 			}
 		}
-		return tok == "=" || tok == "!="
+		return false
 	}
 
 	// For moveType, stateType and such triggers
@@ -3357,6 +3367,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex2_palfxvar_color)
 		case "hue":
 			out.append(OC_ex2_palfxvar_hue)
+		case "scroll":
+			out.append(OC_ex2_palfxvar_scroll)
 		case "invertall":
 			out.append(OC_ex2_palfxvar_invertall)
 		case "invertblend":
@@ -3379,6 +3391,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex2_palfxvar_bg_color)
 		case "bg.hue":
 			out.append(OC_ex2_palfxvar_bg_hue)
+		case "bg.scroll":
+			out.append(OC_ex2_palfxvar_bg_scroll)
 		case "bg.invertall":
 			out.append(OC_ex2_palfxvar_bg_invertall)
 		case "all.time":
@@ -3399,6 +3413,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex2_palfxvar_all_color)
 		case "all.hue":
 			out.append(OC_ex2_palfxvar_all_hue)
+		case "all.scroll":
+			out.append(OC_ex2_palfxvar_all_scroll)
 		case "all.invertall":
 			out.append(OC_ex2_palfxvar_all_invertall)
 		case "all.invertblend":
@@ -6639,95 +6655,61 @@ func (c *CharCompiler) paramValueLoose(is IniSection, sc *StateControllerBase,
 
 func (c *CharCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
-		if len(data) == 0 {
-			return Error(paramName + " not specified")
-		}
-		var ra Reaction
-		dataLower := strings.ToLower(data)
-		//if sys.cgi[c.playerNo].ikemenver[0] == 0 && sys.cgi[c.playerNo].ikemenver[1] == 0 {
+		conv := animTypeValue
+		// Bare words in CNS only require the first letter, like in Mugen
 		if !c.zssMode {
-			// CNS: first letter is enough
-			switch dataLower[0] {
-			case 'l':
-				ra = RA_Light
-			case 'm':
-				ra = RA_Medium
-			case 'h':
-				ra = RA_Hard
-			case 'b':
-				ra = RA_Back
-			case 'u':
-				ra = RA_Up
-			case 'd':
-				ra = RA_Diagup
-			default:
-				return Error("Invalid " + paramName + ": " + data)
-			}
-		} else {
-			// ZSS: require full word
-			switch dataLower {
-			case "light":
-				ra = RA_Light
-			case "medium":
-				ra = RA_Medium
-			case "hard":
-				ra = RA_Hard
-			case "heavy":
-				ra = RA_Hard
-			case "back":
-				ra = RA_Back
-			case "up":
-				ra = RA_Up
-			case "diagup":
-				ra = RA_Diagup
-			default:
-				return Error("Invalid " + paramName + ": " + data)
+			conv = func(s string) (int32, bool) {
+				if s = strings.TrimSpace(s); s == "" {
+					return 0, false
+				}
+				switch strings.ToLower(s)[0] {
+				case 'l':
+					return int32(RA_Light), true
+				case 'm':
+					return int32(RA_Medium), true
+				case 'h':
+					return int32(RA_Hard), true
+				case 'b':
+					return int32(RA_Back), true
+				case 'u':
+					return int32(RA_Up), true
+				case 'd':
+					return int32(RA_Diagup), true
+				}
+				return 0, false
 			}
 		}
-		sc.add(id, sc.iToExp(int32(ra)))
-		return nil
+		// Any bare word is the legacy syntax
+		return c.parseTypeExpression(sc, id, data, paramName,
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", conv)
 	})
 }
 
 func (c *CharCompiler) paramHittype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
-		if len(data) == 0 {
-			return Error(paramName + " not specified")
-		}
-		var ht HitType
-		dataLower := strings.ToLower(data)
-		//if sys.cgi[c.playerNo].ikemenver[0] == 0 && sys.cgi[c.playerNo].ikemenver[1] == 0 {
+		conv := hitTypeValue
+		// Bare words in CNS only require the first letter, like in Mugen
 		if !c.zssMode {
-			// CNS: first letter is enough
-			switch dataLower[0] {
-			case 'h':
-				ht = HT_High
-			case 'l':
-				ht = HT_Low
-			case 't':
-				ht = HT_Trip
-			case 'n':
-				ht = HT_None
-			default:
-				return Error("Invalid " + paramName + ": " + data)
-			}
-		} else {
-			// ZSS: require full word
-			switch dataLower {
-			case "high":
-				ht = HT_High
-			case "low":
-				ht = HT_Low
-			case "trip":
-				ht = HT_Trip
-			case "none":
-				ht = HT_None
-			default:
-				return Error("Invalid " + paramName + ": " + data)
+			conv = func(s string) (int32, bool) {
+				if s = strings.TrimSpace(s); s == "" {
+					return 0, false
+				}
+				switch strings.ToLower(s)[0] {
+				case 'h':
+					return int32(HT_High), true
+				case 'l':
+					return int32(HT_Low), true
+				case 't':
+					return int32(HT_Trip), true
+				case 'n':
+					return int32(HT_None), true
+				}
+				return 0, false
 			}
 		}
-		sc.add(id, sc.iToExp(int32(ht)))
-		return nil
+		// Any bare word is the legacy syntax
+		return c.parseTypeExpression(sc, id, data, paramName,
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", conv)
 	})
 }
 

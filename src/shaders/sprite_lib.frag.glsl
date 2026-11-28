@@ -13,7 +13,7 @@
 		vec4 tint;
 		vec3 add;
 		vec3 mult;
-		float alpha, gray, hue;
+		float alpha, gray, hue, scroll;
 		int mask;
 		bool isFlat, isRgba, isTrapez, neg;
 		float iTime;
@@ -50,7 +50,7 @@
 	uniform vec4 x1x2x4x3;
 	uniform vec4 tint;
 	uniform vec3 add, mult;
-	uniform float alpha, gray, hue;
+	uniform float alpha, gray, hue, scroll;
 	uniform int mask;
 	uniform bool isFlat, isRgba, isTrapez, neg;
 	uniform vec4 spriteUV;
@@ -82,10 +82,14 @@ vec3 ikemenHsvToRgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+// Rotates hue around the gray axis with Rodrigues' rotation formula, then restores luma so brightness stays about the same
 vec3 ikemenHueShift(vec3 color, float dhue) {
-	vec3 colorhsv = ikemenRgbToHsv(color);
-	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
-	return ikemenHsvToRgb(colorhsv);
+	float angle = dhue * 6.28318531;
+	float cs = cos(angle);
+	vec3 k = vec3(0.57735); // Unit gray axis
+	vec3 c = color * cs + cross(k, color) * sin(angle) + k * dot(k, color) * (1.0 - cs);
+	// Rotating around gray keeps only the RGB average, so add back the lost luma
+	return clamp(c + dot(color - c, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
 }
 
 // Sprite-local coordinate, 0-1 across the sprite even when it's packed in an atlas
@@ -125,7 +129,7 @@ vec4 ikemenSampleRgba(vec2 atlasUV) {
 // The engine's sprite color at a sprite-local coordinate
 vec4 ikemenSpriteColor(vec2 uv) {
 	vec4 c;
-	vec3 neg_base = vec3(1.0);
+	vec3 alphaScale = vec3(1.0);
 	vec3 final_add = add;
 	vec4 final_mul = vec4(mult, alpha);
 
@@ -134,7 +138,7 @@ vec4 ikemenSpriteColor(vec2 uv) {
 		c = tint; 
 
 		// Treat flat colors like RGBA for math consistency
-		neg_base *= c.a;
+		alphaScale *= c.a;
 		final_add *= c.a;
 		final_mul.rgb *= alpha;
 	} else {
@@ -159,7 +163,7 @@ vec4 ikemenSpriteColor(vec2 uv) {
 		// Select with or without palette
 		if (isRgba) {
 			if (mask == -1) c.a = 1.0;
-			neg_base *= c.a;
+			alphaScale *= c.a;
 			final_add *= c.a;
 			final_mul.rgb *= alpha;
 		} else {
@@ -171,15 +175,25 @@ vec4 ikemenSpriteColor(vec2 uv) {
 
 	// Apply PalFX
 	// Hue
-	if (hue != 0.0) {
-		c.rgb = ikemenHueShift(c.rgb, hue);
+	// Premultiplied colors are scaled by alpha, so the shift works on the straight color
+	if (hue != 0.0 && alphaScale.x > 0.0) {
+		c.rgb = ikemenHueShift(c.rgb / alphaScale.x, hue) * alphaScale.x;
 	}
 	// Invertall
 	if (neg) {
-		c.rgb = neg_base - c.rgb;
+		c.rgb = alphaScale - c.rgb;
 	}
 	// Color
 	c.rgb = mix(vec3((c.r + c.g + c.b) / 3.0), c.rgb, 1.0 - gray);
+	// Scroll: shifts brightness and wraps from bright back to dark, like cycling a gradient palette
+	// Premultiplied colors are scaled by alpha, so the shift works on the straight color
+	if (scroll != 0.0 && alphaScale.x > 0.0) {
+		vec3 s = c.rgb / alphaScale.x;
+		float l = (max(max(s.r, s.g), s.b) + min(min(s.r, s.g), s.b)) * 0.5;
+		float n = fract(l + scroll);
+		// Keep saturation by scaling the color difference to the room left at the new lightness
+		c.rgb = (n + (s - l) * min(n, 1.0 - n) / max(min(l, 1.0 - l), 1e-5)) * alphaScale.x;
+	}
 	// Add
 	c.rgb += final_add;
 	// Mul

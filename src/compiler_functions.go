@@ -135,6 +135,7 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 			assertSpecial_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		// "enabled: 0" reads like "disabled" but "enable: 0" would read like "do not enable"
 		if err := c.paramValue(is, sc, "enabled",
 			assertSpecial_enabled, VT_Bool, 1, false); err != nil {
 			return err
@@ -1142,6 +1143,10 @@ func (c *CharCompiler) explodInterpolate(is IniSection,
 		explod_interpolation_pfx_hue, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.scroll",
+		explod_interpolation_pfx_scroll, VT_Float, 1, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1466,6 +1471,10 @@ func (c *CharCompiler) palFXSub(is IniSection,
 		palFX_hue, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"scroll",
+		palFX_scroll, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, prefix+"add", false, func(data string) error {
 		bes, err := c.exprs(data, VT_Int, 3)
 		if err != nil {
@@ -1544,6 +1553,22 @@ func (c *CharCompiler) palFXSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.stateParam(is, prefix+"sinscroll", false, func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 2 {
+			return Error(prefix + "sinscroll - not enough arguments")
+		}
+		sc.add(palFX_sinscroll, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.paramWaveform(is, sc, prefix+"waveform", palFX_waveform); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, prefix+"invertall",
 		palFX_invertall, VT_Bool, 1, false); err != nil {
 		return err
@@ -1553,6 +1578,34 @@ func (c *CharCompiler) palFXSub(is IniSection,
 		return err
 	}
 	return nil
+}
+
+// Parses a PalFX waveform. Like ForceFeedback, it takes a bare keyword or a string expression
+func (c *CharCompiler) paramWaveform(is IniSection, sc *StateControllerBase, name string, id byte) error {
+	return c.stateParam(is, name, false, func(data string) error {
+		data = strings.TrimSpace(data)
+		if len(data) == 0 {
+			return Error(name + " not specified")
+		}
+		if _, ok := palFXWaveform(data); ok {
+			sc.add(id, c.stringToExp(strings.ToLower(data)))
+			return nil
+		}
+		bes, err := c.exprs(data, VT_String, 1)
+		if err != nil {
+			return err
+		}
+		// Constant strings can be validated now. Dynamic ones are checked at runtime
+		if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+			i := 1
+			s := sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+			if _, ok := palFXWaveform(s); !ok {
+				return Error("Invalid waveform: " + s)
+			}
+		}
+		sc.add(id, bes)
+		return nil
+	})
 }
 
 func (c *CharCompiler) palFX(is IniSection, sc *StateControllerBase) (StateController, error) {
@@ -1621,6 +1674,10 @@ func (c *CharCompiler) afterImageSub(is IniSection, sc *StateControllerBase, pre
 	}
 	if err := c.paramValue(is, sc, prefix+"palhue",
 		afterImage_palhue, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palscroll",
+		afterImage_palscroll, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
@@ -4520,6 +4577,10 @@ func (c *CharCompiler) assertInput(is IniSection, sc *StateControllerBase) (Stat
 			assertInput_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "enabled",
+			assertInput_enabled, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		foo := func(data string) error {
 			switch data {
 			case "U":
@@ -5322,6 +5383,10 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 			modifyBGCtrl_sinhue, VT_Int, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "sinscroll",
+			modifyBGCtrl_sinscroll, VT_Int, 2, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "invertall",
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
@@ -5336,6 +5401,13 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 		}
 		if err := c.paramValue(is, sc, "hue",
 			modifyBGCtrl_hue, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scroll",
+			modifyBGCtrl_scroll, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramWaveform(is, sc, "waveform", modifyBGCtrl_waveform); err != nil {
 			return err
 		}
 		if err := c.shaderSub(is, sc, modifyBGCtrl_shader, "shader."); err != nil {

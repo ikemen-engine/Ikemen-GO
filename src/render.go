@@ -942,6 +942,7 @@ func RenderSprite(rp RenderParams) {
 
 	gfx.SetUniformF("gray", spfx.gray)
 	gfx.SetUniformF("hue", spfx.hue)
+	gfx.SetUniformF("scroll", spfx.scroll)
 	gfx.SetUniformFv("tint", tint[:])
 
 	if rp.paltex == nil {
@@ -1211,6 +1212,7 @@ func FillRectTrans(rect [4]int32, color uint32, trans TransType, alpha [2]int32,
 	gfx.SetUniformI("isRgba", 1)
 	gfx.SetUniformF("gray", spfx.gray)
 	gfx.SetUniformF("hue", spfx.hue)
+	gfx.SetUniformF("scroll", spfx.scroll)
 
 	// Alpha is determined by tint, so we reset it here
 	// TODO: Maybe the shader shouldn't have a duplicate alpha component inside "tint"
@@ -1456,6 +1458,7 @@ type ShaderPalFX struct {
 	mult     [3]float32
 	gray     float32
 	hue      float32
+	scroll   float32
 	invblend int32
 }
 

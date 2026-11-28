@@ -9,7 +9,7 @@
 		vec4 textColor;
 		vec4 palAddGray;   // xyz add, w gray
 		vec4 palMulHue;    // xyz mul, w hue
-		vec4 palNegPad;    // x neg (0/1)
+		vec4 palNegPad;    // x neg (0/1), y scroll
 	};
 	layout(binding = 0) uniform sampler2D tex;
 #else
@@ -30,33 +30,20 @@
 	uniform vec3 palMul;
 	uniform float palGray;
 	uniform float palHue;
+	uniform float palScroll;
 	uniform int palNeg;
 	uniform sampler2D tex;
 	COMPAT_VARYING vec2 fragTexCoord;
 #endif
 
-vec3 rgb2hsv(vec3 c)
-{
-	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-
-	float d = q.x - min(q.w, q.y);
-	float e = 1.0e-10;
-	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-}
-
-vec3 hsv2rgb(vec3 c)
-{
-	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
-
+// Rotates hue around the gray axis with Rodrigues' rotation formula, then restores luma so brightness stays about the same
 vec3 hue_shift(vec3 color, float dhue) {
-	vec3 colorhsv = rgb2hsv(color);
-	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
-	return hsv2rgb(colorhsv);
+	float angle = dhue * 6.28318531;
+	float cs = cos(angle);
+	vec3 k = vec3(0.57735); // Unit gray axis
+	vec3 c = color * cs + cross(k, color) * sin(angle) + k * dot(k, color) * (1.0 - cs);
+	// Rotating around gray keeps only the RGB average, so add back the lost luma
+	return clamp(c + dot(color - c, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
 }
 
 
@@ -70,18 +57,21 @@ void main()
 	vec3 mulV;
 	float grayV;
 	float hueV;
+	float scrollV;
 	float negV;
 	#if __VERSION__ >= 450
 		addV = palAddGray.xyz;
 		grayV = palAddGray.w;
 		mulV = palMulHue.xyz;
 		hueV = palMulHue.w;
+		scrollV = palNegPad.y;
 		negV = palNegPad.x;
 	#else
 		addV = palAdd;
 		mulV = palMul;
 		grayV = palGray;
 		hueV = palHue;
+		scrollV = palScroll;
 		negV = float(palNeg);
 	#endif
 
@@ -96,6 +86,14 @@ void main()
 	}
 	// Color
 	c.rgb = mix(vec3((c.r + c.g + c.b) / 3.0), c.rgb, 1.0 - grayV);
+	// Scroll: shifts brightness and wraps from bright back to dark
+	// Text color isn't multiplied by the glyph's alpha, so no alpha correction here
+	if (scrollV != 0.0) {
+		float l = (max(max(c.r, c.g), c.b) + min(min(c.r, c.g), c.b)) * 0.5;
+		float n = fract(l + scrollV);
+		// Keep saturation by scaling the color difference to the room left at the new lightness
+		c.rgb = n + (c.rgb - l) * min(n, 1.0 - n) / max(min(l, 1.0 - l), 1e-5);
+	}
 	// Add
 	c.rgb += addV * c.a;
 	// Mul

@@ -213,6 +213,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		r.SetUniformFv("mult", mult)
 		r.SetUniformF("gray", f.shaderPalFX.gray)
 		r.SetUniformF("hue", f.shaderPalFX.hue)
+		r.SetUniformF("scroll", f.shaderPalFX.scroll)
 		r.SetUniformFv("tint", []float32{0, 0, 0, 0})
 
 		// Same engine-provided values RenderSprite gives custom shaders
@@ -235,6 +236,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		r.SetUniformFSub(program.uniforms["palMul"], f.shaderPalFX.mult[0], f.shaderPalFX.mult[1], f.shaderPalFX.mult[2])
 		r.SetUniformFSub(program.uniforms["palGray"], f.shaderPalFX.gray)
 		r.SetUniformFSub(program.uniforms["palHue"], f.shaderPalFX.hue)
+		r.SetUniformFSub(program.uniforms["palScroll"], f.shaderPalFX.scroll)
 		r.SetUniformISub(program.uniforms["palNeg"], int32(Btoi(f.shaderPalFX.neg)))
 
 		//set screen resolution
@@ -640,5 +642,5 @@ func (r *FontRenderer_GL33) LoadTrueTypeFont(reader io.Reader, scale int32, low,
 func (r *FontRenderer_GL33) newProgram(GLSLVersion uint, vertexShaderSource, fragmentShaderSource string) {
 	shaderProgram, _ := gfx.(*Renderer_GL33).newShaderProgram(vertexShaderSource, fragmentShaderSource, "", "font shader", true)
 	r.shaderProgram = shaderProgram
-	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex", "palAdd", "palMul", "palGray", "palHue", "palNeg")
+	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex", "palAdd", "palMul", "palGray", "palHue", "palScroll", "palNeg")
 }

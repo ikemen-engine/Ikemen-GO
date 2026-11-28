@@ -133,6 +133,7 @@ type Config struct {
 		ClipboardRows       int     `ini:"ClipboardRows"`
 		ConsoleRows         int     `ini:"ConsoleRows"`
 		ClsnDarken          bool    `ini:"ClsnDarken"`
+		ClsnPerspective     bool    `ini:"ClsnPerspective"`
 		DumpLuaTables       bool    `ini:"DumpLuaTables"`
 		Font                string  `ini:"Font"`
 		FontScale           float32 `ini:"FontScale"`

@@ -177,17 +177,25 @@ type DebugClsn struct {
 	palTex Texture // Reusable texture with the Clsn color
 }
 
-func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
+func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing, localscl, zpos, zScale float32) {
 	if len(boxes) == 0 {
 		return
+	}
+
+	// Follow the char's Z perspective when enabled. Disabled keeps boxes flat and data accurate
+	if sys.cfg.Debug.ClsnPerspective && sys.zEnabled() {
+		pos := sys.drawposXYfromZ([2]float32{x, y}, localscl, zpos, zScale)
+		x, y = pos[0], pos[1]
+	} else {
+		zScale = 1
 	}
 
 	// Apply camera transform
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 
-	xs := sys.cam.Scale
-	ys := sys.cam.Scale
+	xs := sys.cam.Scale * zScale
+	ys := sys.cam.Scale * zScale
 
 	for _, box := range boxes {
 		left := box.rect[0]
@@ -1441,6 +1449,7 @@ func newAfterImage() *AfterImage {
 	if len(ai.palfx) > 0 && ai.palfx[0] != nil {
 		ai.palfx[0].eColor = 1
 		ai.palfx[0].eHue = 0
+		ai.palfx[0].eScroll = 0
 		ai.palfx[0].eInvertall = false
 		ai.palfx[0].eInvertblend = 0
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
@@ -1460,6 +1469,12 @@ func (ai *AfterImage) setPalColor(color int32) {
 func (ai *AfterImage) setPalHueShift(huesh int32) {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eHue = (float32(Clamp(huesh, -256, 256)) / 512)
+	}
+}
+
+func (ai *AfterImage) setPalScroll(scroll int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eScroll = float32(scroll) / 256
 	}
 }
 
@@ -1568,6 +1583,7 @@ func (ai *AfterImage) setup(c *Char) {
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
 		ai.palfx[i].eHue = ai.palfx[i-1].eHue
+		ai.palfx[i].eScroll = ai.palfx[i-1].eScroll
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
 		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend
 
@@ -2584,6 +2600,7 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 			if i < 2 {
 				pfd.icolor[i] = pfd.color
 				pfd.ihue[i] = pfd.hue
+				pfd.iscroll[i] = pfd.scroll
 			}
 		}
 	}
@@ -2626,7 +2643,7 @@ func (e *Explod) bakeInterpolation() {
 
 	if e.ownpal && e.palfx.interpolate {
 		pf := e.palfx
-		pf.mul, pf.add, pf.color, pf.hue = pf.interpolatedValues()
+		pf.mul, pf.add, pf.color, pf.hue, pf.scroll = pf.interpolatedValues()
 	}
 }
 
@@ -2658,6 +2675,7 @@ func (e *Explod) startInterpolation(pfd *PalFXDef) {
 		pfd.add = [3]int32{0, 0, 0}
 		pfd.color = 1
 		pfd.hue = 0
+		pfd.scroll = 0
 	}
 }
 
@@ -3046,8 +3064,8 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 
 	// Apply projectile scale
 	scale := [2]float32{
-		p.clsnScale[0] * p.localscl * p.zScale,
-		p.clsnScale[1] * p.localscl * p.zScale,
+		p.clsnScale[0] * p.localscl,
+		p.clsnScale[1] * p.localscl,
 	}
 
 	for _, r := range rects {
@@ -3067,10 +3085,10 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 }
 
 // Sorts a group of projectiles by distance from the first projectile
-func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projectile {
+func (p *Projectile) sortOthersByDistance(others []*Projectile) {
 	// We only need to sort if there are two or more projectiles
-	if len(projectiles) < 2 {
-		return projectiles
+	if len(others) < 2 {
+		return
 	}
 
 	// Local struct for sorting
@@ -3079,10 +3097,10 @@ func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projecti
 		dist float32
 	}
 
-	pairs := make([]pair, len(projectiles))
+	pairs := make([]pair, len(others))
 
 	// Compute distances of all projectiles
-	for idx, pr := range projectiles {
+	for idx, pr := range others {
 		// Compute squared distance
 		dx := p.pos[0]*p.localscl - pr.pos[0]*pr.localscl
 		dy := p.pos[1]*p.localscl - pr.pos[1]*pr.localscl
@@ -3104,10 +3122,8 @@ func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projecti
 
 	// Write back sorted projectiles
 	for i, pair := range pairs {
-		projectiles[i] = pair.pr
+		others[i] = pair.pr
 	}
-
-	return projectiles
 }
 
 // This function only checks if a projectile hits another projectile
@@ -3320,12 +3336,12 @@ func (p *Projectile) cueDraw() {
 			// Clsn1
 			boxes1 := p.getClsn(1)
 			if len(boxes1) > 0 {
-				sys.debugc1hit.Add(boxes1, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
+				sys.debugc1hit.Add(boxes1, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing, p.localscl, p.pos[2], p.zScale)
 			}
 			// Clsn2
 			boxes2 := p.getClsn(2)
 			if len(boxes2) > 0 {
-				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
+				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing, p.localscl, p.pos[2], p.zScale)
 			}
 		}
 	}
@@ -4041,10 +4057,10 @@ func (c *Char) enemyNearP2Clear() {
 }
 
 // Sorts a group of enemies by distance from the first char
-func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
+func (c *Char) sortOthersByDistance(others []*Char, p2list bool) {
 	// We only need to sort if there are two or more enemies
-	if len(enemies) < 2 {
-		return enemies
+	if len(others) < 2 {
+		return
 	}
 
 	// Local struct for sorting
@@ -4053,10 +4069,14 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 		dist float32
 	}
 
-	pairs := make([]pair, len(enemies))
+	pairs := make([]pair, len(others))
+
+	// Factor standing height so an enemy at your level isn't treated as farther away for being a bit higher or lower
+	// Size constants stay in base localcoord, so they need converting when in a custom state
+	height := -c.size.standbox[1] * (c.baselocalscl / c.localscl)
 
 	// Compute distances of all enemies
-	for idx, e := range enemies {
+	for idx, e := range others {
 		// Factor x distance first
 		distX := c.distX(e, c) * c.facing
 		effectiveX := distX
@@ -4068,8 +4088,11 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 			effectiveX -= 30.0 / c.localscl
 		}
 
-		// By default the distance is just measured in x
-		sortDist := effectiveX
+		// Height differences only count past the player's own standing height constant
+		gapY := Max(0, Abs(c.distY(e, c))-height)
+
+		// Squared distance is enough for sorting and skips the square root
+		sortDist := effectiveX*effectiveX + gapY*gapY
 
 		// Factor z distance as well if applicable
 		if sys.zEnabled() {
@@ -4080,18 +4103,17 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 			if p2list {
 				distZ *= 4.0
 			}
-			// Use hypotenuse between x and z
-			sortDist = float32(math.Hypot(float64(effectiveX), float64(distZ)))
+			sortDist += distZ * distZ
 		}
 
 		// Save result in sorting slice
 		pairs[idx] = pair{ch: e, dist: sortDist}
 	}
 
-	// Sort by shortest absolute distance
+	// Sort by shortest distance
 	sort.Slice(pairs, func(i, j int) bool {
-		if Abs(pairs[i].dist) != Abs(pairs[j].dist) {
-			return Abs(pairs[i].dist) < Abs(pairs[j].dist)
+		if pairs[i].dist != pairs[j].dist {
+			return pairs[i].dist < pairs[j].dist
 		}
 		// Use player ID as tiebreaker (replaces sort.SliceStable)
 		return pairs[i].ch.id < pairs[j].ch.id
@@ -4099,10 +4121,8 @@ func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 
 	// Write back sorted characters
 	for i, p := range pairs {
-		enemies[i] = p.ch
+		others[i] = p.ch
 	}
-
-	return enemies
 }
 
 // Clear character variables upon a new round or creation of a new helper
@@ -4217,7 +4237,6 @@ func (c *Char) resetModifyPlayer() {
 	c.powerMax = gi.data.power
 	c.dizzyPointsMax = gi.data.dizzypoints
 	c.guardPointsMax = gi.data.guardpoints
-	c.movelist = 0
 	// c.teamside already assigned by loadCharacter()
 }
 
@@ -6343,6 +6362,8 @@ func (c *Char) palfxvar2(x int32) float32 {
 			n = c.palfx.eColor
 		case 2:
 			n = c.palfx.eHue
+		case 3:
+			n = c.palfx.eScroll
 		default:
 			n = 0
 		}
@@ -7818,8 +7839,16 @@ func (c *Char) setPosX(x float32, all bool) {
 	}
 }
 
-func (c *Char) setPosY(y float32, all bool) { // This function mostly exists right now so we don't forget to use the other two
-	c.pos[1] = y
+func (c *Char) setPosY(y float32, all bool) {
+	// Y distance is also factored into enemy near lists
+	if c.pos[1] != y {
+		if c.isPlayerType() {
+			sys.charList.enemyNearChanged = true
+		} else {
+			c.enemyNearP2Clear()
+		}
+		c.pos[1] = y
+	}
 
 	if all {
 		c.oldPos[1], c.interPos[1] = y, y
@@ -13419,7 +13448,7 @@ func (c *Char) cueDebugDraw() {
 				debugType = &sys.debugc1not
 			}
 			if debugType != nil {
-				debugType.Add(boxes1, x+xoff, y+yoff, c.facing)
+				debugType.Add(boxes1, x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 			}
 		}
 
@@ -13453,7 +13482,7 @@ func (c *Char) cueDebugDraw() {
 			// Color each box by its own invincibility
 			for i := range boxes2 {
 				bhb, bmtk, _, _ := c.debugHitByState(2, int32(i))
-				pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing)
+				pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 			}
 
 			// The text only cares about the global state. The colors will specify which boxes can be hit
@@ -13537,23 +13566,23 @@ func (c *Char) cueDebugDraw() {
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
 			boxes3 := c.getClsnWorld(3)
-			sys.debugcsize.Add(boxes3, x, y, c.facing)
+			sys.debugcsize.Add(boxes3, x, y, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 
 		// Add Dummy boxes
 		dummy := c.getClsnWorld(4)
 		if len(dummy) > 0 {
-			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing)
+			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
-		sys.debugcross.Add(crosshair, x, y, c.facing)
+		sys.debugcross.Add(crosshair, x, y, c.facing, c.localscl, c.pos[2], c.zScale)
 
 		// Add GroundLevel indicator
 		if c.prevGroundLevel != 0 {
 			gLevel := []ClsnFinal{{rect: [4]float32{-2, 0, 2, 1}, angle: 0}}
-			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing, c.localscl, c.pos[2], c.zScale)
 		}
 	}
 
@@ -15161,7 +15190,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 	}
 
 	// Sort by distance from c
-	enemies = c.sortOthersByDistance(enemies, p2list)
+	c.sortOthersByDistance(enemies, p2list)
 
 	// Update the cache
 	*cache = (*cache)[:0]

@@ -1744,10 +1744,13 @@ func systemScriptInit(l *lua.LState) {
 		  - `sinmul` (table int32[4]): sinusoidal mul `{r, g, b, period}`; negative period flips sign
 		  - `sincolor` (table int32[2]): sinusoidal color shift `{amount, period}`
 		  - `sinhue` (table int32[2]): sinusoidal hue shift `{amount, period}`
+		  - `sinscroll` (table int32[2]): sinusoidal brightness scroll `{amount, period}`
+		  - `waveform` (string): wave shape of the sin fields: `"sine"` (default), `"saw"`, `"triangle"` or `"square"`
 		  - `invertall` (int32): set to `1` to invert all colors
 		  - `invertblend` (int32): invert blend mode index
 		  - `color` (float32): color saturation factor (`0–256` scaled to `0.0–1.0`)
-		  - `hue` (float32): hue adjustment factor (`0–256` scaled to `0.0–0.5`)*/
+		  - `hue` (float32): hue adjustment factor (`0–256` scaled to `0.0–0.5`)
+		  - `scroll` (float32): brightness shift that wraps from bright to dark (`256` is one full turn)*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
 			userDataError(l, 1, a)
@@ -1840,6 +1843,26 @@ func systemScriptInit(l *lua.LState) {
 						a.palfx.sinhue = s[0]
 						a.palfx.cycletime[3] = s[1]
 					}
+				case "sinscroll":
+					var s [2]int32
+					switch v := value.(type) {
+					case *lua.LTable:
+						v.ForEach(func(key2, value2 lua.LValue) {
+							s[int(lua.LVAsNumber(key2))-1] = int32(lua.LVAsNumber(value2))
+						})
+					}
+					if s[1] < 0 {
+						a.palfx.sinscroll = -s[0]
+						a.palfx.cycletime[4] = -s[1]
+					} else {
+						a.palfx.sinscroll = s[0]
+						a.palfx.cycletime[4] = s[1]
+					}
+				case "waveform":
+					var ok bool
+					if a.palfx.waveform, ok = palFXWaveform(lua.LVAsString(value)); !ok {
+						l.RaiseError("\nInvalid waveform: %v\n", lua.LVAsString(value))
+					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
 				case "invertblend":
@@ -1848,6 +1871,8 @@ func systemScriptInit(l *lua.LState) {
 					a.palfx.color = float32(lua.LVAsNumber(value)) / 256
 				case "hue":
 					a.palfx.hue = float32(lua.LVAsNumber(value)) / 512
+				case "scroll":
+					a.palfx.scroll = float32(lua.LVAsNumber(value)) / 256
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -10050,6 +10075,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(sys.debugWC.palfxvar2(1))
 		case "hue":
 			ln = lua.LNumber(sys.debugWC.palfxvar2(2))
+		case "scroll":
+			ln = lua.LNumber(sys.debugWC.palfxvar2(3))
 		case "invertall":
 			ln = lua.LNumber(sys.debugWC.palfxvar(-1))
 		case "invertblend":
@@ -10072,6 +10099,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(sys.palfxvar2(1, 1))
 		case "bg.hue":
 			ln = lua.LNumber(sys.palfxvar2(2, 1))
+		case "bg.scroll":
+			ln = lua.LNumber(sys.palfxvar2(3, 1))
 		case "bg.invertall":
 			ln = lua.LNumber(sys.palfxvar(-1, 1))
 		case "all.time":
@@ -10092,6 +10121,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(sys.palfxvar2(1, 2))
 		case "all.hue":
 			ln = lua.LNumber(sys.palfxvar2(2, 2))
+		case "all.scroll":
+			ln = lua.LNumber(sys.palfxvar2(3, 2))
 		case "all.invertall":
 			ln = lua.LNumber(sys.palfxvar(-1, 2))
 		case "all.invertblend":

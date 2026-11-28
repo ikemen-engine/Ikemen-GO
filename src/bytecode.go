@@ -982,6 +982,7 @@ const (
 	OC_ex2_palfxvar_mulb
 	OC_ex2_palfxvar_color
 	OC_ex2_palfxvar_hue
+	OC_ex2_palfxvar_scroll
 	OC_ex2_palfxvar_invertall
 	OC_ex2_palfxvar_invertblend
 	OC_ex2_palfxvar_bg_time
@@ -993,6 +994,7 @@ const (
 	OC_ex2_palfxvar_bg_mulb
 	OC_ex2_palfxvar_bg_color
 	OC_ex2_palfxvar_bg_hue
+	OC_ex2_palfxvar_bg_scroll
 	OC_ex2_palfxvar_bg_invertall
 	OC_ex2_palfxvar_all_time
 	OC_ex2_palfxvar_all_addr
@@ -1003,6 +1005,7 @@ const (
 	OC_ex2_palfxvar_all_mulb
 	OC_ex2_palfxvar_all_color
 	OC_ex2_palfxvar_all_hue
+	OC_ex2_palfxvar_all_scroll
 	OC_ex2_palfxvar_all_invertall
 	OC_ex2_palfxvar_all_invertblend
 	OC_ex2_introstate
@@ -4080,6 +4083,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.palfxvar2(1))
 	case OC_ex2_palfxvar_hue:
 		sys.bcStack.PushF(c.palfxvar2(2))
+	case OC_ex2_palfxvar_scroll:
+		sys.bcStack.PushF(c.palfxvar2(3))
 	case OC_ex2_palfxvar_invertall:
 		sys.bcStack.PushI(c.palfxvar(-1))
 	case OC_ex2_palfxvar_invertblend:
@@ -4102,6 +4107,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.palfxvar2(1, 1))
 	case OC_ex2_palfxvar_bg_hue:
 		sys.bcStack.PushF(sys.palfxvar2(2, 1))
+	case OC_ex2_palfxvar_bg_scroll:
+		sys.bcStack.PushF(sys.palfxvar2(3, 1))
 	case OC_ex2_palfxvar_bg_invertall:
 		sys.bcStack.PushI(sys.palfxvar(-1, 1))
 	case OC_ex2_palfxvar_all_time:
@@ -4122,6 +4129,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.palfxvar2(1, 2))
 	case OC_ex2_palfxvar_all_hue:
 		sys.bcStack.PushF(sys.palfxvar2(2, 2))
+	case OC_ex2_palfxvar_all_scroll:
+		sys.bcStack.PushF(sys.palfxvar2(3, 2))
 	case OC_ex2_palfxvar_all_invertall:
 		sys.bcStack.PushI(sys.palfxvar(-1, 2))
 	case OC_ex2_palfxvar_all_invertblend:
@@ -6506,6 +6515,9 @@ const (
 	palFX_invertall
 	palFX_invertblend
 	palFX_hue
+	palFX_scroll
+	palFX_sinscroll
+	palFX_waveform
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -6518,6 +6530,8 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef, paramID byte, exp []BytecodeExp) 
 		pfd.color = exp[0].evalF(c) / 256
 	case palFX_hue:
 		pfd.hue = exp[0].evalF(c) / 512
+	case palFX_scroll:
+		pfd.scroll = exp[0].evalF(c) / 256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)
@@ -6574,6 +6588,23 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef, paramID byte, exp []BytecodeExp) 
 			}
 		}
 		pfd.sinhue = exp[0].evalI(c) * side
+	case palFX_sinscroll:
+		var side int32 = 1
+		if len(exp) > 1 {
+			if exp[1].evalI(c) < 0 {
+				pfd.cycletime[4] = -exp[1].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletime[4] = exp[1].evalI(c)
+			}
+		}
+		pfd.sinscroll = exp[0].evalI(c) * side
+	case palFX_waveform:
+		wf := exp[0].evalSLower(c)
+		var ok bool
+		if pfd.waveform, ok = palFXWaveform(wf); !ok {
+			sys.appendToConsole(c.warn() + "Invalid waveform: " + wf)
+		}
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	case palFX_invertblend:
@@ -6734,6 +6765,7 @@ const (
 	explod_interpolation_pfx_add
 	explod_interpolation_pfx_color
 	explod_interpolation_pfx_hue
+	explod_interpolation_pfx_scroll
 	explod_animplayerno
 	explod_spriteplayerno
 	explod_syncparams
@@ -7122,6 +7154,8 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		pfd.icolor[0] = exp[0].evalF(c) / 256
 	case explod_interpolation_pfx_hue:
 		pfd.ihue[0] = exp[0].evalF(c) / 512
+	case explod_interpolation_pfx_scroll:
+		pfd.iscroll[0] = exp[0].evalF(c) / 256
 	default:
 	}
 }
@@ -7675,7 +7709,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
 					}
 				})
-			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_hue:
+			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_scroll:
 				modifiers = append(modifiers, func(e *Explod) {
 					pfd := &PalFXDef{} // Discarded when the explod has no PalFX of its own
 					if e.ownpal {
@@ -7856,6 +7890,7 @@ const (
 	afterImage_framegap
 	afterImage_palcolor
 	afterImage_palhue
+	afterImage_palscroll
 	afterImage_palinvertall
 	afterImage_palinvertblend
 	afterImage_palbright
@@ -7932,6 +7967,8 @@ func (sc afterImage) runSub(c, crun *Char, ai *AfterImage, paramID byte, exp []B
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palhue:
 		ai.setPalHueShift(exp[0].evalI(c))
+	case afterImage_palscroll:
+		ai.setPalScroll(exp[0].evalI(c))
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
 	case afterImage_palinvertblend:
@@ -8230,15 +8267,25 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 	case hitDef_hitflag:
 		hd.hitflag = evalHitFlag(exp, c)
 	case hitDef_ground_type:
-		hd.ground_type = HitType(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "ground.type", hitTypeValue); ok {
+			hd.ground_type = HitType(v)
+		}
 	case hitDef_air_type:
-		hd.air_type = HitType(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "air.type", hitTypeValue); ok {
+			hd.air_type = HitType(v)
+		}
 	case hitDef_animtype:
-		hd.animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
+			hd.animtype = Reaction(v)
+		}
 	case hitDef_air_animtype:
-		hd.air_animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "air.animtype", animTypeValue); ok {
+			hd.air_animtype = Reaction(v)
+		}
 	case hitDef_fall_animtype:
-		hd.fall_animtype = Reaction(exp[0].evalI(c))
+		if v, ok := evalTypeExp(exp, c, "fall.animtype", animTypeValue); ok {
+			hd.fall_animtype = Reaction(v)
+		}
 	case hitDef_affectteam:
 		hd.affectteam = exp[0].evalI(c)
 	case hitDef_teamside:
@@ -9509,30 +9556,40 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				p.hitdef.hitflag = v1
 			})
 		case hitDef_ground_type:
-			v1 := HitType(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.ground_type = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "ground.type", hitTypeValue); ok {
+				v1 := HitType(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.ground_type = v1
+				})
+			}
 		case hitDef_air_type:
-			v1 := HitType(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.air_type = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "air.type", hitTypeValue); ok {
+				v1 := HitType(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.air_type = v1
+				})
+			}
 		case hitDef_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.animtype = v1
+				})
+			}
 		case hitDef_air_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.air_animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "air.animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.air_animtype = v1
+				})
+			}
 		case hitDef_fall_animtype:
-			v1 := Reaction(exp[0].evalI(c))
-			modifiers = append(modifiers, func(p *Projectile) {
-				p.hitdef.fall_animtype = v1
-			})
+			if v, ok := evalTypeExp(exp, c, "fall.animtype", animTypeValue); ok {
+				v1 := Reaction(v)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.fall_animtype = v1
+				})
+			}
 		case hitDef_affectteam:
 			v1 := exp[0].evalI(c)
 			modifiers = append(modifiers, func(p *Projectile) {
@@ -11491,6 +11548,38 @@ func physicsTypeValue(s string) (int32, bool) {
 	return 0, false
 }
 
+func animTypeValue(s string) (int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "light":
+		return int32(RA_Light), true
+	case "medium":
+		return int32(RA_Medium), true
+	case "hard", "heavy":
+		return int32(RA_Hard), true
+	case "back":
+		return int32(RA_Back), true
+	case "up":
+		return int32(RA_Up), true
+	case "diagup":
+		return int32(RA_Diagup), true
+	}
+	return 0, false
+}
+
+func hitTypeValue(s string) (int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "high":
+		return int32(HT_High), true
+	case "low":
+		return int32(HT_Low), true
+	case "trip":
+		return int32(HT_Trip), true
+	case "none":
+		return int32(HT_None), true
+	}
+	return 0, false
+}
+
 // Evaluates either a constant type or a dynamic type string
 // A second expression marks the dynamic string form
 func evalTypeExp(exp []BytecodeExp, c *Char, name string, conv func(string) (int32, bool)) (int32, bool) {
@@ -12885,6 +12974,7 @@ const (
 	assertInput_flag byte = iota
 	assertInput_flag_B
 	assertInput_flag_F
+	assertInput_enabled
 	assertInput_redirectid
 )
 
@@ -12894,21 +12984,33 @@ func (sc assertInput) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	// Like AssertSpecial, enabled = 0 clears the flags instead of setting them
+	enable := true
+	set := func(ib InputBits) {
+		if enable {
+			crun.inputFlag |= ib
+		} else {
+			crun.inputFlag &^= ib
+		}
+	}
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
+		case assertInput_enabled:
+			enable = exp[0].evalB(c)
 		case assertInput_flag:
-			crun.inputFlag |= InputBits(exp[0].evalI(c))
+			set(InputBits(exp[0].evalI(c)))
 		case assertInput_flag_B:
 			if crun.facing >= 0 {
-				crun.inputFlag |= IB_PL
+				set(IB_PL)
 			} else {
-				crun.inputFlag |= IB_PR
+				set(IB_PR)
 			}
 		case assertInput_flag_F:
 			if crun.facing >= 0 {
-				crun.inputFlag |= IB_PR
+				set(IB_PR)
 			} else {
-				crun.inputFlag |= IB_PL
+				set(IB_PL)
 			}
 		}
 		return true
@@ -14119,10 +14221,13 @@ const (
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
 	modifyBGCtrl_sinhue
+	modifyBGCtrl_sinscroll
 	modifyBGCtrl_invertall
 	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
 	modifyBGCtrl_hue
+	modifyBGCtrl_scroll
+	modifyBGCtrl_waveform
 	modifyBGCtrl_shader
 	modifyBGCtrl_shaderparam
 	modifyBGCtrl_tex1anim
@@ -14140,7 +14245,10 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	add, mul := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	sinadd, sinmul := [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
 	sincolor, sinhue := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	sinscroll := [2]int32{IErr, IErr}
 	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
+	scroll := float32(math.NaN())
+	waveform := IErr
 	shader := sys.stage.newModifyBGCtrlShader()
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
@@ -14225,6 +14333,11 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				sinhue[1] = exp[1].evalI(c)
 			}
+		case modifyBGCtrl_sinscroll:
+			sinscroll[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				sinscroll[1] = exp[1].evalI(c)
+			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_invertblend:
@@ -14233,6 +14346,14 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_hue:
 			hue = exp[0].evalF(c)
+		case modifyBGCtrl_scroll:
+			scroll = exp[0].evalF(c)
+		case modifyBGCtrl_waveform:
+			wf := exp[0].evalSLower(c)
+			var ok bool
+			if waveform, ok = palFXWaveform(wf); !ok {
+				sys.appendToConsole(c.warn() + "Invalid waveform: " + wf)
+			}
 		case modifyBGCtrl_shader:
 			shader.nameSet = true
 			shader.name = exp[0].evalSLower(c)
@@ -14257,7 +14378,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, invall, invblend, color, hue, shader)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, sinscroll, invall, invblend, color, hue, scroll, waveform, shader)
 	return false
 }
 
@@ -15909,7 +16030,6 @@ const (
 	modifyPlayer_redirectid
 )
 
-// TODO: Undo all effects if a cached character is loaded
 func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 	crun := getRedirectedChar(c, StateControllerBase(sc), modifyPlayer_redirectid, "ModifyPlayer")
 	if crun == nil {
@@ -15958,15 +16078,26 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case modifyPlayer_displayname:
-			dn := exp[0].evalS(c)
-			sys.cgi[crun.playerNo].displayname = dn
+			if crun.helperIndex == 0 {
+				dn := exp[0].evalS(c)
+				sys.cgi[crun.playerNo].displayname = dn
+			} else {
+				// Helpers are not allowed to change CharGlobalInfo
+				sys.appendToConsole(c.warn() + "ModifyPlayer DisplayName cannot be changed on a helper")
+			}
 		case modifyPlayer_lifebarname:
-			ln := exp[0].evalS(c)
-			sys.cgi[crun.playerNo].lifebarname = ln
+			if crun.helperIndex == 0 {
+				ln := exp[0].evalS(c)
+				sys.cgi[crun.playerNo].lifebarname = ln
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer LifebarName cannot be changed on a helper")
+			}
 		case modifyPlayer_helpername:
 			if crun.helperIndex != 0 {
 				hn := exp[0].evalS(c)
 				crun.name = hn
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer HelperName can only be changed on a helper")
 			}
 		case modifyPlayer_helpervar_id:
 			if crun.helperIndex != 0 {
@@ -15976,6 +16107,8 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				} else {
 					crun.helperId = 0
 				}
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer HelperVar.ID can only be changed on a helper")
 			}
 		case modifyPlayer_movehit:
 			crun.mctype = MC_Hit
@@ -15997,9 +16130,17 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 		case modifyPlayer_unhittabletime:
 			crun.unhittableTime = Max(0, exp[0].evalI(c))
 		case modifyPlayer_attack:
-			crun.gi().attackBase = exp[0].evalI(c)
+			if crun.helperIndex == 0 {
+				crun.gi().attackBase = exp[0].evalI(c)
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer Attack cannot be changed on a helper")
+			}
 		case modifyPlayer_defence:
-			crun.gi().defenceBase = exp[0].evalI(c)
+			if crun.helperIndex == 0 {
+				crun.gi().defenceBase = exp[0].evalI(c)
+			} else {
+				sys.appendToConsole(c.warn() + "ModifyPlayer Defence cannot be changed on a helper")
+			}
 		case modifyPlayer_alive:
 			alive := exp[0].evalB(c)
 			if !alive {

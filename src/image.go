@@ -35,15 +35,19 @@ type PalFXDef struct {
 	sinmul      [3]int32
 	sincolor    int32
 	sinhue      int32
-	cycletime   [4]int32
+	sinscroll   int32
+	waveform    int32
+	cycletime   [5]int32
 	invertall   bool
 	invertblend int32
 	hue         float32
+	scroll      float32
 	interpolate bool
 	iadd        [6]int32
 	imul        [6]int32
 	icolor      [2]float32
 	ihue        [2]float32
+	iscroll     [2]float32
 	itime       int32
 }
 
@@ -59,7 +63,7 @@ func newPalFXDef() *PalFXDef {
 type PalFX struct {
 	PalFXDef
 	allowNeg       bool // Can use negative color math
-	sintime        [4]int32
+	sintime        [5]int32
 	enable         bool
 	ignoreAllPalFX bool // TODO: Probably expose this as a parameter
 	eAllowNeg      bool
@@ -69,6 +73,7 @@ type PalFX struct {
 	eMul           [3]int32
 	eColor         float32
 	eHue           float32
+	eScroll        float32
 	eInterpolate   bool
 	eiTime         int32
 	remap          []int // TODO: This isn't color math so it probably should be in a different struct
@@ -194,6 +199,7 @@ func (pf PalFX) toShader(blendMode TransType) (state ShaderPalFX) {
 	state.gray = 1 - pf.eColor
 	state.invblend = pf.eInvertblend
 	state.hue = pf.eHue
+	state.scroll = pf.eScroll
 
 	// Determine if we use negative color math based on blendMode
 	useNeg := blendMode == TT_sub && pf.eAllowNeg
@@ -209,55 +215,106 @@ func (pf PalFX) toShader(blendMode TransType) (state ShaderPalFX) {
 	return
 }
 
-func (pf *PalFX) sinAdd(color *[3]int32) {
-	if pf.cycletime[0] > 1 {
-		st := 2 * math.Pi * float64(pf.sintime[0])
-		if pf.cycletime[0] == 2 {
+// Wave shapes of the sin parameters, set by the waveform keyword
+const (
+	palFXWave_sine int32 = iota
+	palFXWave_saw
+	palFXWave_triangle
+	palFXWave_square
+)
+
+// Converts a waveform keyword. Unknown keywords return sine and false
+func palFXWaveform(s string) (int32, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "sine":
+		return palFXWave_sine, true
+	case "saw":
+		return palFXWave_saw, true
+	case "triangle":
+		return palFXWave_triangle, true
+	case "square":
+		return palFXWave_square, true
+	}
+	return palFXWave_sine, false
+}
+
+// Returns the wave value for a frame of the cycle, from -1 to 1
+// Like sine, every shape is positive in the first half of the cycle and negative in the second
+func palFXWave(waveform, time, cycle int32) float64 {
+	t := float64(time) / float64(cycle)
+	switch waveform {
+	case palFXWave_saw:
+		// Rises to 1 at mid cycle, then drops to -1 and rises back to 0
+		f := t + 0.5
+		if f >= 1 {
+			f -= 1
+		}
+		return 2*f - 1
+	case palFXWave_triangle:
+		// Rises to 1 at a quarter cycle, falls to -1 at three quarters, then rises back to 0
+		switch {
+		case t < 0.25:
+			return 4 * t
+		case t < 0.75:
+			return 2 - 4*t
+		default:
+			return 4*t - 4
+		}
+	case palFXWave_square:
+		if t < 0.5 {
+			return 1
+		}
+		return -1
+	default:
+		st := 2 * math.Pi * float64(time)
+		if cycle == 2 {
 			st += math.Pi / 2
 		}
-		sin := math.Sin(st / float64(pf.cycletime[0]))
+		return math.Sin(st / float64(cycle))
+	}
+}
+
+func (pf *PalFX) sinAdd(color *[3]int32) {
+	if pf.cycletime[0] > 1 {
+		wave := palFXWave(pf.waveform, pf.sintime[0], pf.cycletime[0])
 		for i := range *color {
-			(*color)[i] += int32(sin * float64(pf.sinadd[i]))
+			(*color)[i] += int32(wave * float64(pf.sinadd[i]))
 		}
 	}
 }
 
 func (pf *PalFX) sinMul(color *[3]int32) {
 	if pf.cycletime[1] > 1 {
-		st := 2 * math.Pi * float64(pf.sintime[1])
-		if pf.cycletime[1] == 2 {
-			st += math.Pi / 2
-		}
-		sin := math.Sin(st / float64(pf.cycletime[1]))
+		wave := palFXWave(pf.waveform, pf.sintime[1], pf.cycletime[1])
 		for i := range *color {
-			(*color)[i] += int32(sin * float64(pf.sinmul[i]))
+			(*color)[i] += int32(wave * float64(pf.sinmul[i]))
 		}
 	}
 }
 
 func (pf *PalFX) sinColor(color *float32) {
 	if pf.cycletime[2] > 1 {
-		st := 2 * math.Pi * float64(pf.sintime[2])
-		if pf.cycletime[2] == 2 {
-			st += math.Pi / 2.0
-		}
-		sin := math.Sin(st / float64(pf.cycletime[2]))
+		wave := palFXWave(pf.waveform, pf.sintime[2], pf.cycletime[2])
 
-		(*color) += float32(sin * (float64(pf.sincolor) / 256.0))
+		(*color) += float32(wave * (float64(pf.sincolor) / 256.0))
 
 	}
 }
 
 func (pf *PalFX) sinHueshift(color *float32) {
 	if pf.cycletime[3] > 1 {
-		st := 2 * math.Pi * float64(pf.sintime[3])
-		if pf.cycletime[3] == 2 {
-			st += math.Pi / 2.0
-		}
-		sin := math.Sin(st / float64(pf.cycletime[3]))
+		wave := palFXWave(pf.waveform, pf.sintime[3], pf.cycletime[3])
 
-		(*color) += float32(sin * (float64(pf.sinhue) / 512.0))
+		(*color) += float32(wave * (float64(pf.sinhue) / 512.0))
 
+	}
+}
+
+func (pf *PalFX) sinScroll(value *float32) {
+	if pf.cycletime[4] > 1 {
+		wave := palFXWave(pf.waveform, pf.sintime[4], pf.cycletime[4])
+
+		(*value) += float32(wave * (float64(pf.sinscroll) / 256.0))
 	}
 }
 
@@ -294,13 +351,14 @@ func (pf *PalFX) refresh() {
 
 	if pf.eInterpolate {
 		// Calculate interpolated values
-		pf.eMul, pf.eAdd, pf.eColor, pf.eHue = pf.interpolatedValues()
+		pf.eMul, pf.eAdd, pf.eColor, pf.eHue, pf.eScroll = pf.interpolatedValues()
 	} else {
 		// Static values
 		pf.eMul = pf.mul
 		pf.eAdd = pf.add
 		pf.eColor = pf.color
 		pf.eHue = pf.hue
+		pf.eScroll = pf.scroll
 	}
 
 	pf.eAllowNeg = pf.allowNeg
@@ -316,10 +374,11 @@ func (pf *PalFX) refresh() {
 	pf.sinMul(&pf.eMul)
 	pf.sinColor(&pf.eColor)
 	pf.sinHueshift(&pf.eHue)
+	pf.sinScroll(&pf.eScroll)
 }
 
 // Interpolated values at the current time, before sin effects. Explods also use it to bake their interpolation
-func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue float32) {
+func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue, scroll float32) {
 	t := float32(0)
 	if pf.itime > 0 {
 		t = float32(pf.eiTime) / float32(pf.itime)
@@ -331,6 +390,7 @@ func (pf *PalFX) interpolatedValues() (mul, add [3]int32, color, hue float32) {
 	}
 	color = Lerp(pf.icolor[1], pf.icolor[0], t) * pf.color
 	hue = Lerp(pf.ihue[1], pf.ihue[0], t) + pf.hue
+	scroll = Lerp(pf.iscroll[1], pf.iscroll[0], t) + pf.scroll
 	return
 }
 
@@ -341,7 +401,7 @@ func (pf *PalFX) tickTimers() {
 	if !pf.enable {
 		return
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < len(pf.cycletime); i++ {
 		if pf.cycletime[i] > 0 {
 			pf.sintime[i] = (pf.sintime[i] + 1) % pf.cycletime[i]
 		}
@@ -379,6 +439,7 @@ func (base PalFX) stacked(extra PalFX, blendMode TransType, alpha [2]int32) PalF
 	}
 
 	pf.eHue += pfx.eHue
+	pf.eScroll += pfx.eScroll
 	pf.eColor *= pfx.eColor
 	pf.eInvertall = pf.eInvertall != pfx.eInvertall
 

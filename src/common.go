@@ -1624,6 +1624,15 @@ func ReadPalFX(pre string, is IniSection, pfx *PalFX) {
 			pfx.cycletime[3] = s2[1]
 		}
 	}
+	if is.ReadI32(pre+"sinscroll", &s2[0], &s2[1]) {
+		if s2[1] < 0 {
+			pfx.sinscroll = -s2[0]
+			pfx.cycletime[4] = -s2[1]
+		} else {
+			pfx.sinscroll = s2[0]
+			pfx.cycletime[4] = s2[1]
+		}
+	}
 	is.ReadBool(pre+"invertall", &pfx.invertall)
 	is.ReadI32(pre+"invertblend", &pfx.invertblend)
 	var n float32
@@ -1632,6 +1641,15 @@ func ReadPalFX(pre string, is IniSection, pfx *PalFX) {
 	}
 	if is.ReadF32(pre+"hue", &n) {
 		pfx.hue = n / 512
+	}
+	if is.ReadF32(pre+"scroll", &n) {
+		pfx.scroll = n / 256
+	}
+	if str, ok, _ := is.getText(pre + "waveform"); ok {
+		var valid bool
+		if pfx.waveform, valid = palFXWaveform(str); !valid {
+			sys.appendToConsole("WARNING: Invalid " + pre + "waveform: " + str)
+		}
 	}
 }
 

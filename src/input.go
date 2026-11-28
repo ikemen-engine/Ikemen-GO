@@ -2695,13 +2695,14 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 	c.completeframe = len(c.completed) > 0 && c.completed[len(c.completed)-1]
 
 	if !c.completeframe {
-		// AI ignores timers
-		// TODO: Maybe this isn't necessary since the AI already cheats anyway
-		if ai {
-			return
-		}
+		// The AI doesn't need to ignore timers because it already cheats anyway
+		// Ignoring them is a form of cheating that would bypass the "noaicheat" flag
+		//if ai {
+		//	return
+		//}
+
 		// If still within allowed overall time, keep going
-		if c.curtime < c.maxtime { // Using <= makes maxtime of 0 or 1 act the same
+		if c.curtime < c.maxtime { // Using <= here would make maxtime of 0 or 1 act the same
 			return
 		}
 	}
