@@ -2365,26 +2365,15 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32, layerNumber
 	scale := [3]float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, (sys.cam.zoomanchorcorrection+yofs)/float32(sys.gameHeight)*2+syo2+aspectCorrection, 0)
 
-	// Apply aspect ratio scaling
-	// TODO: In the letterbox case the model renders too low
+	// Project with the game area aspect, the same space 2D sprites use
+	// The final blit stretches it to the fight aspect, so the model is not distorted in letterbox or pillarbox
 	scaleX := scaleCorrection
 	scaleY := scaleCorrection
-	if sys.cfg.Video.FightAspectWidth != 0 && sys.cfg.Video.FightAspectHeight != 0 {
-		aspectGame := sys.getCurrentAspect()
-		aspectWindow := float32(sys.scrrect[2]) / float32(sys.scrrect[3])
-
-		if aspectWindow > aspectGame {
-			// Pillarbox - window is wider than game
-			scaleX *= aspectWindow / aspectGame
-		} else if aspectWindow < aspectGame {
-			// Letterbox - window is taller than game
-			scaleY *= aspectGame / aspectWindow
-		}
-	}
+	gameAspect := sys.gameWidth / sys.gameHeight
 
 	proj = proj.Mul4(mgl.Scale3D(scaleX, scaleY, 1))
 	proj = proj.Mul4(mgl.Translate3D(0, (sys.cam.yshift * scl), 0))
-	proj = proj.Mul4(gfx.PerspectiveProjectionMatrix(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.stageCamera.near, s.stageCamera.far))
+	proj = proj.Mul4(gfx.PerspectiveProjectionMatrix(drawFOV, gameAspect, s.stageCamera.near, s.stageCamera.far))
 	view := mgl.Ident4()
 	view = view.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
 	view = view.Mul4(mgl.HomogRotate3DX(rotation[0]))
